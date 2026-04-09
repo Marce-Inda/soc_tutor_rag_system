@@ -22,4 +22,4 @@ Desarrollar un sistema de feedback pedagógico basado en RAG que asista a analis
 - [ ] Integración con Dashboard Web.
 - [ ] Soporte para Multi-idioma dinámico.
 - [ ] Evaluación automática con RAGAS.
-- [ ] Conexión nativa con Firebase para logs de producción.
+- [ ] Despliegue Híbrido: Interfaces Web (Streamlit/Gradio) para evaluadores no-técnicos y Docker simple.
