@@ -67,6 +67,15 @@ graph TD
     G -->|No| E
 ```
 
+## Decisiones de Arquitectura y Diseño
+
+Para cumplir con los estándares de producción, se tomaron las siguientes decisiones de ingeniería:
+
+1. **Stack de Retrieval (ChromaDB + SentenceTransformers)**: Se eligió ChromaDB por su facilidad de uso embebido (sin requerir servidores externos u hospedaje). Se combinó con `all-MiniLM-L6-v2` corriendo de forma estrictamente local para vectorizar la documentación y los logs; esto elimina los costos recurrentes de un proveedor de Embeddings y garantiza una alta velocidad de ingesta.
+2. **Modelos (Gemini 2.5 Flash)**: Se priorizó la versión *Flash* de Gemini 2.5 dado que el patrón *ReAct* requiere de múltiples llamadas iterativas rápidas al LLM. Su relación coste/velocidad y su enorme ventana de contexto lo hacen ideal para analizar bases de conocimiento complejas sin latencias intrusivas para el jugador. Adicionalmente, el cliente (`LLMClient`) fue abstraído para soportar *Groq* y *Ollama* permitiendo ejecución 100% local si es necesario.
+3. **Integración Estática de Logs (Evidencia)**: A diferencia de generar ataques de red mediante el LLM en tiempo real, se optó por ingestar los archivos JSON originales (logs pre-programados) del juego directamente a la base vectorial filtrados por la metadata del escenario. Esto anula las iteraciones "alucinadas" de evidencia técnica, reduce agresivamente los costos (se consume una vez, se evalúa millones de veces) y provee escenarios pedagógicos 100% deterministas.
+4. **Orquestación Secuencial vs. Enjambre (Swarm)**: En lugar de un panel multiagente conversacional anárquico, se utilizó un flujo de tubería estricto (Recolecta -> Explica -> Valida). Esto previene loops de contexto infinitos (comunes en simuladores de agentes autónomos) y facilita agregar de manera asertiva un guardrail final (*Validador*) para controlar la calidad.
+
 ## Instrucciones de Instalación (Local)
 
 1. Clonar el repositorio.
