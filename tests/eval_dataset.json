@@ -1,20 +1,25 @@
 [
   {
     "id": "eval-001",
+    "titulo": "Bloqueo de IP en contención de phishing",
     "decision": {
       "accion": "bloquear_ip",
       "target": "192.168.1.100",
-      "detalle": "Tráfico sospechoso detectado"
+      "detalle": "Tráfico sospechoso detectado desde esta IP hacia el servidor de correo"
     },
     "contexto": {
       "tipo_incidente": "phishing",
-      "fase": "contencion"
+      "fase": "contencion",
+      "scenario_id": "uy-gov-password-spray"
     },
-    "expected_concepts": ["NIST 800-61", "contención", "firewall", "IOC"],
-    "min_score": 70
+    "expected_concepts": ["contención", "firewall", "IOC", "bloqueo"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 70,
+    "decision_quality": "buena"
   },
   {
     "id": "eval-002",
+    "titulo": "Inacción ante ransomware en fase de detección",
     "decision": {
       "accion": "ninguna",
       "target": "N/A",
@@ -22,23 +27,102 @@
     },
     "contexto": {
       "tipo_incidente": "ransomware",
-      "fase": "deteccion"
+      "fase": "deteccion",
+      "scenario_id": "uy-fintech-ransomware-payments"
     },
-    "expected_concepts": ["aislar", "impacto", "crítico", "error"],
-    "min_score": 30
+    "expected_concepts": ["aislar", "impacto", "crítico", "ransomware"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 30,
+    "decision_quality": "mala"
   },
   {
     "id": "eval-003",
+    "titulo": "Análisis forense en erradicación de malware",
     "decision": {
       "accion": "analisis_forense",
       "target": "WORKSTATION-01",
-      "detalle": "Copiar disco para análisis"
+      "detalle": "Copiar disco para análisis de malware tras contención"
     },
     "contexto": {
       "tipo_incidente": "malware",
-      "fase": "erradicacion"
+      "fase": "erradicacion",
+      "scenario_id": "co-healthtech-malware-endpoint"
     },
-    "expected_concepts": ["cadena de custodia", "preservación", "evidencia"],
-    "min_score": 80
+    "expected_concepts": ["cadena de custodia", "preservación", "evidencia", "forense"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 80,
+    "decision_quality": "buena"
+  },
+  {
+    "id": "eval-004",
+    "titulo": "Aislamiento de red en APT",
+    "decision": {
+      "accion": "aislar_segmento_red",
+      "target": "VLAN-FINANZAS",
+      "detalle": "Aislar segmento de red de finanzas tras detectar movimiento lateral"
+    },
+    "contexto": {
+      "tipo_incidente": "apt",
+      "fase": "contencion",
+      "scenario_id": "mx-banking-apt-advanced"
+    },
+    "expected_concepts": ["segmentación", "lateral", "contención", "APT"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 85,
+    "decision_quality": "buena"
+  },
+  {
+    "id": "eval-005",
+    "titulo": "Notificación de breach bajo GDPR",
+    "decision": {
+      "accion": "notificar_autoridades",
+      "target": "DPA-Nacional",
+      "detalle": "Notificar a la autoridad de protección de datos tras confirmar exfiltración"
+    },
+    "contexto": {
+      "tipo_incidente": "data_breach",
+      "fase": "recuperacion",
+      "scenario_id": "pa-logistics-saas-data-leak"
+    },
+    "expected_concepts": ["notificación", "datos", "regulación", "breach"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 75,
+    "decision_quality": "buena"
+  },
+  {
+    "id": "eval-006",
+    "titulo": "Borrar logs tras detectar intrusión",
+    "decision": {
+      "accion": "borrar_logs",
+      "target": "SERVER-WEB-01",
+      "detalle": "Borrar los logs del servidor para que el atacante no vea que lo detectamos"
+    },
+    "contexto": {
+      "tipo_incidente": "intrusion",
+      "fase": "deteccion",
+      "scenario_id": "ar-fintech-idor"
+    },
+    "expected_concepts": ["preservar", "evidencia", "error", "logs"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 15,
+    "decision_quality": "mala"
+  },
+  {
+    "id": "eval-007",
+    "titulo": "Reseteo de MFA tras bypass detectado",
+    "decision": {
+      "accion": "resetear_mfa_corporativo",
+      "target": "ALL-USERS",
+      "detalle": "Resetear credenciales MFA de todos los usuarios tras detectar bypass"
+    },
+    "contexto": {
+      "tipo_incidente": "credential_compromise",
+      "fase": "erradicacion",
+      "scenario_id": "ar-fintech-mfabypass"
+    },
+    "expected_concepts": ["MFA", "credenciales", "autenticación", "erradicación"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 70,
+    "decision_quality": "buena"
   }
 ]
