@@ -21,6 +21,12 @@ class SOCtools:
         y realizar las búsquedas inteligentes en los documentos.
         """
         self.rag = rag_client
+        self.current_scenario_id = "default"
+
+    def set_scenario(self, scenario_id: str):
+        """Asigna el id del escenario bajo el telón para que la IA no tenga que memorizarlo y se eviten alucinaciones."""
+        if scenario_id:
+            self.current_scenario_id = scenario_id
 
     def buscar_en_nist(self, query: str) -> str:
         """
@@ -54,18 +60,18 @@ class SOCtools:
         # Devolvemos el texto encontrado formateado y con la referencia de origen.
         return "\n\n".join([f"[{r['source']}] {r['text']}" for r in results])
 
-    def buscar_evidencia_en_juego(self, query: str, scenario_id: str) -> str:
+    def buscar_evidencia_en_juego(self, query: str) -> str:
         """
         Herramienta número 3: Buscar información técnica real recopilada de un escenario de juego específico.
         En lugar de buscar teoría o manuales, esto busca en los "logs", o "diarios" de eventos del sistema,
         para encontrar posibles rastros que el atacante haya dejado en la simulación actual del jugador.
         """
         # Se solicita la búsqueda de evidencia, limitando a 5 fragmentos, y forzando a que la búsqueda 
-        # se centre únicamente en el escenario que el usuario está jugando (scenario_id).
-        results = self.rag.retrieve(query, k=5, filter_scenario_id=scenario_id)
+        # se centre únicamente en el escenario que el usuario está jugando usando el ID guardado por la clase.
+        results = self.rag.retrieve(query, k=5, filter_scenario_id=self.current_scenario_id)
         
         if not results:
-            return f"No se encontró evidencia técnica relacionada en los logs de la simulación para el escenario {scenario_id}."
+            return f"No se encontró evidencia técnica relacionada en los logs de la simulación para el escenario actual ({self.current_scenario_id})."
             
         # Retornamos el texto con la referencia estructurada. Ponemos el nombre de archivo ('filename') si existe,
         # para que el agente sepa exactamente dónde apareció ese log. Si no existe nombre, mostramos la etiqueta general.
@@ -83,16 +89,16 @@ class SOCtools:
             StructuredTool.from_function(
                 func=self.buscar_en_nist,
                 name="buscar_en_nist",
-                description="Busca mejores prácticas y lineamientos en la base de datos del estándar internacional NIST 800-61. Útil para consultar fases de respuestas a incidentes."
+                description="Útil para cuando necesitas buscar mejores prácticas y lineamientos oficiales en la base de datos del estándar NIST 800-61. Especial para fases de respuestas a incidentes. Solo requiere un string de búsqueda."
             ),
             StructuredTool.from_function(
                 func=self.buscar_en_mitre,
                 name="buscar_en_mitre",
-                description="Busca técnicas, tácticas y marcadores o IOCs en la base de inteligencia de MITRE ATT&CK. Usar para entender los pasos de un ciberadversario."
+                description="Útil para cuando necesitas consultar técnicas, tácticas y marcadores o IOCs de comportamientos de atacantes en la base de MITRE ATT&CK. Solo requiere un string de búsqueda."
             ),
             StructuredTool.from_function(
                 func=self.buscar_evidencia_en_juego,
                 name="buscar_evidencia_en_juego",
-                description="Busca evidencia técnica verídica presente en los eventos del sistema simulado (archivos del juego) para armar pistas. DEBES proveer explícitamente el 'scenario_id' (identificador del escenario de juego)."
+                description="Útil para cuando necesitas investigar pistas o evidencia técnica verídica presente en los eventos del sistema simulado (archivos de logs del juego actual). Solo requiere un string de búsqueda indicando qué patrón buscas."
             )
         ]

@@ -90,14 +90,18 @@ class UEFSOrchestrator:
         tracer.add_step("Lectura_De_Diarios_Previos", {"resumen_memoria_extraida": history})
         
         # PASO 3. Inyectar Revisión Ciega de Manuales Corporativos Ciber en Milisegundos (Recuperación RAG Central).
-        # Entierca sus raíces dentro de todos y cada uno de los libros gigantes provistos del proyecto para 
-        # recolectar las piezas aisladas que encajan estrictamente entorno o muy vecinamente al accionar bajo lupa e interrogante "El Aislar un equipo con ransomware".
+        # Aseguramos de que el Agente y sus Herramientas conozcan silenciosamente el ID exacto de este escenario (Fool-proof).
+        if contexto.scenario_id:
+            self.tools.set_scenario(contexto.scenario_id)
+
+        # Buscamos en toda la memoria las pistas conectas a la "Decisión" que está en curso.
         rag_result = self.rag.retrieve_with_context(
             decision=decision.model_dump(),
             contexto=contexto.model_dump(),
             k=5 # Limitador Cuántico: Queremos que filtre selectivamente un máximo de solo los "5 extractos/párrafos" o pepitas de oro mejor ponderadas probabilísticamente por IA que hayan tocado coincidentemente dicha métrica.
         )
         tracer.add_step("Lectura_De_BasesDeDatos_NacionalesDeSeguridad", {"pdfs_descubiertos_involucrados": len(rag_result['documentos_recuperados'])})
+
         
         # PASO 4. Salto Cualitativo con la IA Número Uno: "El Inspector de Reglas TÉCNICO". (Pensamiento Analítico de Ciclos ReAct).
         # Pasa todos los antecedentes a una mesa donde la IA cruza minuciosamente los manuales puros versus todo el historial y accionar tuyo con los ojos de un CISO real de experiencia 
