@@ -57,7 +57,7 @@ class AgenteValidador:
         if inconsistencias:
             return ValidacionCalidad(
                 aprobado=False,
-                inconsistencias=inconsistencia,
+                inconsistencias=inconsistencias,
                 correccion=self._generar_correccion(
                     evaluacion_analista, 
                     player_profile
@@ -130,22 +130,22 @@ CONOCIMIENTO RAG:
 Responde en JSON con:
 {{
   "aprobado": true/false,
-  "inconsistencies": ["lista de problemas encontrados"],
-  "correction": "feedback corregido si hay problemas",
+  "inconsistencias": ["lista de problemas encontrados"],
+  "correccion": "feedback corregido si hay problemas",
   "nota": "nota de evaluación de calidad"
 }}
 """
     
     def _get_system_prompt(self) -> str:
         """System prompt del validador."""
-        return """Eres un Validador de Calidad确保 que el feedback generado sea:
-1. Técnicamente correcto y sin alucinaciones
-2. Consistente con la evaluación del Analista
-3. Apropiado para el nivel del jugador
-4. Pedagógicamente efectivo
+        return """Eres un Validador de Calidad (Quality Assurance). Tu misión es asegurar que el feedback generado sea:
+1. Técnicamente correcto y sin alucinaciones (comprobando fuentes).
+2. Estrictamente consistente: Que la evaluación del Analista coincida con el tono pedagógico.
+3. Pedagógicamente Socrático: Asegura que NUNCA se den respuestas "fáciles" si el alumno cometió un error craso, validando que el Explicador le haya devuelto una pregunta guía.
+4. Adaptado al nivel de estrés/experiencia del jugador.
 
 Detecta posibles sesgos o información contradictoria.
-Confirma que cite fuentes cuando sea necesario."""
+Confirma que cite fuentes oficiales obligatoriamente cuando sea necesario."""
     
     def _generar_correccion(
         self, 
