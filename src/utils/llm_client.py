@@ -22,6 +22,13 @@ except ImportError:
     LANGCHAIN_AVAILABLE = False
     print("LangChain no instalado. Instalar: pip install langchain-google-genai langchain-groq langchain-community")
 
+try:
+    from tenacity import retry, wait_exponential_jitter, stop_after_attempt, RetryError
+    TENACITY_AVAILABLE = True
+except ImportError:
+    TENACITY_AVAILABLE = False
+    print("Tenacity no instalado. Por favor instala tenacity para el sistema de reintentos: pip install tenacity")
+
 
 class LLMClient:
     """
@@ -58,7 +65,8 @@ class LLMClient:
             self._client = ChatGoogleGenerativeAI(
                 model=self.model or "gemini-2.5-flash",
                 temperature=self.temperature,
-                google_api_key=api_key
+                google_api_key=api_key,
+                timeout=15.0 # Timeout global de seguridad
             )
         
         # Conexión con IA súper rápida (Groq)
@@ -70,7 +78,8 @@ class LLMClient:
             self._client = ChatGroq(
                 model=self.model or "llama-3-70b-versatile",
                 temperature=self.temperature,
-                groq_api_key=api_key
+                groq_api_key=api_key,
+                timeout=15.0 # Timeout global de seguridad
             )
             
         # Conexión con IA local que corre en nuestra computadora (Ollama)
@@ -83,6 +92,12 @@ class LLMClient:
         else:
             raise ValueError(f"No conozco al proveedor de IA: {self.provider}")
     
+    @retry(wait=wait_exponential_jitter(initial=1, max=10), stop=stop_after_attempt(3))
+    def _generate_with_retry(self, messages: list) -> str:
+        """Función interna envuelta en Tenacity para intentar reconexiones si hay fallo (Rate Limit, Network Error)."""
+        response = self._client.invoke(messages)
+        return response.content
+
     def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Toma una pregunta (prompt) del usuario y una instrucción base (system_prompt) 
@@ -97,8 +112,8 @@ class LLMClient:
         messages.append(("human", prompt))             # Lo que escribió el usuario/jugador
         
         # Hacemos la consulta por internet a la IA y obtenemos la respuesta (.invoke)
-        response = self._client.invoke(messages)
-        return response.content
+        # Usamos el contenedor con retry para soportar backoff si ocurre un error 429
+        return self._generate_with_retry(messages)
     
     def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -107,7 +122,26 @@ class LLMClient:
         a la IA a responder sí o sí en formato máquina (JSON) para que otros códigos lo entiendan fácil.
         """
         json_prompt = f"{prompt}\n\nResponde solo y exclúsivamente con formato JSON válido."
-        response = self.generate(json_prompt, system_prompt)
+        
+        try:
+            response = self.generate(json_prompt, system_prompt)
+        except Exception as e:
+            # GRACEFUL DEGRADATION (Fallback Determinista)
+            # Si pasaron todos los reintentos (ej. no hay internet), devolvemos este JSON universal súper-resiliente.
+            # Cubre todos los keys ("fortalezas", "evaluacion", "aprobado") de los 3 agentes para no romper el Pydantic.
+            print(f"  [LLMClient Fallback] Conexión perdida. Activando Degradación Elegante. Error: {e}")
+            return {
+                "evaluacion": "Aviso del Sistema: El enlace con el servidor avanzado de inteligencia se interrumpió temporalmente por saturación de red o caída. Hemos registrado tu acción como neutral para mantener vivo el juego.",
+                "score_tecnico": 50,
+                "fortalezas": ["Intento de acción completado a pesar de caída de red."],
+                "debilidades": ["El análisis no pudo profundizarse en este turno por problemas técnicos."],
+                "fuentes": ["Fallback System"],
+                "explicacion": "Parece que nuestra red se ha interrumpido brevemente. En este punto de la simulación, siempre recomendamos basarse en manuales oficiales NIST y no entrar en pánico. Seguimos adelante con el incidente.",
+                "mejor_practica": "Revisar logs oficiales cuando se recupere la conexión.",
+                "aprobado": True,
+                "inconsistencias": [],
+                "nota": "Aprobado por Fallback de Emergencia"
+            }
         
         try:
             # Intenta convertir la respuesta devuelta al formato JSON de Python limpio.

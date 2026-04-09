@@ -72,7 +72,9 @@ def run_eval():
             print(f"  → Faithfulness: {'Cita fuentes' if has_sources else 'NO cita fuentes'}")
             
         except Exception as e:
+            import traceback
             print(f"  ❌ Error en caso {case['id']}: {e}")
+            traceback.print_exc()
 
     # Resumen final
     avg_precision = total_score / len(test_cases)
