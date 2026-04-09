@@ -1,0 +1,44 @@
+[
+  {
+    "id": "eval-001",
+    "decision": {
+      "accion": "bloquear_ip",
+      "target": "192.168.1.100",
+      "detalle": "Tráfico sospechoso detectado"
+    },
+    "contexto": {
+      "tipo_incidente": "phishing",
+      "fase": "contencion"
+    },
+    "expected_concepts": ["NIST 800-61", "contención", "firewall", "IOC"],
+    "min_score": 70
+  },
+  {
+    "id": "eval-002",
+    "decision": {
+      "accion": "ninguna",
+      "target": "N/A",
+      "detalle": "Esperar a ver qué pasa"
+    },
+    "contexto": {
+      "tipo_incidente": "ransomware",
+      "fase": "deteccion"
+    },
+    "expected_concepts": ["aislar", "impacto", "crítico", "error"],
+    "min_score": 30
+  },
+  {
+    "id": "eval-003",
+    "decision": {
+      "accion": "analisis_forense",
+      "target": "WORKSTATION-01",
+      "detalle": "Copiar disco para análisis"
+    },
+    "contexto": {
+      "tipo_incidente": "malware",
+      "fase": "erradicacion"
+    },
+    "expected_concepts": ["cadena de custodia", "preservación", "evidencia"],
+    "min_score": 80
+  }
+]
