@@ -1,0 +1,109 @@
+{
+    "scenarios": {
+        "ar-fintech-idor": {
+            "title": "Vulnerabilidad IDOR en App FinTech",
+            "subtitle": "Gestión de Vulnerabilidades de API (Argentina)",
+            "description": "Una investigadora de seguridad independiente ha reportado una vulnerabilidad crítica de Insecure Direct Object Reference (IDOR) en la API de pagos de tu plataforma. El fallo permite a cualquier usuario autenticado ver el historial de transacciones de otros clientes simplemente cambiando el ID en la URL. Como equipo de respuesta, debes contener la fuga, parchar la vulnerabilidad y manejar las implicaciones de cumplimiento con el BCRA y la Ley de Datos Personales Argentinos.",
+            "threat_profile": {
+                "actor": "Investigadora Independiente / Posible Explotación Activa",
+                "reference": "T1552: Unsecured Credentials (as part of API Abuse)"
+            },
+            "compliance": {
+                "pd": {
+                    "name": "Ley 25.326",
+                    "description": "Ley de Protección de Datos Personales de Argentina"
+                },
+                "bcra": {
+                    "name": "Comunicación 'A' 7724 BCRA",
+                    "description": "Lineamientos de gestión de ciberseguridad para entidades financieras"
+                }
+            },
+            "phases": {
+                "discovery": {
+                    "name": "Descubrimiento y Triage",
+                    "description": "Validar el reporte de la investigadora e identificar el alcance de la exposición."
+                },
+                "remediation": {
+                    "name": "Remediación y Parcheado",
+                    "description": "Implementar controles de autorización a nivel de objeto y validar la solución."
+                },
+                "governance": {
+                    "name": "Gobernanza y Notificación",
+                    "description": "Gestionar la notificación oficial y la prevención de regresiones."
+                }
+            },
+            "evidence": {
+                "logs": {
+                    "desc": "Logs de API mostrando múltiples GET a /api/v1/transactions/{id} desde diferentes IDs de sesión pero con el mismo token."
+                },
+                "report": {
+                    "desc": "Reporte detallado de la investigadora con prueba de concepto (PoC) exitosa."
+                }
+            },
+            "dilemmas": {
+                "d1": {
+                    "title": "Contención Inmediata",
+                    "context": "El IDOR permite ver CUALQUER cuenta. Es una fuga crítica activa. Tienes un parche listo pero requiere un despliegue que tardará 20 minutos de inactividad de la API.",
+                    "question": "¿Cuál es tu estrategia de contención?",
+                    "hints": {
+                        "strategic": "En FinTech, la integridad y confidencialidad de los datos de transacciones es la base de la licencia bancaria.",
+                        "tactical": "Parchar en caliente sin pruebas puede romper otros flujos de pago críticos."
+                    },
+                    "options": {
+                        "op1": {
+                            "text": "Poner API en Mantenimiento y Parchar",
+                            "rationale": "Correcto: El riesgo de una fuga masiva es infinitamente superior a 20 minutos de inactividad controlada."
+                        },
+                        "op2": {
+                            "text": "Intentar hotfix sin tiempo de inactividad",
+                            "rationale": "Arriesgado: La ventana de exposición permanece abierta y un error en el hotfix podría desestabilizar el motor de pagos."
+                        }
+                    }
+                },
+                "d2": {
+                    "title": "Profundidad de la Remediación",
+                    "context": "Has parchado el endpoint reportado, pero sospechas que otros microservicios podrían tener fallos similares de autorización.",
+                    "question": "¿Cómo aseguras una solución sistémica?",
+                    "hints": {
+                        "strategic": "Un parche táctico solo detiene el primer agujero; una biblioteca de middleware centralizada previene fallos futuros.",
+                        "tactical": "Las pruebas de seguridad estáticas (SAST) pueden ayudar a detectar patrones IDOR en todo el repositorio."
+                    },
+                    "options": {
+                        "op1": {
+                            "text": "Implementar Middleware de Autorización Global",
+                            "rationale": "Excelente: Solucionas el problema de raíz para todos los endpoints actuales y futuros mediante 'Security by Design'."
+                        },
+                        "op2": {
+                            "text": "Revisión Manual de otros Endpoints",
+                            "rationale": "Ineficiente: El error humano es probable y no escala con el crecimiento de la plataforma."
+                        }
+                    }
+                },
+                "d3": {
+                    "title": "Reporte BCRA y Etica",
+                    "context": "La brecha duró 4 horas. Has verificado que la investigadora fue ética, pero tus logs muestran otros 3 IPs accediendo a IDs aleatorios.",
+                    "question": "¿Cómo procedes con la comunicación regulatoria?",
+                    "hints": {
+                        "strategic": "La Comunicación A 7724 del BCRA exige transparencia en incidentes significativos que comprometan datos de clientes.",
+                        "tactical": "Si no reportas y la filtración aparece en la Dark Web, las multas y la pérdida de licencia son riesgos reales."
+                    },
+                    "options": {
+                        "op1": {
+                            "text": "Reporte oficial al BCRA y Agencia de Datos",
+                            "rationale": "Perfecto: Cumples con la normativa, demuestras control y mitigas el riesgo legal al ser proactivo."
+                        },
+                        "op2": {
+                            "text": "Ocultar bajo acuerdo de confidencialidad",
+                            "rationale": "Error: Los otros accesos detectados sugieren que la vulnerabilidad ya estaba siendo explotada. El silencio es negligencia."
+                        }
+                    }
+                }
+            },
+            "learning": {
+                "outcome1": "Identificar y validar vulnerabilidades IDOR en arquitecturas de microservicios.",
+                "outcome2": "Implementar controles sistémicos de autorización (middleware) sobre parches puntuales.",
+                "outcome3": "Navegar el marco regulatorio financiero argentino para la gestión de brechas de datos."
+            }
+        }
+    }
+}

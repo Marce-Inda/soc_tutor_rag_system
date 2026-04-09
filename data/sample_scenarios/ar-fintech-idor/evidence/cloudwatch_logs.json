@@ -1,0 +1,91 @@
+{
+    "alarm": {
+        "name": "API-Gateway-RequestCount-High",
+        "threshold": 10000,
+        "current_value": 47500,
+        "period_minutes": 1,
+        "endpoint": "GET /api/v2/customers/{customer_id}/loans",
+        "triggered_at": "2025-12-10T14:35:00Z"
+    },
+    "requests": [
+        {
+            "timestamp": "2025-12-10T14:10:23Z",
+            "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "ip": "185.220.101.34",
+            "endpoint": "/api/v2/customers/1001/loans",
+            "method": "GET",
+            "status": 200,
+            "response_time_ms": 145,
+            "user_agent": "python-requests/2.31.0",
+            "jwt_user_id": 87,
+            "jwt_issued_at": "2025-11-15T09:30:00Z"
+        },
+        {
+            "timestamp": "2025-12-10T14:10:23Z",
+            "request_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+            "ip": "185.220.101.34",
+            "endpoint": "/api/v2/customers/1002/loans",
+            "method": "GET",
+            "status": 200,
+            "response_time_ms": 142,
+            "user_agent": "python-requests/2.31.0",
+            "jwt_user_id": 87
+        },
+        {
+            "timestamp": "2025-12-10T14:10:24Z",
+            "request_id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+            "ip": "185.220.101.34",
+            "endpoint": "/api/v2/customers/1003/loans",
+            "method": "GET",
+            "status": 200,
+            "response_time_ms": 138,
+            "user_agent": "python-requests/2.31.0",
+            "jwt_user_id": 87
+        },
+        {
+            "timestamp": "2025-12-10T14:10:24Z",
+            "request_id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+            "ip": "185.220.101.34",
+            "endpoint": "/api/v2/customers/1004/loans",
+            "method": "GET",
+            "status": 200,
+            "response_time_ms": 141,
+            "user_agent": "python-requests/2.31.0",
+            "jwt_user_id": 87
+        },
+        {
+            "timestamp": "2025-12-10T14:10:24Z",
+            "request_id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+            "ip": "185.220.101.34",
+            "endpoint": "/api/v2/customers/1005/loans",
+            "method": "GET",
+            "status": 200,
+            "response_time_ms": 139,
+            "user_agent": "python-requests/2.31.0",
+            "jwt_user_id": 87
+        }
+    ],
+    "pattern_analysis": {
+        "observation": "Sequential enumeration of customer IDs",
+        "unique_source_ips": 1,
+        "request_velocity": "~200 requests/second",
+        "all_requests_successful": true,
+        "no_authorization_failures": true,
+        "user_agent_pattern": "Automated script (python-requests)",
+        "jwt_user": {
+            "user_id": 87,
+            "name": "Juan Pérez",
+            "status": "TERMINATED",
+            "termination_date": "2025-11-10",
+            "token_still_valid": true,
+            "token_revocation_status": "NOT_REVOKED"
+        }
+    },
+    "statistics": {
+        "time_window": "2025-12-10T14:10:00Z to 2025-12-10T14:35:00Z",
+        "total_requests": 22487,
+        "unique_customer_ids_accessed": 22487,
+        "average_response_time_ms": 141,
+        "all_status_200": true
+    }
+}

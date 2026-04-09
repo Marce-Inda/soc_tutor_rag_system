@@ -19,12 +19,12 @@ from src.rag.rag_client import RAGClient
 
 # -----------------
 # Variables o Rutas Configurables
-# Aquí le decimos al script dónde exactamente en la computadora debe buscar los archivos.
-# GAME_PROJECT_DIR apunta a la carpeta principal del videojuego.
-# SCENARIOS_DIR apunta específicamente a donde se guardan los niveles (escenarios) del juego.
+# Para mantener la independencia de este proyecto (modo Bootcamp),
+# los datos de prueba ahora apuntan internamente a nuestra carpeta "sample_scenarios"
+# en lugar de depender del repositorio externo del videojuego original.
 # -----------------
-GAME_PROJECT_DIR = "/home/marce-i/Documentos/proyectos/videojuego/juego-ciberseguridad"
-SCENARIOS_DIR = os.path.join(GAME_PROJECT_DIR, "src", "scenarios")
+PROJECT_ROOT = Path(__file__).parent.parent
+SCENARIOS_DIR = os.path.join(PROJECT_ROOT, "data", "sample_scenarios")
 
 def read_text_file(filepath: str) -> str:
     """

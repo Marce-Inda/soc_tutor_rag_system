@@ -1,0 +1,106 @@
+{
+    "scenarios": {
+        "es-tourism-gdpr-email-breach": {
+            "title": "Brecha GDPR: Newsletter en CC",
+            "subtitle": "Gestión de Privacidad y Multas AEPD (España)",
+            "description": "Un error humano en el envío de un newsletter promocional ha expuesto las direcciones de correo electrónico de 50,000 clientes al ponerlas en copia visible (CC) en lugar de oculta (BCC). Como IT Manager, debes detener la hemorragia de correos. Como DPO, debes gestionar la respuesta ante la AEPD y decidir la transparencia con los afectados bajo la presión del reloj de 72 horas del RGPD.",
+            "threat_profile": {
+                "actor": "Error Humano (Configuración Incorrecta de SMTP)",
+                "reference": "Infracción de Confidencialidad (Art. 5.1.f RGPD)"
+            },
+            "compliance": {
+                "gdpr": {
+                    "name": "RGPD / GDPR",
+                    "description": "Reglamento General de Protección de Datos (UE 2016/679)"
+                },
+                "lopsdgdd": {
+                    "name": "LOPDGDD",
+                    "description": "Ley Orgánica 3/2018 de Protección de Datos Personales y garantía de los derechos digitales"
+                }
+            },
+            "phases": {
+                "containment": {
+                    "name": "Contención de la Brecha",
+                    "description": "Detener el envío masivo de correos y cuantificar el alcance de la exposición."
+                },
+                "response": {
+                    "name": "Respuesta Regulatoria",
+                    "description": "Notificar a la Autoridad de Control (AEPD) dentro del plazo legal."
+                },
+                "recovery": {
+                    "name": "Comunicación y Mejora",
+                    "description": "Notificar a los afectados y establecer medidas para evitar la recurrencia."
+                }
+            },
+            "evidence": {
+                "header": {
+                    "desc": "Cabecera de Correo: Muestra 500 destinatarios en el campo 'Cc:' de un solo mensaje."
+                }
+            },
+            "dilemmas": {
+                "d1": {
+                    "title": "El Botón de Pánico",
+                    "context": "La campaña se está enviando a 100 correos por segundo. Tienes dos opciones: apagar todo el servidor SMTP de la empresa o intentar filtrar la campaña específica.",
+                    "question": "¿Cuál es tu acción inmediata como IT Manager?",
+                    "hints": {
+                        "strategic": "En una brecha de datos activa, la velocidad de contención es la métrica más importante.",
+                        "tactical": "Configurar filtros complejos bajo presión suele fallar. El 'Kill Switch' es infalible."
+                    },
+                    "options": {
+                        "op1": {
+                            "text": "Apagar Servicio SMTP (Kill Switch)",
+                            "rationale": "Correcto: Detienes la fuga inmediatamente. Es mejor explicar una caída temporal del servicio que una multa millonaria por 50,000 emails adicionales expuestos."
+                        },
+                        "op2": {
+                            "text": "Intentar crear regla de filtro",
+                            "rationale": "Error: Tardas valiosos minutos en aplicar la lógica. La campaña termina de enviarse antes de que el filtro sea efectivo."
+                        }
+                    }
+                },
+                "d2": {
+                    "title": "El Reloj de 72 Horas",
+                    "context": "Has confirmado la brecha. El RGPD exige notificar a la AEPD en un plazo máximo de 72 horas si hay riesgo para los derechos de los ciudadanos.",
+                    "question": "Como DPO, ¿cuál es tu decisión ante la incertidumbre inicial?",
+                    "hints": {
+                        "strategic": "La AEPD valora la transparencia proactiva incluso si los datos son preliminares.",
+                        "tactical": "No notificar es una infracción agravada que dispara la cuantía de la multa."
+                    },
+                    "options": {
+                        "op1": {
+                            "text": "Notificar a la AEPD (Art. 33)",
+                            "rationale": "Excelente: Cumples con el plazo legal. Puedes enviar información adicional más tarde conforme avance la investigación."
+                        },
+                        "op2": {
+                            "text": "No notificar (Esperar)",
+                            "rationale": "Desastroso: Si un cliente denuncia (inevitable con 50k afectados), la ocultación dolosa convierte el incidente en una infracción muy grave (hasta 20M€ o 4% facturación)."
+                        }
+                    }
+                },
+                "d3": {
+                    "title": "¿Transparencia o Silencio?",
+                    "context": "Debes decidir si comunicas el error a los afectados. Algunos sugieren que avisarles solo generará más quejas legales.",
+                    "question": "¿Cuál es la estrategia ganadora para la reputación y el cumplimiento?",
+                    "hints": {
+                        "strategic": "La confianza se recupera con honestidad y advertencias claras sobre riesgos derivados como el phishing.",
+                        "tactical": "El Art. 34 obliga a comunicar si el riesgo es alto."
+                    },
+                    "options": {
+                        "op1": {
+                            "text": "Email de Disculpa + Advertencia Phishing",
+                            "rationale": "Perfecto: Reduces el riesgo de suplantación para los clientes y demuestras responsabilidad ética."
+                        },
+                        "op2": {
+                            "text": "Silencio Administrativo",
+                            "rationale": "Error: Los clientes se organizan en foros y lanzan una demanda colectiva por falta de transparencia y negligencia."
+                        }
+                    }
+                }
+            },
+            "learning": {
+                "outcome1": "Dominar el cumplimiento del reloj de 72 horas del RGPD.",
+                "outcome2": "Entender la prioridad de la contención inmediata sobre la disponibilidad parcial.",
+                "outcome3": "Gestionar la comunicación ética con las víctimas de una brecha de datos."
+            }
+        }
+    }
+}

@@ -1,0 +1,90 @@
+title: API Sequential Object Enumeration (IDOR Detection)
+id: a01-idor-enumeration-001
+status: experimental
+description: |
+  Detects sequential enumeration of object IDs from a single source,
+  indicating a potential IDOR (Insecure Direct Object Reference) attack.
+  This pattern was observed in the CreditoRápido incident of December 2025.
+
+author: SeguridadLatam Consulting
+date: 2025/12/12
+modified: 2025/12/12
+
+references:
+  - https://owasp.org/Top10/A01_2025-Broken_Access_Control/
+  - https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/
+  - https://cwe.mitre.org/data/definitions/639.html
+
+tags:
+  - attack.initial_access
+  - attack.t1078.004
+  - attack.collection
+  - attack.t1530
+
+logsource:
+  category: webserver
+  product: api_gateway
+
+detection:
+  selection:
+    # Successful requests only (attacker gets data)
+    status: 200
+    # GET requests to object endpoints
+    method: GET
+    # Pattern matching customer/user/account ID endpoints
+    endpoint|re: '.*/customers/[0-9]+/.*|.*/users/[0-9]+/.*|.*/accounts/[0-9]+/.*'
+  
+  # Aggregate by source IP
+  condition: selection | count(endpoint) by src_ip > 100
+  
+  timeframe: 5m
+
+fields:
+  - src_ip
+  - user_agent
+  - jwt_user_id
+  - endpoint
+  - timestamp
+
+falsepositives:
+  - Legitimate batch processing jobs
+  - Admin tools with bulk operations
+  - Internal backup or sync processes
+  - Load testing (should be from known IPs)
+
+level: high
+
+# Additional context for SOC analysts
+detection_guidance: |
+  When this rule triggers:
+  
+  1. VERIFY the source:
+     - Is the IP internal or external?
+     - Is the user_agent legitimate (browser) or automated (python-requests)?
+     - Is the JWT user currently employed?
+  
+  2. CHECK the pattern:
+     - Are the IDs sequential (1001, 1002, 1003)?
+     - Are ALL requests successful (200 OK)?
+     - Is the request rate abnormally high?
+  
+  3. If confirmed as attack:
+     - Block the source IP in WAF
+     - Revoke the JWT token immediately
+     - Begin containment procedures
+     - Preserve logs for forensics
+  
+  4. Consider escalating if:
+     - More than 1000 unique IDs accessed
+     - Data includes PII or financial information
+     - Attack has been ongoing for > 30 minutes
+
+# Correlation rules
+related:
+  - type: follow-up
+    rule: api-data-exfiltration-large-response
+    description: Detect large response payloads indicating successful exfiltration
+  
+  - type: follow-up
+    rule: jwt-terminated-employee-usage
+    description: Detect usage of JWT tokens from terminated employees

@@ -1,0 +1,432 @@
+{
+    "id": "ar-fintech-idor-001",
+    "version": "2.1.0",
+    "metadata": {
+        "title": "Snowflake-Style IDOR Attack - Fintech PyME Argentina",
+        "subtitle": "Broken Access Control en API de Préstamos",
+        "description": "Aviso de Ficción: Escenario educativo. 'CreditoRápido S.A.' es ficticio. Se citan regulaciones reales (Ley 25.326, AAIP).\\n\\nUna fintech argentina con 45,000 clientes enfrenta un ataque de enumeración IDOR en su API de préstamos. Un atacante con un JWT robado de un ex-empleado está extrayendo datos masaje. Como AppSec Lead, debes identificar el endpoint vulnerable y parchearlo. Como CISO, debes decidir si notificar a la AAIP proactivamente ante la falta de obligación legal explícita en la ley actual.",
+        "difficulty": "expert",
+        "estimated_duration_minutes": 50,
+        "tags": [
+            "idor",
+            "api-security",
+            "fintech",
+            "argentina",
+            "aaip",
+            "jwt"
+        ],
+        "sector": "fintech",
+        "geography": "argentina",
+        "language": "es-AR",
+        "compliance": [
+            "Ley 25.326 (Protección de Datos Personales)",
+            "Resoluciones AAIP",
+            "OWASP API Security Top 10"
+        ],
+        "regulatoryContext": "AAIP (Agencia de Acceso a la Información Pública). Ley 25.326 actualmente en proceso de reforma.",
+        "author": "GoPyme Security Team",
+        "created_date": "2025-12-18",
+        "last_updated": "2026-01-28",
+        "disclaimer": "Escenario ficticio.",
+        "real_world_reference": "Snowflake Breach 2024 / First American Financial Corp Leak",
+        "complexity_score": 4.5,
+        "nivel": "L4",
+        "organization": "CreditoRápido S.A.",
+        "asimetriaRoles": true,
+        "comunicacionInterroles": true
+    },
+    "roles": [
+        {
+            "id": "analista",
+            "name": "AppSec Lead (Tech Ops)",
+            "description": "Responsable de la seguridad de la API y respuesta técnica.",
+            "responsibilities": [
+                "Análisis de Logs de API Gateway",
+                "Identificación de IDOR",
+                "Hot-fix y Deploy"
+            ],
+            "evidence_access": [
+                "evidence/tech_ops/"
+            ]
+        },
+        {
+            "id": "ciso",
+            "name": "CISO (Estratégico)",
+            "description": "Responsable de la gestión de crisis y cumplimiento legal.",
+            "responsibilities": [
+                "Evaluación de Impacto en Privacidad",
+                "Decisión de Notificación a AAIP",
+                "Gestión de Reputación"
+            ],
+            "evidence_access": [
+                "evidence/exec_war_room/"
+            ]
+        }
+    ],
+    "rolesAsimetricos": {
+        "analista": {
+            "nombreRol": "AppSec Lead (Tech Ops)",
+            "vistaInterfaz": "api_gateway_monitor",
+            "descripcionVista": "Dashboard de tráfico API con alertas de Rate Limiting y Status Codes. Alerta: 'Spike 47k req/min'.",
+            "herramientasDisponibles": [
+                {
+                    "id": "analyze_payload",
+                    "nombre": "[Analizar Payload]",
+                    "descripcion": "Inspectar requests secuenciales.",
+                    "consecuencia": "Confirma enumeración IDOR.",
+                    "tipo": "investigacion"
+                },
+                {
+                    "id": "block_ip",
+                    "nombre": "[Bloquear IP WAF]",
+                    "descripcion": "Bloquear la IP atacante.",
+                    "consecuencia": "Inefectivo, atacante rota IP.",
+                    "tipo": "containment"
+                },
+                {
+                    "id": "deploy_hotfix",
+                    "nombre": "[Deploy Hotfix AuthZ]",
+                    "descripcion": "Agregar chequeo de propiedad del recurso en código.",
+                    "consecuencia": "Solución definitiva. Detiene exfiltración.",
+                    "tipo": "tecnica"
+                }
+            ],
+            "metricas": {
+                "integridadDatos": {
+                    "inicial": 100,
+                    "penalizaciones": [
+                        "Registros fugados > 20k: -50"
+                    ],
+                    "bonificaciones": [
+                        "IDOR parcheado < 30min: +40"
+                    ]
+                }
+            }
+        },
+        "ciso": {
+            "nombreRol": "CISO (Estratégico)",
+            "vistaInterfaz": "tablero_riesgo_aaip",
+            "descripcionVista": "Evaluación de Impacto de Privacidad y Estado Legal frente a Ley 25.326.",
+            "herramientasDisponibles": [
+                {
+                    "id": "notify_aaip",
+                    "nombre": "[Notificar AAIP]",
+                    "descripcion": "Reporte voluntario de incidente de seguridad.",
+                    "consecuencia": "Transparencia valorada, reduce riesgo de multa futura.",
+                    "tipo": "legal"
+                },
+                {
+                    "id": "notify_clients",
+                    "nombre": "[Comunicar a Clientes]",
+                    "descripcion": "Email a afectados con monitoreo de crédito.",
+                    "consecuencia": "Mantiene confianza a largo plazo.",
+                    "tipo": "comunicacion"
+                },
+                {
+                    "id": "silent_mode",
+                    "nombre": "[Modo Silencio]",
+                    "descripcion": "No notificar (no obligatorio hoy).",
+                    "consecuencia": "Riesgo de escándalo mediático y denuncia penal.",
+                    "tipo": "gestion"
+                }
+            ],
+            "metricas": {
+                "confianzaStakeholder": {
+                    "inicial": 80,
+                    "penalizaciones": [
+                        "Escándalo mediático: -60"
+                    ],
+                    "bonificaciones": [
+                        "Transparencia proactiva: +30"
+                    ]
+                },
+                "cumplimientoLegal": {
+                    "inicial": 100,
+                    "penalizaciones": [
+                        "Ocultamiento descubierto: -80"
+                    ],
+                    "bonificaciones": [
+                        "Reporte voluntario: +20"
+                    ]
+                }
+            }
+        }
+    },
+    "comunicacionInterroles": {
+        "mensajesPrecargados": [
+            {
+                "id": "msg_001_idor_alert",
+                "momento": "Inicio",
+                "emisor": "Analista",
+                "receptor": "CISO",
+                "contenido": "Tenemos un spike masivo en /api/loans. Alguien está enumerando IDs secuenciales y bajando datos. El endpoint no valida si el usuario es dueño del ID (IDOR).",
+                "urgencia": "critica"
+            },
+            {
+                "id": "msg_002_fix_deployed",
+                "momento": "Contención",
+                "emisor": "Analista",
+                "receptor": "CISO",
+                "contenido": "Hotfix desplegado. Agregamos validación de ownership. El ataque paró, pero estimo que se llevaron 22,000 registros antes del fix.",
+                "urgencia": "alta",
+                "desbloquea": [
+                    "notify_aaip"
+                ]
+            },
+            {
+                "id": "msg_003_legal_decision",
+                "momento": "Legal",
+                "emisor": "CISO",
+                "receptor": "Analista",
+                "contenido": "Entendido. Dado el volumen de sensitive data (DNI, ingresos), voy a proceder con la notificación voluntaria a la AAIP y clientes para mitigar el daño reputacional.",
+                "urgencia": "media"
+            }
+        ]
+    },
+    "context": {
+        "organization": {
+            "name": "CreditoRápido S.A.",
+            "type": "Fintech Préstamos",
+            "location": "Buenos Aires, Argentina"
+        },
+        "incident_summary": {
+            "type": "IDOR Data Breach",
+            "impact": "Exposición de datos financieros y personales.",
+            "data_at_risk": {
+                "records": "22,487 Clientes",
+                "status": "Exfiltrados"
+            }
+        }
+    },
+    "timeline": {
+        "attack_timeline": [
+            {
+                "time": "T-30m",
+                "event": "Enumeration Start",
+                "details": "Script python comienza iteración de IDs."
+            },
+            {
+                "time": "T-0",
+                "event": "Alert Spike",
+                "details": "CloudWatch detecta 47k req/min."
+            }
+        ],
+        "game_timeline": {
+            "phases": [
+                {
+                    "phase": "detection",
+                    "description": "Diagnóstico IDOR"
+                },
+                {
+                    "phase": "containment",
+                    "description": "Hotfix AuthZ"
+                },
+                {
+                    "phase": "compliance",
+                    "description": "Gestión AAIP"
+                }
+            ]
+        }
+    },
+    "decisions": [
+        {
+            "id": "decision_001_diagnosis",
+            "title": "Spike en API",
+            "description": "47k requests/min. ¿Bloquear IP o analizar código?",
+            "phase": "detection",
+            "required_role": "analista",
+            "difficulty": "high",
+            "options": [
+                {
+                    "id": "d1_analyze_code",
+                    "text": "Analizar Código (Root Cause)",
+                    "description": "Revisar validación de permisos en endpoint.",
+                    "is_correct": true,
+                    "consequences": {
+                        "immediate": {
+                            "integridadDatos": 30,
+                            "message": "Confirmado: Falta check de autorización. Es un IDOR."
+                        },
+                        "unlocks_decisions": [
+                            "decision_002_containment"
+                        ]
+                    },
+                    "educational_note": "CORRECTO. Entender que es un IDOR es clave para no perder tiempo bloqueando IPs rotativas."
+                },
+                {
+                    "id": "d1_block_ip",
+                    "text": "Bloquear IP en WAF",
+                    "description": "Agregar regla de bloqueo.",
+                    "is_correct": false,
+                    "consequences": {
+                        "immediate": {
+                            "integridadDatos": -20,
+                            "message": "Fallo. Atacante rota IP y sigue robando. Perdiste tiempo."
+                        }
+                    },
+                    "educational_note": "ERROR. Whac-A-Mole con IPs no sirve contra automatización."
+                }
+            ]
+        },
+        {
+            "id": "decision_002_containment",
+            "title": "Estrategia de Parcheo",
+            "description": "El IDOR es obvio. ¿Hotfix o bajar la API?",
+            "phase": "containment",
+            "required_role": "analista",
+            "difficulty": "critical",
+            "options": [
+                {
+                    "id": "d2_hotfix",
+                    "text": "Deploy Hotfix AuthZ",
+                    "description": "Agregar validación de ownership en código.",
+                    "is_correct": true,
+                    "consequences": {
+                        "immediate": {
+                            "integridadDatos": 50,
+                            "confianzaStakeholder": 20,
+                            "message": "Ataque detenido quirúrgicamente. Usuarios legítimos operan normal."
+                        },
+                        "unlocks_decisions": [
+                            "decision_003_compliance"
+                        ]
+                    },
+                    "educational_note": "CORRECTO. Solución definitiva que mantiene disponibilidad."
+                },
+                {
+                    "id": "d2_shutdown",
+                    "text": "Apagar Endpoint (Service Down)",
+                    "description": "Dejar sin servicio a todos.",
+                    "is_correct": false,
+                    "consequences": {
+                        "immediate": {
+                            "confianzaStakeholder": -40,
+                            "message": "Detuviste el ataque, pero causaste un DoS a tu propio negocio. CEO furioso."
+                        },
+                        "game_over": false
+                    },
+                    "educational_note": "ERROR. Solo usar 'Nuclear Option' si no hay capacidad de fix rápido."
+                }
+            ]
+        },
+        {
+            "id": "decision_003_compliance",
+            "title": "Dilema de Notificación",
+            "description": "Ley 25.326 no obliga explícitamente hoy, pero es 'best practice'. ¿Notificar?",
+            "phase": "compliance",
+            "required_role": "ciso",
+            "difficulty": "high",
+            "options": [
+                {
+                    "id": "d3_notify_proactive",
+                    "text": "Notificar AAIP y Clientes (Proactivo)",
+                    "description": "Transparencia total.",
+                    "is_correct": true,
+                    "consequences": {
+                        "immediate": {
+                            "cumplimientoLegal": 30,
+                            "confianzaStakeholder": 30,
+                            "message": "AAIP valora el gesto. Prensa positiva por transparencia."
+                        }
+                    },
+                    "educational_note": "CORRECTO. La ética y la reputación a largo plazo valen más que el silencio corto plazo."
+                },
+                {
+                    "id": "d3_silence",
+                    "text": "No notificar (Legalmente permitido)",
+                    "description": "Ahorrar el escándalo hoy.",
+                    "is_correct": false,
+                    "consequences": {
+                        "immediate": {
+                            "confianzaStakeholder": -60,
+                            "cumplimientoLegal": -50,
+                            "message": "Se filtra en 3 meses. Escándalo de 'encubrimiento'. Denuncia penal."
+                        },
+                        "game_over": true,
+                        "game_over_reason": "Reputación destruida por encubrimiento."
+                    },
+                    "educational_note": "FATAL. El 'cover-up' siempre es peor que el crimen."
+                }
+            ]
+        }
+    ],
+    "evaluacion6D": {
+        "Detection": {
+            "competencia": "API Security",
+            "criteriosExito": [
+                "Identificar IDOR"
+            ]
+        },
+        "Diagnosis": {
+            "competencia": "Root Cause Analysis",
+            "criteriosExito": [
+                "No culpar solo a la IP"
+            ]
+        },
+        "Decision": {
+            "competencia": "Remediación",
+            "criteriosExito": [
+                "Deploy Hotfix"
+            ]
+        },
+        "Delivery": {
+            "competencia": "Ops Agility",
+            "criteriosExito": [
+                "Fix sin Downtime"
+            ]
+        },
+        "Documentation": {
+            "competencia": "Compliance",
+            "criteriosExito": [
+                "Reporte Interno Claro"
+            ]
+        },
+        "Disclosure": {
+            "competencia": "Ética Profesional",
+            "criteriosExito": [
+                "Transparencia Voluntaria"
+            ]
+        }
+    },
+    "scoring": {
+        "dimensions": [
+            {
+                "id": "integridadDatos",
+                "name": "Integridad Datos",
+                "weight": 40
+            },
+            {
+                "id": "confianzaStakeholder",
+                "name": "Confianza (CEO/Mercado)",
+                "weight": 30
+            },
+            {
+                "id": "cumplimientoLegal",
+                "name": "Cumplimiento Ético/Legal",
+                "weight": 30
+            }
+        ],
+        "performance_bands": [
+            {
+                "min_score": 85,
+                "grade": "A",
+                "description": "Gestión Ejemplar"
+            },
+            {
+                "min_score": 65,
+                "grade": "B",
+                "description": "Incidente Contenido"
+            },
+            {
+                "min_score": 40,
+                "grade": "C",
+                "description": "Daño Reputacional"
+            },
+            {
+                "min_score": 0,
+                "grade": "F",
+                "description": "Crisis Existencial"
+            }
+        ]
+    }
+}
