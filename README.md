@@ -53,6 +53,20 @@ El sistema se basa en un flujo de orquestación (Pipeline):
 4. **Agente Explicador**: Convierte el análisis en feedback pedagógico.
 5. **Agente Validador**: Asegura que el feedback cite manuales reales y no alucine.
 
+### Diagrama de Flujo
+
+```mermaid
+graph TD
+    A[Jugador The Responder] -->|Pasa Decisión y Contexto| B(UEFSOrchestrator)
+    B -->|Inicia Pipeline| C[Agente Analista - ReAct]
+    C <-->|Busca Evidencia Técnica y Logs Mapeados| D[(ChromaDB RAG)]
+    C -->|Pasa Análisis Técnico| E[Agente Explicador]
+    E -->|Genera Feedback Pedagógico| F[Agente Validador / Guardrail]
+    F -->|Revisa Alucinaciones| G{¿Retroalimentación Válida?}
+    G -->|Sí| H[Retorna Feedback al Jugador]
+    G -->|No| E
+```
+
 ## Instrucciones de Instalación (Local)
 
 1. Clonar el repositorio.
