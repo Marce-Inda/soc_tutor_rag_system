@@ -1,5 +1,5 @@
 """
-Agente Explicador - Feedback pedagógico.
+Explainer Agent - Pedagogical feedback for SOC Tutor.
 """
 
 from typing import Dict, Any
@@ -14,13 +14,13 @@ from ..agentes.types import (
 
 class AgenteExplicador:
     """
-    Agente Explicador: Traduce la evaluación técnica en feedback pedagógico.
+    Explainer Agent: Translates technical evaluation into pedagogical feedback.
     
-    Responsabilidades:
-    - Convertir jerga técnica en explicaciones accesibles
-    - Proporcionar contexto educativo
-    - Adaptar al nivel del jugador (junior vs CISO)
-    - Generar ejemplos prácticos
+    Responsibilities:
+    - Convert technical jargon into accessible explanations.
+    - Provide educational context.
+    - Adapt to the player's level (Junior vs. Senior).
+    - Support localization in ES, PT, EN.
     """
     
     def __init__(self, llm_client, rag_client):
@@ -33,118 +33,70 @@ class AgenteExplicador:
         player_profile: PlayerProfile,
         contexto_rag: str = ""
     ) -> FeedbackPedagogico:
-        """Genera el feedback pedagógico."""
+        """Generates the pedagogical feedback."""
         
-        # 1. Aplicar reglas pedagógicas según nivel
-        reglas_pedagogicas = self._get_reglas_pedagogicas(
-            player_profile.level,
-            player_profile.dilema_index_session
-        )
-        
-        # 2. Construir prompt con reglas pedagógicas
+        # 1. Build prompt with pedagogical rules and language
         prompt = self._build_prompt(
             evaluacion_analista,
             player_profile,
-            reglas_pedagogicas,
             contexto_rag
         )
         
-        # 3. Llamar al LLM
+        # 2. Call the LLM
         try:
+            # We use generate_json to get a structured response in the target language
             result = self.llm.generate_json(
-                prompt=prompt,
-                system_prompt=self._get_system_prompt()
+                prompt=prompt
             )
         except Exception as e:
-            print(f"Error en Agente Explicador: {e}")
-            return self._fallback_feedback(evaluacion_analista)
+            print(f"  [Explainer] Error: {e}")
+            return self._fallback_feedback(evaluacion_analista, player_profile.language)
         
-        # 4. Parsear respuesta
+        # 3. Parse response
         return FeedbackPedagogico(
-            evaluacion=result.get("evaluacion", "Evaluación no disponible"),
-            explicacion=result.get("explicacion", "Sin explicación"),
-            mejor_practica=result.get("mejor_practica", "Consultar manual"),
+            evaluacion=result.get("evaluacion", "Evaluation not available"),
+            explicacion=result.get("explicacion", "No explanation provided"),
+            mejor_practica=result.get("mejor_practica", "Consult manual"),
             fuentes_citadas=result.get("fuentes_citadas", [])
         )
-    
-    def _get_reglas_pedagogicas(self, level: int, dilema_index: int) -> str:
-        """Determina las reglas pedagógicas según el perfil."""
-        if level == 1 and dilema_index <= 3:
-            return """
-REGLA ACTIVA (Early Wins - Principiante):
-- El jugador es principiante. ESTÁ PROHIBIDO ser destructivo.
-- SIEMPRE empieza con refuerzo positivo ("Buen instinto", "Notaste lo importante")
-- Limita las mejoras a MÁXIMO 1 concepto. No lo abrumes.
-- Usa lenguaje accesible, evita jerga técnica excesiva.
-"""
-        elif level >= 5:
-            return """
-REGLA ACTIVA (CISO/Senior):
-- Sé directo y corporativo. No uses cumplidos vacíos.
-- Enfoca la 'Mejor Práctica' en impacto de negocio, SLA, cumplimiento normativo.
-- Incluye consideraciones de comunicación a directivos/board.
-- Mention regulatory implications (LGPD, GDPR, etc.)
-"""
-        else:
-            return """
-REGLA ACTIVA (Intermedio):
-- Equilibra feedback positivo y constructivo.
-- Explica el "por qué" técnica y pedagógicamente.
-- Proporciona contexto sin ser abrumador.
-"""
     
     def _build_prompt(
         self,
         evaluacion: EvaluacionTecnica,
         profile: PlayerProfile,
-        reglas: str,
         contexto_rag: str
     ) -> str:
-        """Construye el prompt."""
-        return f"""Eres un Instructor generando feedback pedagógico para un juego de ciberseguridad.
-
-EVALUACIÓN DEL ANALISTA:
-- Fortalezas: {', '.join(evaluacion.fortalezas) if evaluacion.fortalezas else 'Ninguna'}
-- Debilidades: {', '.join(evaluacion.debilidades) if evaluacion.debilidades else 'Ninguna'}
-- Evaluación: {evaluacion.evaluacion}
-- Score técnico: {evaluacion.score_tecnico}/100
-- Fuentes: {', '.join(evaluacion.fuentes) if evaluacion.fuentes else 'Ninguna'}
-
-PERFIL DEL JUGADOR:
-- Nivel: {profile.level} (1=Junior, 5+=CISO/Senior)
-- Rol: {profile.rol}
-- Índice de dilema en sesión: {profile.dilema_index_session}
-
-{reglas}
-
-CONOCIMIENTO RAG:
-{contexto_rag if contexto_rag else "Sin contexto RAG disponible"}
-
-Responde en JSON con:
-{{
-  "evaluacion": "feedback de evaluación en lenguaje natural",
-  "explicacion": "explicación del 'por qué' de la decisión",
-  "mejor_practica": "best practice recomendada",
-  "fuentes_citadas": ["referencias a fuentes"]
-}}
-"""
-    
-    def _get_system_prompt(self) -> str:
-        """System prompt del agente."""
-        return """Eres un Instructor experto en ciberseguridad especializado en pedagogía.
-Tu tarea es traducir evaluaciones técnicas en feedback accionable y efectivo.
-
-CARACTERÍSTICAS:
-- Feedback constructivo, nunca destructivo
-- Adapta el lenguaje al nivel del jugador
-- Usa formato markdown
-- Incluye siempre una "mejor práctica" accionable"""
-    
-    def _fallback_feedback(self, evaluacion: EvaluacionTecnica) -> FeedbackPedagogico:
-        """Feedback de fallback."""
-        return FeedbackPedagogico(
-            evaluacion=f"Tu decisión tuvo un score de {evaluacion.score_tecnico}/100",
-            explicacion="El sistema de feedback tuvo problemas técnicos.",
-            mejor_practica="Consulta las mejores prácticas de respuesta a incidentes NIST 800-61",
-            fuentes_citadas=["Fallback"]
+        """Builds the prompt using the central prompt infrastructure."""
+        from .prompts import build_prompt_explicador
+        
+        return build_prompt_explicador(
+            evaluacion_analista=evaluacion.model_dump(),
+            player_level=profile.level,
+            target_language=profile.language,
+            dilemma_index=profile.dilema_index_session,
+            contexto_rag=contexto_rag
         )
+    
+    def _fallback_feedback(self, evaluacion: EvaluacionTecnica, language: str) -> FeedbackPedagogico:
+        """Language-adapted fallback feedback."""
+        if language == "pt":
+            return FeedbackPedagogico(
+                evaluacion=f"Sua decisão teve uma pontuação de {evaluacion.score_tecnico}/100",
+                explicacion="O sistema de feedback teve problemas técnicos.",
+                mejor_practica="Consulte as melhores práticas de resposta a incidentes NIST 800-61",
+                fuentes_citadas=["Fallback"]
+            )
+        elif language == "en":
+            return FeedbackPedagogico(
+                evaluacion=f"Your decision had a score of {evaluacion.score_tecnico}/100",
+                explicacion="The feedback system encountered technical issues.",
+                mejor_practica="Consult NIST 800-61 incident response best practices",
+                fuentes_citadas=["Fallback"]
+            )
+        else: # es
+            return FeedbackPedagogico(
+                evaluacion=f"Tu decisión tuvo un score de {evaluacion.score_tecnico}/100",
+                explicacion="El sistema de feedback tuvo problemas técnicos.",
+                mejor_practica="Consulta las mejores prácticas de respuesta a incidentes NIST 800-61",
+                fuentes_citadas=["Fallback"]
+            )

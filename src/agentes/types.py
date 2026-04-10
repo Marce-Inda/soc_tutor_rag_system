@@ -34,6 +34,7 @@ class PlayerProfile(BaseModel):
     player_id: str
     level: int = Field(..., description="Nivel del jugador: 1 (junior) a 6 (expert)")
     rol: str = Field(default="analyst", description="analyst o ciso")
+    language: str = Field(default="es", description="Idioma de entrega: es, pt, en")
     dilema_index_session: int = Field(0, description="Índice de dilema en la sesión actual")
 
 

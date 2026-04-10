@@ -28,11 +28,13 @@ class SemanticCache:
         persist_dir: Optional[str] = None,
         collection_name: str = "tutor-feedback-cache",
         threshold: float = 0.98,
-        ttl_days: int = 7
+        ttl_days: int = 7,
+        llm_client: Optional[Any] = None
     ):
         self.collection_name = collection_name
         self.threshold = threshold
         self.ttl_days = ttl_days
+        self.llm_client = llm_client
         
         if not persist_dir:
             base_dir = Path(__file__).parent.parent.parent
@@ -59,19 +61,36 @@ class SemanticCache:
         if not self._model:
             self._model = SentenceTransformer('all-MiniLM-L6-v2')
 
+    def _translate_intent(self, text: str) -> str:
+        """Translates player intent to English to enable cross-language cache hits."""
+        if not self.llm_client or not text or text.strip() == "":
+            return text
+            
+        # We use a very fast and loose translation for semantic indexing
+        system_prompt = "You are a translation microservice. Translate the following SOC analyst action/justification to English concisely."
+        try:
+            translation = self.llm_client.generate(f"Translate to English: {text}", system_prompt=system_prompt)
+            return translation.strip()
+        except Exception:
+            return text
+
     def _generate_fingerprint(
         self, 
         decision: Dict[str, Any], 
         context: Dict[str, Any], 
         player_profile: Dict[str, Any]
     ) -> str:
-        """Crea una representación textual única (fingerprint) de la situación."""
+        """Creates a unique textual representation (fingerprint) in English."""
+        # Translate core intent to English to unify the cache across ES, PT, EN
+        action_en = self._translate_intent(decision.get('accion', ''))
+        justification_en = self._translate_intent(decision.get('justificacion', ''))
+        
         parts = [
-            f"ESCENARIO: {context.get('scenario_id', 'unknown')}",
-            f"ACCION: {decision.get('accion', '')}",
+            f"SCENARIO: {context.get('scenario_id', 'unknown')}",
+            f"ACTION: {action_en}",
             f"TARGET: {decision.get('target', '')}",
-            f"JUSTIFICACION: {decision.get('justificacion', '')}",
-            f"NIVEL: {player_profile.get('level', '1')}"
+            f"JUSTIFICATION: {justification_en}",
+            f"LEVEL: {player_profile.get('level', '1')}"
         ]
         return " | ".join(parts)
 
@@ -149,6 +168,6 @@ class SemanticCache:
             }]
         )
 
-def get_cache_client() -> SemanticCache:
-    """Factory para obtener el cliente de caché."""
-    return SemanticCache()
+def get_cache_client(llm_client: Optional[Any] = None) -> SemanticCache:
+    """Factory to get the cache client."""
+    return SemanticCache(llm_client=llm_client)

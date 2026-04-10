@@ -33,9 +33,11 @@ class RAGClient:
     def __init__(
         self, 
         persist_directory: Optional[str] = None,
-        collection_name: str = "cybersec-knowledge"
+        collection_name: str = "cybersec-knowledge",
+        llm_client: Optional[Any] = None
     ):
         self.collection_name = collection_name
+        self.llm_client = llm_client
         
         # Default path relative to project root
         if not persist_directory:
@@ -234,20 +236,43 @@ class RAGClient:
         
         return retrieved
 
+    def _translate_query(self, query: str) -> str:
+        """Translates a technical query to English for better RAG matching."""
+        if not self.llm_client:
+            return query
+            
+        system_prompt = "You are a specialized translator for cybersecurity technical terms."
+        prompt = f"Translate the following technical incident response query to English. Keep technical IDs (IPs, MITRE) as they are. Return ONLY the translation:\n\n{query}"
+        
+        try:
+            translation = self.llm_client.generate(prompt, system_prompt=system_prompt)
+            return translation.strip()
+        except Exception as e:
+            print(f"  [RAG] Error translating query: {e}")
+            return query
+
     def retrieve_hybrid(
         self, 
         query: str, 
         k: int = 5,
         filter_source: Optional[str] = None,
-        filter_scenario_id: Optional[str] = None
+        filter_scenario_id: Optional[str] = None,
+        translate: bool = False
     ) -> List[Dict[str, Any]]:
         """Realiza una búsqueda híbrida (Exacta + Semántica)."""
+        
+        search_query = query
+        if translate:
+            search_query = self._translate_query(query)
+            if search_query != query:
+                print(f"  [RAG] Translated query: '{query}' -> '{search_query}'")
+
         # 1. Búsqueda Exacta (Prioritaria para IDs técnicos)
-        exact_results = self.retrieve_exact(query, k=3, filter_source=filter_source)
+        exact_results = self.retrieve_exact(search_query, k=3, filter_source=filter_source)
         
         # 2. Búsqueda Semántica
         semantic_results = self.retrieve(
-            query, 
+            search_query, 
             k=k, 
             filter_source=filter_source, 
             filter_scenario_id=filter_scenario_id
@@ -285,8 +310,8 @@ class RAGClient:
         if 'tecnica_id' in decision:
             query += f" {decision['tecnica_id']}"
         
-        # Recuperar usando modo Híbrido
-        docs = self.retrieve_hybrid(query, k=k)
+        # Recuperar usando modo Híbrido con traducción automática
+        docs = self.retrieve_hybrid(query, k=k, translate=True)
         
         # Formatear contexto para los agentes
         context_parts = []
@@ -310,6 +335,6 @@ class RAGClient:
         return self._collection.count()
 
 
-def create_rag_client(persist_directory: Optional[str] = None) -> RAGClient:
+def create_rag_client(persist_directory: Optional[str] = None, llm_client: Optional[Any] = None) -> RAGClient:
     """Factory function para crear cliente RAG."""
-    return RAGClient(persist_directory=persist_directory)
+    return RAGClient(persist_directory=persist_directory, llm_client=llm_client)

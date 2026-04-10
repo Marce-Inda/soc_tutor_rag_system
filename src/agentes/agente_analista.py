@@ -1,5 +1,6 @@
 """
-Agente Analista - Evaluación técnica de decisiones con ReAct.
+Analyst Agent - Technical evaluation of decisions using ReAct.
+Internal reasoning is performed in English to optimize token costs and consistency.
 """
 
 from typing import Dict, Any, List, Optional
@@ -11,14 +12,15 @@ from ..agentes.types import (
     ContextoEscenario, 
     EvaluacionTecnica
 )
-from ..agentes.prompts import REACT_PROMPT_ANALISTA
+from ..agentes.prompts import REACT_PROMPT_ANALISTA, build_prompt_analista
 from ..utils.observability import tracer
 
 
 class AgenteAnalista:
     """
-    Agente Analista v2: Tool-Augmented Agent (ReAct).
-    Usa herramientas para profundizar en la evaluación técnica.
+    Analyst Agent v2: Tool-Augmented Agent (ReAct).
+    Uses tools to deepen technical evaluation.
+    Internal reasoning is conducted in English.
     """
     
     def __init__(self, llm_client, rag_client, tools=None):
@@ -31,9 +33,9 @@ class AgenteAnalista:
         decision: Decision, 
         contexto: ContextoEscenario
     ) -> EvaluacionTecnica:
-        """Ejecuta la evaluación técnica usando ReAct."""
+        """Executes technical evaluation using ReAct in English."""
         
-        # 1. Recuperar conocimiento inicial via RAG
+        # 1. Retrieve initial knowledge via RAG (Automatic English translation if needed)
         rag_result = self.rag.retrieve_with_context(
             decision=decision.model_dump(),
             contexto=contexto.model_dump(),
@@ -42,7 +44,7 @@ class AgenteAnalista:
         
         contexto_rag = rag_result["contexto_rag"]
         
-        # 2. Preparar ReAct
+        # 2. Prepare ReAct
         if not self.tools:
             return self._simple_eval(decision, contexto, contexto_rag)
 
@@ -63,68 +65,72 @@ class AgenteAnalista:
         max_iterations = 2
         current_prompt = prompt
         
-        print(f"  [Analista] Iniciando cadena de razonamiento (ReAct)...")
+        print(f"  [Analyst] Starting reasoning chain (ReAct in English)...")
         
         for i in range(max_iterations):
             response = self.llm.generate(current_prompt)
             reasoning_chain.append(response)
             
-            # Buscar Acción
+            # Search for Action in English
             action_match = re.search(r"Action: (\w+)", response)
             action_input_match = re.search(r"Action Input: (.*)", response)
             
             if action_match and action_input_match:
-                action_name = action_match.group(1)
-                action_input = action_input_match.group(1)
+                action_name = action_match.group(1).strip()
+                action_input = action_input_match.group(1).strip()
                 
-                print(f"    → Acción {i+1}: {action_name}('{action_input}')")
+                print(f"    → Action {i+1}: {action_name}('{action_input}')")
                 
-                # Ejecutar herramienta
-                obs = "Herramienta no encontrada"
+                # Execute tool
+                obs = "Tool not found"
                 for t in tools_list:
                     if t.name == action_name:
                         obs = t.invoke(action_input)
                         break
                 
                 current_prompt += f"\nObservation: {obs}\nThought: "
-                tracer.add_step(f"Analista_ReAct_Step_{i}", {"action": action_name, "observation": obs})
+                tracer.add_step(f"Analyst_ReAct_Step_{i}", {"action": action_name, "observation": obs})
             else:
-                # No hay más acciones, buscar respuesta final
+                # No more actions, look for final answer
                 break
         
-        # 4. Extraer Final Answer
+        # 4. Extract Final Answer
         final_answer_match = re.search(r"Final Answer: (.*)", reasoning_chain[-1], re.DOTALL)
         if final_answer_match:
             try:
                 result_json = json.loads(final_answer_match.group(1).strip())
             except:
-                # Intento de limpiar si falló
+                # Attempt to clean if JSON parsing failed
                 cleaned = final_answer_match.group(1).strip().strip("```json").strip("```")
                 try: result_json = json.loads(cleaned)
                 except: result_json = {}
         else:
-            # Fallback a generación directa si falló el formato ReAct
-            result_json = self.llm.generate_json(f"Basado en este razonamiento, genera el JSON de evaluación: {reasoning_chain[-1]}")
-
-        # Registrar cadena de razonamiento
-        tracer.add_step("Analista_Reasoning_Chain", {"chain": reasoning_chain})
+            # Fallback to direct generation if ReAct format failed
+            result_json = self.llm.generate_json(f"Based on this technical reasoning, generate the evaluation JSON: {reasoning_chain[-1]}")
+        
+        tracer.add_step("Analyst_Reasoning_Chain", {"chain": reasoning_chain})
 
         return EvaluacionTecnica(
             fortalezas=result_json.get("fortalezas", []),
             debilidades=result_json.get("debilidades", []),
-            evaluacion=result_json.get("evaluacion", "Evaluación completada con ReAct"),
+            evaluacion=result_json.get("evaluacion", "Evaluation completed via English reasoning loop"),
             fuentes=rag_result["fuentes"] + result_json.get("fuentes", []),
             score_tecnico=result_json.get("score_tecnico", 70)
         )
 
-    def _simple_eval(self, decision, contexto, contexto_rag) -> EvaluacionTecnica:
-        """Fallback simple sin herramientas."""
-        prompt = f"Evalúa esta decisión usando RAG:\n{contexto_rag}\n\nDecisión: {decision.accion}"
+    def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str) -> EvaluacionTecnica:
+        """Simple fallback without tools, using English prompts."""
+        prompt = build_prompt_analista(
+            decision=decision.model_dump(),
+            contexto=contexto.model_dump(),
+            contexto_rag=contexto_rag
+        )
         result = self.llm.generate_json(prompt)
+        
         return EvaluacionTecnica(
             fortalezas=result.get("fortalezas", []),
             debilidades=result.get("debilidades", []),
-            evaluacion=result.get("evaluacion", "Evaluación simple"),
+            evaluacion=result.get("evaluacion", "Direct evaluation"),
             fuentes=result.get("fuentes", []),
             score_tecnico=result.get("score_tecnico", 50)
         )

@@ -3,8 +3,8 @@
     "version": "2.1.0",
     "metadata": {
         "title": "Snowflake-Style IDOR Attack - Fintech PyME Argentina",
-        "subtitle": "Broken Access Control en API de Préstamos",
-        "description": "Aviso de Ficción: Escenario educativo. 'CreditoRápido S.A.' es ficticio. Se citan regulaciones reales (Ley 25.326, AAIP).\\n\\nUna fintech argentina con 45,000 clientes enfrenta un ataque de enumeración IDOR en su API de préstamos. Un atacante con un JWT robado de un ex-empleado está extrayendo datos masaje. Como AppSec Lead, debes identificar el endpoint vulnerable y parchearlo. Como CISO, debes decidir si notificar a la AAIP proactivamente ante la falta de obligación legal explícita en la ley actual.",
+        "subtitle": "Broken Access Control in Loan API",
+        "description": "Fiction Notice: Educational scenario. 'CreditoRápido S.A.' is fictitious. Real regulations are cited (Ley 25.326, AAIP).\n\nAn Argentine fintech with 45,000 customers faces an IDOR enumeration attack on its loan API. An attacker with a stolen JWT from a former employee is extracting massive data. As AppSec Lead, you must identify the vulnerable endpoint and patch it. As CISO, you must decide whether to proactively notify the AAIP given the lack of explicit legal obligation in the current law.",
         "difficulty": "expert",
         "estimated_duration_minutes": 50,
         "tags": [
@@ -17,17 +17,17 @@
         ],
         "sector": "fintech",
         "geography": "argentina",
-        "language": "es-AR",
+        "language": "en-US",
         "compliance": [
             "Ley 25.326 (Protección de Datos Personales)",
             "Resoluciones AAIP",
             "OWASP API Security Top 10"
         ],
-        "regulatoryContext": "AAIP (Agencia de Acceso a la Información Pública). Ley 25.326 actualmente en proceso de reforma.",
+        "regulatoryContext": "AAIP (Agencia de Acceso a la Información Pública). Ley 25.326 currently in reform process.",
         "author": "GoPyme Security Team",
         "created_date": "2025-12-18",
         "last_updated": "2026-01-28",
-        "disclaimer": "Escenario ficticio.",
+        "disclaimer": "Fictitious scenario.",
         "real_world_reference": "Snowflake Breach 2024 / First American Financial Corp Leak",
         "complexity_score": 4.5,
         "nivel": "L4",
@@ -39,11 +39,11 @@
         {
             "id": "analista",
             "name": "AppSec Lead (Tech Ops)",
-            "description": "Responsable de la seguridad de la API y respuesta técnica.",
+            "description": "Responsible for API security and technical response.",
             "responsibilities": [
-                "Análisis de Logs de API Gateway",
-                "Identificación de IDOR",
-                "Hot-fix y Deploy"
+                "API Gateway Log Analysis",
+                "IDOR Identification",
+                "Hot-fix and Deploy"
             ],
             "evidence_access": [
                 "evidence/tech_ops/"
@@ -51,12 +51,12 @@
         },
         {
             "id": "ciso",
-            "name": "CISO (Estratégico)",
-            "description": "Responsable de la gestión de crisis y cumplimiento legal.",
+            "name": "CISO (Strategic)",
+            "description": "Responsible for crisis management and legal compliance.",
             "responsibilities": [
-                "Evaluación de Impacto en Privacidad",
-                "Decisión de Notificación a AAIP",
-                "Gestión de Reputación"
+                "Privacy Impact Assessment",
+                "Decision on AAIP Notification",
+                "Reputation Management"
             ],
             "evidence_access": [
                 "evidence/exec_war_room/"
@@ -67,86 +67,86 @@
         "analista": {
             "nombreRol": "AppSec Lead (Tech Ops)",
             "vistaInterfaz": "api_gateway_monitor",
-            "descripcionVista": "Dashboard de tráfico API con alertas de Rate Limiting y Status Codes. Alerta: 'Spike 47k req/min'.",
+            "descripcionVista": "API traffic dashboard with Rate Limiting and Status Codes alerts. Alert: 'Spike 47k req/min'.",
             "herramientasDisponibles": [
                 {
                     "id": "analyze_payload",
-                    "nombre": "[Analizar Payload]",
-                    "descripcion": "Inspectar requests secuenciales.",
-                    "consecuencia": "Confirma enumeración IDOR.",
-                    "tipo": "investigacion"
+                    "nombre": "[Analyze Payload]",
+                    "descripcion": "Inspect sequential requests.",
+                    "consecuencia": "Confirms IDOR enumeration.",
+                    "tipo": "investigation"
                 },
                 {
                     "id": "block_ip",
-                    "nombre": "[Bloquear IP WAF]",
-                    "descripcion": "Bloquear la IP atacante.",
-                    "consecuencia": "Inefectivo, atacante rota IP.",
+                    "nombre": "[Block IP in WAF]",
+                    "descripcion": "Block the attacking IP.",
+                    "consecuencia": "Ineffective, attacker rotates IPs.",
                     "tipo": "containment"
                 },
                 {
                     "id": "deploy_hotfix",
-                    "nombre": "[Deploy Hotfix AuthZ]",
-                    "descripcion": "Agregar chequeo de propiedad del recurso en código.",
-                    "consecuencia": "Solución definitiva. Detiene exfiltración.",
-                    "tipo": "tecnica"
+                    "nombre": "[Deploy AuthZ Hotfix]",
+                    "descripcion": "Add resource ownership check in code.",
+                    "consecuencia": "Final solution. Stops exfiltration.",
+                    "tipo": "technical"
                 }
             ],
             "metricas": {
                 "integridadDatos": {
                     "inicial": 100,
                     "penalizaciones": [
-                        "Registros fugados > 20k: -50"
+                        "Leaked records > 20k: -50"
                     ],
                     "bonificaciones": [
-                        "IDOR parcheado < 30min: +40"
+                        "IDOR patched < 30min: +40"
                     ]
                 }
             }
         },
         "ciso": {
-            "nombreRol": "CISO (Estratégico)",
-            "vistaInterfaz": "tablero_riesgo_aaip",
-            "descripcionVista": "Evaluación de Impacto de Privacidad y Estado Legal frente a Ley 25.326.",
+            "nombreRol": "CISO (Strategic)",
+            "vistaInterfaz": "aaip_risk_dashboard",
+            "descripcionVista": "Privacy Impact Assessment and Legal Status according to Ley 25.326.",
             "herramientasDisponibles": [
                 {
                     "id": "notify_aaip",
-                    "nombre": "[Notificar AAIP]",
-                    "descripcion": "Reporte voluntario de incidente de seguridad.",
-                    "consecuencia": "Transparencia valorada, reduce riesgo de multa futura.",
+                    "nombre": "[Notify AAIP]",
+                    "descripcion": "Voluntary reporting of security incident.",
+                    "consecuencia": "Transparency valued, reduces risk of future fines.",
                     "tipo": "legal"
                 },
                 {
                     "id": "notify_clients",
-                    "nombre": "[Comunicar a Clientes]",
-                    "descripcion": "Email a afectados con monitoreo de crédito.",
-                    "consecuencia": "Mantiene confianza a largo plazo.",
-                    "tipo": "comunicacion"
+                    "nombre": "[Communicate to Clients]",
+                    "descripcion": "Email to affected users with credit monitoring.",
+                    "consecuencia": "Maintains long-term trust.",
+                    "tipo": "communication"
                 },
                 {
                     "id": "silent_mode",
-                    "nombre": "[Modo Silencio]",
-                    "descripcion": "No notificar (no obligatorio hoy).",
-                    "consecuencia": "Riesgo de escándalo mediático y denuncia penal.",
-                    "tipo": "gestion"
+                    "nombre": "[Silent Mode]",
+                    "descripcion": "Do not notify (not mandatory today).",
+                    "consecuencia": "Risk of media scandal and criminal charges.",
+                    "tipo": "management"
                 }
             ],
             "metricas": {
                 "confianzaStakeholder": {
                     "inicial": 80,
                     "penalizaciones": [
-                        "Escándalo mediático: -60"
+                        "Media scandal: -60"
                     ],
                     "bonificaciones": [
-                        "Transparencia proactiva: +30"
+                        "Proactive transparency: +30"
                     ]
                 },
                 "cumplimientoLegal": {
                     "inicial": 100,
                     "penalizaciones": [
-                        "Ocultamiento descubierto: -80"
+                        "Hidden breach discovered: -80"
                     ],
                     "bonificaciones": [
-                        "Reporte voluntario: +20"
+                        "Voluntary report: +20"
                     ]
                 }
             }
@@ -156,19 +156,19 @@
         "mensajesPrecargados": [
             {
                 "id": "msg_001_idor_alert",
-                "momento": "Inicio",
-                "emisor": "Analista",
+                "momento": "Start",
+                "emisor": "Analyst",
                 "receptor": "CISO",
-                "contenido": "Tenemos un spike masivo en /api/loans. Alguien está enumerando IDs secuenciales y bajando datos. El endpoint no valida si el usuario es dueño del ID (IDOR).",
-                "urgencia": "critica"
+                "contenido": "We have a massive spike on /api/loans. Someone is enumerating sequential IDs and downloading data. The endpoint doesn't validate if the user owns the ID (IDOR).",
+                "urgencia": "critical"
             },
             {
                 "id": "msg_002_fix_deployed",
-                "momento": "Contención",
-                "emisor": "Analista",
+                "momento": "Containment",
+                "emisor": "Analyst",
                 "receptor": "CISO",
-                "contenido": "Hotfix desplegado. Agregamos validación de ownership. El ataque paró, pero estimo que se llevaron 22,000 registros antes del fix.",
-                "urgencia": "alta",
+                "contenido": "Hotfix deployed. Added ownership validation. The attack stopped, but I estimate they took 22,000 records before the fix.",
+                "urgencia": "high",
                 "desbloquea": [
                     "notify_aaip"
                 ]
@@ -177,24 +177,24 @@
                 "id": "msg_003_legal_decision",
                 "momento": "Legal",
                 "emisor": "CISO",
-                "receptor": "Analista",
-                "contenido": "Entendido. Dado el volumen de sensitive data (DNI, ingresos), voy a proceder con la notificación voluntaria a la AAIP y clientes para mitigar el daño reputacional.",
-                "urgencia": "media"
+                "receptor": "Analyst",
+                "contenido": "Understood. Given the volume of sensitive data (DNI, income), I will proceed with voluntary notification to AAIP and clients to mitigate reputational damage.",
+                "urgencia": "medium"
             }
         ]
     },
     "context": {
         "organization": {
             "name": "CreditoRápido S.A.",
-            "type": "Fintech Préstamos",
+            "type": "Fintech Loans",
             "location": "Buenos Aires, Argentina"
         },
         "incident_summary": {
             "type": "IDOR Data Breach",
-            "impact": "Exposición de datos financieros y personales.",
+            "impact": "Exposure of financial and personal data.",
             "data_at_risk": {
-                "records": "22,487 Clientes",
-                "status": "Exfiltrados"
+                "records": "22,487 Customers",
+                "status": "Exfiltrated"
             }
         }
     },
@@ -203,27 +203,27 @@
             {
                 "time": "T-30m",
                 "event": "Enumeration Start",
-                "details": "Script python comienza iteración de IDs."
+                "details": "Python script begins ID iteration."
             },
             {
                 "time": "T-0",
                 "event": "Alert Spike",
-                "details": "CloudWatch detecta 47k req/min."
+                "details": "CloudWatch detects 47k req/min."
             }
         ],
         "game_timeline": {
             "phases": [
                 {
                     "phase": "detection",
-                    "description": "Diagnóstico IDOR"
+                    "description": "IDOR Diagnosis"
                 },
                 {
                     "phase": "containment",
-                    "description": "Hotfix AuthZ"
+                    "description": "AuthZ Hotfix"
                 },
                 {
                     "phase": "compliance",
-                    "description": "Gestión AAIP"
+                    "description": "AAIP Management"
                 }
             ]
         }
@@ -231,121 +231,121 @@
     "decisions": [
         {
             "id": "decision_001_diagnosis",
-            "title": "Spike en API",
-            "description": "47k requests/min. ¿Bloquear IP o analizar código?",
+            "title": "API Spike",
+            "description": "47k requests/min. Block IP or analyze code?",
             "phase": "detection",
             "required_role": "analista",
             "difficulty": "high",
             "options": [
                 {
                     "id": "d1_analyze_code",
-                    "text": "Analizar Código (Root Cause)",
-                    "description": "Revisar validación de permisos en endpoint.",
+                    "text": "Analyze Code (Root Cause)",
+                    "description": "Review permission validation on endpoint.",
                     "is_correct": true,
                     "consequences": {
                         "immediate": {
                             "integridadDatos": 30,
-                            "message": "Confirmado: Falta check de autorización. Es un IDOR."
+                            "message": "Confirmed: Missing authorization check. It's an IDOR."
                         },
                         "unlocks_decisions": [
                             "decision_002_containment"
                         ]
                     },
-                    "educational_note": "CORRECTO. Entender que es un IDOR es clave para no perder tiempo bloqueando IPs rotativas."
+                    "educational_note": "CORRECT. Understanding it's an IDOR is key to avoid wasting time blocking rotating IPs."
                 },
                 {
                     "id": "d1_block_ip",
-                    "text": "Bloquear IP en WAF",
-                    "description": "Agregar regla de bloqueo.",
+                    "text": "Block IP in WAF",
+                    "description": "Add blocking rule.",
                     "is_correct": false,
                     "consequences": {
                         "immediate": {
                             "integridadDatos": -20,
-                            "message": "Fallo. Atacante rota IP y sigue robando. Perdiste tiempo."
+                            "message": "Failed. Attacker rotates IPs and continues stealing. You lost time."
                         }
                     },
-                    "educational_note": "ERROR. Whac-A-Mole con IPs no sirve contra automatización."
+                    "educational_note": "ERROR. Whac-A-Mole with IPs doesn't work against automation."
                 }
             ]
         },
         {
             "id": "decision_002_containment",
-            "title": "Estrategia de Parcheo",
-            "description": "El IDOR es obvio. ¿Hotfix o bajar la API?",
+            "title": "Patching Strategy",
+            "description": "The IDOR is obvious. Hotfix or shut down the API?",
             "phase": "containment",
             "required_role": "analista",
             "difficulty": "critical",
             "options": [
                 {
                     "id": "d2_hotfix",
-                    "text": "Deploy Hotfix AuthZ",
-                    "description": "Agregar validación de ownership en código.",
+                    "text": "Deploy AuthZ Hotfix",
+                    "description": "Add ownership validation in code.",
                     "is_correct": true,
                     "consequences": {
                         "immediate": {
                             "integridadDatos": 50,
                             "confianzaStakeholder": 20,
-                            "message": "Ataque detenido quirúrgicamente. Usuarios legítimos operan normal."
+                            "message": "Attack stopped surgically. Legitimate users operate normally."
                         },
                         "unlocks_decisions": [
                             "decision_003_compliance"
                         ]
                     },
-                    "educational_note": "CORRECTO. Solución definitiva que mantiene disponibilidad."
+                    "educational_note": "CORRECT. Definitive solution that maintains availability."
                 },
                 {
                     "id": "d2_shutdown",
-                    "text": "Apagar Endpoint (Service Down)",
-                    "description": "Dejar sin servicio a todos.",
+                    "text": "Shut down Endpoint (Service Down)",
+                    "description": "Leave everyone without service.",
                     "is_correct": false,
                     "consequences": {
                         "immediate": {
                             "confianzaStakeholder": -40,
-                            "message": "Detuviste el ataque, pero causaste un DoS a tu propio negocio. CEO furioso."
+                            "message": "You stopped the attack, but caused a DoS to your own business. CEO is furious."
                         },
                         "game_over": false
                     },
-                    "educational_note": "ERROR. Solo usar 'Nuclear Option' si no hay capacidad de fix rápido."
+                    "educational_note": "ERROR. Only use 'Nuclear Option' if there's no capacity for a quick fix."
                 }
             ]
         },
         {
             "id": "decision_003_compliance",
-            "title": "Dilema de Notificación",
-            "description": "Ley 25.326 no obliga explícitamente hoy, pero es 'best practice'. ¿Notificar?",
+            "title": "Notification Dilemma",
+            "description": "Ley 25.326 does not explicitly mandate today, but it is 'best practice'. Notify?",
             "phase": "compliance",
             "required_role": "ciso",
             "difficulty": "high",
             "options": [
                 {
                     "id": "d3_notify_proactive",
-                    "text": "Notificar AAIP y Clientes (Proactivo)",
-                    "description": "Transparencia total.",
+                    "text": "Notify AAIP and Clients (Proactive)",
+                    "description": "Total transparency.",
                     "is_correct": true,
                     "consequences": {
                         "immediate": {
                             "cumplimientoLegal": 30,
                             "confianzaStakeholder": 30,
-                            "message": "AAIP valora el gesto. Prensa positiva por transparencia."
+                            "message": "AAIP values the gesture. Positive press for transparency."
                         }
                     },
-                    "educational_note": "CORRECTO. La ética y la reputación a largo plazo valen más que el silencio corto plazo."
+                    "educational_note": "CORRECT. Ethics and long-term reputation are worth more than short-term silence."
                 },
                 {
                     "id": "d3_silence",
-                    "text": "No notificar (Legalmente permitido)",
-                    "description": "Ahorrar el escándalo hoy.",
+                    "text": "Do not notify (Legally permitted)",
+                    "description": "Avoid the scandal today.",
                     "is_correct": false,
                     "consequences": {
                         "immediate": {
                             "confianzaStakeholder": -60,
                             "cumplimientoLegal": -50,
-                            "message": "Se filtra en 3 meses. Escándalo de 'encubrimiento'. Denuncia penal."
+                            "message": "Breach leaks in 3 months. 'Cover-up' scandal. Criminal charges."
                         },
                         "game_over": true,
-                        "game_over_reason": "Reputación destruida por encubrimiento."
+                        "game_over_reason": "Reputation destroyed by cover-up."
                     },
-                    "educational_note": "FATAL. El 'cover-up' siempre es peor que el crimen."
+                    "educational_note": "FATAL. The 'cover-up' is always worse than the crime."
                 }
             ]
         }
@@ -354,17 +354,17 @@
         "Detection": {
             "competencia": "API Security",
             "criteriosExito": [
-                "Identificar IDOR"
+                "Identify IDOR"
             ]
         },
         "Diagnosis": {
             "competencia": "Root Cause Analysis",
             "criteriosExito": [
-                "No culpar solo a la IP"
+                "Don't blame only the IP"
             ]
         },
         "Decision": {
-            "competencia": "Remediación",
+            "competencia": "Remediation",
             "criteriosExito": [
                 "Deploy Hotfix"
             ]
@@ -372,19 +372,19 @@
         "Delivery": {
             "competencia": "Ops Agility",
             "criteriosExito": [
-                "Fix sin Downtime"
+                "Fix without Downtime"
             ]
         },
         "Documentation": {
             "competencia": "Compliance",
             "criteriosExito": [
-                "Reporte Interno Claro"
+                "Clear Internal Report"
             ]
         },
         "Disclosure": {
-            "competencia": "Ética Profesional",
+            "competencia": "Professional Ethics",
             "criteriosExito": [
-                "Transparencia Voluntaria"
+                "Voluntary Transparency"
             ]
         }
     },
@@ -392,17 +392,17 @@
         "dimensions": [
             {
                 "id": "integridadDatos",
-                "name": "Integridad Datos",
+                "name": "Data Integrity",
                 "weight": 40
             },
             {
                 "id": "confianzaStakeholder",
-                "name": "Confianza (CEO/Mercado)",
+                "name": "Trust (Stakeholders/Market)",
                 "weight": 30
             },
             {
                 "id": "cumplimientoLegal",
-                "name": "Cumplimiento Ético/Legal",
+                "name": "Ethical/Legal Compliance",
                 "weight": 30
             }
         ],
@@ -410,22 +410,22 @@
             {
                 "min_score": 85,
                 "grade": "A",
-                "description": "Gestión Ejemplar"
+                "description": "Exemplary Management"
             },
             {
                 "min_score": 65,
                 "grade": "B",
-                "description": "Incidente Contenido"
+                "description": "Incident Contained"
             },
             {
                 "min_score": 40,
                 "grade": "C",
-                "description": "Daño Reputacional"
+                "description": "Reputational Damage"
             },
             {
                 "min_score": 0,
                 "grade": "F",
-                "description": "Crisis Existencial"
+                "description": "Existential Crisis"
             }
         ]
     }

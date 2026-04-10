@@ -63,7 +63,7 @@ class LLMClient:
                 raise ValueError("La llave maestra (GEMINI_API_KEY) no fue encontrada. No podemos conectarnos a Google.")
             
             self._client = ChatGoogleGenerativeAI(
-                model=self.model or "gemini-2.5-flash",
+                model=self.model or "gemini-2.0-flash",
                 temperature=self.temperature,
                 google_api_key=api_key,
                 timeout=15.0 # Timeout global de seguridad

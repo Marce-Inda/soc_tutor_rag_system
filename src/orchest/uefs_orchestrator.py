@@ -44,6 +44,11 @@ class UEFSOrchestrator:
         """Preparamos las credenciales e instrumentario propio del Director de orquesta al iniciar."""
         self.llm = llm_client
         self.rag = rag_client # Conexión al cofre gigante de conocimiento especializado (NIST/Mitre).
+        
+        # Aseguramos que el RAGClient tenga acceso al LLM para la traducción de queries
+        if hasattr(self.rag, 'llm_client') and self.rag.llm_client is None:
+            self.rag.llm_client = llm_client
+            
         self.enable_validation = enable_validation
         self.session_id = session_id
         
@@ -57,8 +62,8 @@ class UEFSOrchestrator:
         self.agente_explicador = AgenteExplicador(llm_client, rag_client)
         self.agente_validador = AgenteValidador(llm_client, rag_client)
         
-        # Iniciamos el Caché Semántico
-        self.cache = get_cache_client()
+        # Iniciamos el Caché Semántico (Universal English-First)
+        self.cache = get_cache_client(llm_client=llm_client)
     
     def generar_feedback(
         self,

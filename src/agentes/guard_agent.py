@@ -14,10 +14,14 @@ class GuardAgent:
         self.llm = llm_client
         self.suspicious_patterns = [
             r"ignore previous instructions",
+            r"ignora las instrucciones anteriores",
+            r"ignore as instruções anteriores",
             r"system: ",
             r"<script>",
             r"dump your prompt",
+            r"revelar su prompt",
             r"you are now an",
+            r"ahora eres un",
             r"dan mode",
             r"forget everything"
         ]

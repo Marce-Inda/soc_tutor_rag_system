@@ -1,0 +1,149 @@
+{
+    "id": "es-tourism-gdpr-email-breach-001",
+    "version": "1.0.0",
+    "metadata": {
+        "title": "GDPR Breach: Newsletter in CC",
+        "subtitle": "Privacy Management and AEPD Fines (Spain)",
+        "description": "A human error in sending a promotional newsletter has exposed the email addresses of 50,000 customers by putting them in the visible copy (CC) field instead of blind copy (BCC). As IT Manager, you must stop the email leakage. As DPO, you must manage the response to the AEPD and decide on transparency with the affected parties under the 72-hour pressure of the GDPR.",
+        "difficulty": "medium",
+        "estimated_duration_minutes": 45,
+        "tags": [
+            "gdpr",
+            "privacy",
+            "email-security",
+            "spain",
+            "aepd"
+        ],
+        "sector": "tourism",
+        "geography": "spain",
+        "language": "en-US",
+        "compliance": [
+            "GDPR / RGPD (EU 2016/679)",
+            "LOPDGDD (Spain 3/2018)"
+        ],
+        "regulatoryContext": "AEPD (Agencia Española de Protección de Datos). Strict 72-hour notification window.",
+        "organization": "HotelLux Group",
+        "asimetriaRoles": true,
+        "comunicacionInterroles": true
+    },
+    "roles": [
+        {
+            "id": "it_manager",
+            "name": "IT Manager (Tech Ops)",
+            "description": "Responsible for technical containment and infrastructure.",
+            "responsibilities": [
+                "Stop SMTP leakage",
+                "Quantify exposure",
+                "Root cause analysis"
+            ]
+        },
+        {
+            "id": "dpo",
+            "name": "Data Protection Officer (DPO)",
+            "description": "Responsible for regulatory compliance and legal response.",
+            "responsibilities": [
+                "AEPD Notification",
+                "Privacy Impact Assessment",
+                "Client Communication Strategy"
+            ]
+        }
+    ],
+    "phases": {
+        "containment": {
+            "name": "Breach Containment",
+            "description": "Stop the mass email sending and quantify the scope of exposure."
+        },
+        "response": {
+            "name": "Regulatory Response",
+            "description": "Notify the Supervisory Authority (AEPD) within the legal timeframe."
+        },
+        "recovery": {
+            "name": "Communication & Improvement",
+            "description": "Notify affected parties and establish measures to prevent recurrence."
+        }
+    },
+    "decisions": [
+        {
+            "id": "d1_panic_button",
+            "title": "The Panic Button",
+            "description": "The campaign is sending at 100 emails/sec. Shut down the SMTP server or try to filter?",
+            "phase": "containment",
+            "required_role": "it_manager",
+            "difficulty": "medium",
+            "options": [
+                {
+                    "id": "op1_kill_switch",
+                    "text": "SMTP Kill Switch (Shut down service)",
+                    "description": "Immediately stop all email traffic.",
+                    "is_correct": true,
+                    "consequences": {
+                        "immediate": {
+                            "message": "Correct: You stopped the leak immediately. It is better to explain a temporary service outage than a million-euro fine for 50,000 additional exposed emails."
+                        }
+                    },
+                    "educational_note": "In an active breach, speed of containment is the most important metric."
+                },
+                {
+                    "id": "op2_filter_rule",
+                    "text": "Try to create filter rule",
+                    "description": "Target only the specific campaign.",
+                    "is_correct": false,
+                    "consequences": {
+                        "immediate": {
+                            "message": "Error: You took valuable minutes applying logic. The campaign finishes sending before the filter is effective."
+                        }
+                    },
+                    "educational_note": "Configuring complex filters under pressure often fails; the Kill Switch is foolproof."
+                }
+            ]
+        },
+        {
+            "id": "d2_the_clock",
+            "title": "The 72-Hour Clock",
+            "description": "Breach confirmed. GDPR requires AEPD notification within 72h if there's a risk to rights.",
+            "phase": "response",
+            "required_role": "dpo",
+            "difficulty": "high",
+            "options": [
+                {
+                    "id": "op1_notify",
+                    "text": "Notify AEPD (Art. 33)",
+                    "description": "Proactive notification.",
+                    "is_correct": true,
+                    "consequences": {
+                        "immediate": {
+                            "message": "Excellent: You met the legal deadline. You can send additional info later as the investigation progresses."
+                        }
+                    },
+                    "educational_note": "AEPD values proactive transparency even if data is preliminary."
+                },
+                {
+                    "id": "op2_wait",
+                    "text": "Do not notify (Wait)",
+                    "description": "Wait for more investigation.",
+                    "is_correct": false,
+                    "consequences": {
+                        "immediate": {
+                            "message": "Disastrous: If a client reports (inevitable with 50k affected), the hidden breach becomes a very grave infraction."
+                        }
+                    },
+                    "educational_note": "Failure to notify is an aggravated infraction that triggers massive fines."
+                }
+            ]
+        }
+    ],
+    "scoring": {
+        "dimensions": [
+            {
+                "id": "compliance",
+                "name": "Legal Compliance",
+                "weight": 50
+            },
+            {
+                "id": "trust",
+                "name": "Client Trust",
+                "weight": 50
+            }
+        ]
+    }
+}

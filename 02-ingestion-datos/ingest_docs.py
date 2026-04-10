@@ -108,23 +108,34 @@ class DocumentProcessor:
         return chunks
     
     def process_all(self):
-        """Procesa todos los documentos."""
+        """Procesa todos los documentos, priorizando las fuentes en inglés."""
         all_chunks = []
         
+        # 1. Procesar fuentes en inglés (Fase 2)
+        target_docs_en = DOCS_DIR / "en"
+        if target_docs_en.exists():
+            print(f"Buscando fuentes oficiales en: {target_docs_en}")
+            
+            # MITRE (Directorio 'en/mitre')
+            mitre_en = target_docs_en / "mitre" / "enterprise-attack.json"
+            if mitre_en.exists():
+                all_chunks.extend(self.process_mitre(mitre_en))
+            
+            # Otros archivos MD en 'en/'
+            for md_file in target_docs_en.glob("**/*.md"):
+                source_name = md_file.parent.name.upper()
+                all_chunks.extend(self.process_markdown(md_file, f"{source_name} (EN)"))
+
+        # 2. Mantener compatibilidad con fuentes originales (ES/Legacy)
         # MITRE
-        mitre_file = DOCS_DIR / "mitre" / "enterprise-attack.json"
-        if mitre_file.exists():
-            all_chunks.extend(self.process_mitre(mitre_file))
+        mitre_legacy = DOCS_DIR / "mitre" / "enterprise-attack.json"
+        if mitre_legacy.exists() and not (target_docs_en / "mitre").exists():
+            all_chunks.extend(self.process_mitre(mitre_legacy))
         
         # OWASP
         owasp_file = DOCS_DIR / "owasp" / "owasp-top-10-2021.md"
         if owasp_file.exists():
             all_chunks.extend(self.process_markdown(owasp_file, 'OWASP Top 10'))
-        
-        # NIST (PDF no se procesa fácilmente, saltamos)
-        nist_file = DOCS_DIR / "nist" / "nist-800-61r3.pdf"
-        if nist_file.exists():
-            print(f"Nota: NIST PDF no procesado automáticamente (requiere OCR)")
         
         self.docs_chunks = all_chunks
         return all_chunks
