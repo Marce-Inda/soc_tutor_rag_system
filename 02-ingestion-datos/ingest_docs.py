@@ -145,7 +145,7 @@ def create_chroma_index(chunks: List[Dict]):
     
     client = chromadb.PersistentClient(path=str(INDICES_DIR))
     
-    # Crear o obtener colección
+    # Crear u obtener colección
     collection = client.get_or_create_collection(
         name="cybersec-knowledge",
         metadata={"description": "Conocimiento de ciberseguridad para RAG"}

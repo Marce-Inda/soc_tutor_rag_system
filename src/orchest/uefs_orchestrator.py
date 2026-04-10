@@ -26,6 +26,7 @@ from ..agentes.guard_agent import GuardAgent               # El Guardia o Polic�
 from ..agentes.tools import SOCtools                       # Sus lupitas u herramientas para rascar base de datos interna.
 from ..utils.memory import SessionMemory                   # La Historia a corto plazo (Libreta temporal sobre un usuario activo).
 from ..utils.observability import tracer                   # El Cronómetro forense registrador.
+from ..utils.semantic_cache import get_cache_client        # El 'Cerebro de Elefante' que recuerda respuestas pasadas.
 
 class UEFSOrchestrator:
     """
@@ -55,6 +56,9 @@ class UEFSOrchestrator:
         self.agente_analista = AgenteAnalista(llm_client, rag_client, tools=self.tools)
         self.agente_explicador = AgenteExplicador(llm_client, rag_client)
         self.agente_validador = AgenteValidador(llm_client, rag_client)
+        
+        # Iniciamos el Caché Semántico
+        self.cache = get_cache_client()
     
     def generar_feedback(
         self,
@@ -73,6 +77,22 @@ class UEFSOrchestrator:
             "ID de quien Juega En Vivo": self.session_id,
             "Nivel_Dificultad_Usuario": player_profile.level
         })
+        
+        # PASO CACHÉ: Revisar si ya respondimos algo idéntico antes para ahorrar energía y dinero.
+        cached_res = self.cache.lookup(
+            decision=decision.model_dump(),
+            context=contexto.model_dump(),
+            player_profile=player_profile.model_dump()
+        )
+        
+        if cached_res:
+             tracer.add_step("HIT_EN_CACHE_SEMANTICO", {"mensaje": "Respuesta recuperada del historial global. Saltando pipeline de agentes."})
+             res = FeedbackFinal(**cached_res)
+             tracer.end_trace({"Proceso": "Finalizado vía Caché"}, status="cache_hit")
+             # Retornamos de inmediato el resultado guardado
+             return res
+
+        tracer.add_step("MISS_EN_CACHE_SEMANTICO", {"mensaje": "Iniciando proceso completo de análisis por IA."})
         
         # PASO 1. Módulo de Revisión Policial Virtual (Seguridad Anti-Vandalismo).
         # Revisa profundamente si lo que digitó voluntariamente el jugador es de naturaleza "normal" o si 
@@ -144,6 +164,14 @@ class UEFSOrchestrator:
             evaluacion_tecnica=evaluacion_analista,
             validacion=validacion,
             costo_estimado=0.0006 # Simulador imaginario fijo calculado de cuántos céntimos de dólares acabaría cobrándote google real en tokens si usamos API Enterprise con tal volumen de texto global arrojado.
+        )
+        
+        # PASO REGISTRO EN CACHE: Guardamos este nuevo conocimiento para que otros (o tú mismo) se beneficien después.
+        self.cache.store(
+            decision=decision.model_dump(),
+            context=contexto.model_dump(),
+            player_profile=player_profile.model_dump(),
+            feedback=res
         )
         
         # Detener la contabilidad de latencia al terminar milisegundos tras esta entrega veloz general.
