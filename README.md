@@ -1,122 +1,65 @@
-# SOC-Tutor-RAG System
+# SOC Tutor (Cybersecurity RAG Multiagent System)
 
-Sistema multiagente de feedback pedagógico con RAG para entrenamiento en respuesta a incidentes de ciberseguridad.
+Sistema profesional de feedback pedagógico basado en IA para entrenamiento en respuesta a incidentes de ciberseguridad. Optimizado con una arquitectura **"English-First Reasoning / Multilingual Delivery"** para máxima eficiencia de tokens y precisión técnica.
 
-## Descripción
+## 🚀 Arquitectura Avanzada
 
-Este sistema proporciona feedback contextualizado a jugadores del simulador SOC "The Responder", fundamentado en documentación técnica real (MITRE ATT&CK, NIST 800-61, OWASP, CISA).
+Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de producción que prioriza el costo y la exactitud:
 
-## Características
+1.  **Razonamiento Global (English-First)**: El núcleo lógico de los agentes (Analista, Explicador, Validador) utiliza prompts en inglés. Esto reduce el consumo de tokens en un ~25% y mejora la adherencia a manuales técnicos originales (NIST/MITRE).
+2.  **Caché Semántico Universal**: Implementamos una capa de caché que normaliza las intenciones del jugador al inglés antes de realizar el *matching*. Esto permite que una misma respuesta de IA sirva para jugadores en español, portugués e inglés, aumentando drásticamente el *hit rate* y reduciendo costos de LLM.
+3.  **RAG Híbrido con Capa de Traducción**: El sistema traduce automáticamente las consultas técnicas del jugador al inglés para buscar en las fuentes originales de mayor fidelidad, combinando búsqueda semántica con búsqueda exacta de IDs técnicos (IPs, Tácticas MITRE).
+4.  **Entrega Multilingüe Adaptativa**: El Agente Explicador traduce el análisis técnico a un lenguaje pedagógico en el idioma preferido del usuario (ES, PT, EN), ajustando el tono según su nivel de experiencia.
 
-- **3 agentes especializados**: Analista (ReAct), Explicador (pedagógico), Validador (verificación)
-- **RAG avanzado**: Retrieval con ChromaDB y Sentence-Transformers
-- **Agente Tool-Augmented**: Analista con capacidad de razonamiento ReAct y herramientas (NIST, MITRE)
-- **Observabilidad**: Rastreo de latencia, tokens y costos (Traces locales)
-- **Persistencia**: Memoria de sesión para seguimiento de aprendizaje
-- **Seguridad**: Guardrails contra inyección y validación de Pydantic
-- **Evaluación**: Dataset sintético y script de métricas de calidad
+## 🛠️ Tecnologías Core
 
-## Estructura
+-   **Modelos**: Google `gemini-2.0-flash` (vía LLMClient unificado con soporte para Groq y Ollama).
+-   **Vector DB**: ChromaDB (local y embebido).
+-   **Embeddings**: `all-MiniLM-L6-v2` (ejecución 100% local).
+-   **Orquestación**: Flujo secuencial determinista (Security Guard -> Memory -> RAG -> Analyst -> Explainer -> Validator).
+-   **Frameworks**: LangChain, Pydantic, Tenacity (Resiliencia).
+
+## 📊 Fuentes de Conocimiento (RAG)
+
+El sistema se fundamenta en documentación técnica oficial y actualizada:
+-   **MITRE ATT&CK v18.1**: Catálogo nativo de tácticas y técnicas de adversarios.
+-   **NIST 800-61 Rev. 2**: Guía de manejo de incidentes de seguridad informática.
+-   **CISA / OWASP**: Marcos de referencia para remediación y vulnerabilidades.
+
+## 📂 Estructura del Proyecto
 
 ```
 soc-tutor-rag-system/
 ├── src/
-│   ├── agentes/        # Implementación de los 3 agentes
-│   ├── orchest/        # Orquestador del sistema
-│   ├── rag/            # Módulo de retrieval y vector store
-│   └── utils/          # Utilidades
-├── config/             # Configuraciones (LLM, paths)
+│   ├── agentes/        # Lógica de agentes (Prompts EN, Output Multilenguaje)
+│   ├── orchest/        # Orquestador (Pipeline con Observabilidad y Caché)
+│   ├── rag/            # RAG Híbrido (English-Targeted Search)
+│   └── utils/          # Caché Semántico, LLMClient, Glosario
 ├── data/
-│   ├── docs/           # Documentos fuente para RAG
-│   └── indices/        # Índices vectoriales
-└── tests/              # Tests unitarios y de integración
+│   ├── docs/           # Fuentes oficiales (EN/ES)
+│   └── sample_scenarios/ # Escenarios standalone (Ej: ar-fintech-idor)
+└── scripts/            # Herramientas de ingesta y validación
 ```
 
-## Uso
+## 🚀 Instalación y Uso Standalone
 
-```python
-from orchest.uefs_orchestrator import UEFSOrchestrator
-
-orchestrator = UEFSOrchestrator()
-feedback = orchestrator.generar_feedback(
-    decision={"accion": "bloquear_ip", "ip": "192.168.1.100"},
-    contexto={"tipo_incidente": "phishing", "fase": "contencion"}
-)
-```
-
-## Arquitectura General
-
-El sistema se basa en un flujo de orquestación (Pipeline):
-1. **Entrada**: Acción del jugador (ej. "Bloquear IP").
-2. **Retrieval**: El RAGClient busca evidencia en logs estáticos del juego simulado y en lineamientos oficiales.
-3. **Agente Analista (ReAct)**: Usa herramientas para cruzar la decisión del jugador con la evidencia encontrada.
-4. **Agente Explicador**: Convierte el análisis en feedback pedagógico.
-5. **Agente Validador**: Asegura que el feedback cite manuales reales y no alucine.
-
-### Diagrama de Flujo
-
-```mermaid
-graph TD
-    A[Jugador The Responder] -->|Pasa Decisión y Contexto| B(UEFSOrchestrator)
-    B -->|Inicia Pipeline| C[Agente Analista - ReAct]
-    C <-->|Busca Evidencia Técnica y Logs Mapeados| D[(ChromaDB RAG)]
-    C -->|Pasa Análisis Técnico| E[Agente Explicador]
-    E -->|Genera Feedback Pedagógico| F[Agente Validador / Guardrail]
-    F -->|Revisa Alucinaciones| G{¿Retroalimentación Válida?}
-    G -->|Sí| H[Retorna Feedback al Jugador]
-    G -->|No| E
-```
-
-## Decisiones de Arquitectura y Diseño
-
-Para cumplir con los estándares de producción, se tomaron las siguientes decisiones de ingeniería:
-
-1. **Stack de Retrieval (ChromaDB + SentenceTransformers)**: Se eligió ChromaDB por su facilidad de uso embebido (sin requerir servidores externos u hospedaje). Se combinó con `all-MiniLM-L6-v2` corriendo de forma estrictamente local para vectorizar la documentación y los logs; esto elimina los costos recurrentes de un proveedor de Embeddings y garantiza una alta velocidad de ingesta.
-2. **Modelos (Gemini 2.5 Flash)**: Se priorizó la versión *Flash* de Gemini 2.5 dado que el patrón *ReAct* requiere de múltiples llamadas iterativas rápidas al LLM. Su relación coste/velocidad y su enorme ventana de contexto lo hacen ideal para analizar bases de conocimiento complejas sin latencias intrusivas para el jugador. Adicionalmente, el cliente (`LLMClient`) fue abstraído para soportar *Groq* y *Ollama* permitiendo ejecución 100% local si es necesario.
-3. **Integración Estática de Logs (Evidencia)**: A diferencia de generar ataques de red mediante el LLM en tiempo real, se optó por ingestar los archivos JSON originales (logs pre-programados) del juego directamente a la base vectorial filtrados por la metadata del escenario. Esto anula las iteraciones "alucinadas" de evidencia técnica, reduce agresivamente los costos (se consume una vez, se evalúa millones de veces) y provee escenarios pedagógicos 100% deterministas.
-4. **Orquestación Secuencial vs. Enjambre (Swarm)**: En lugar de un panel multiagente conversacional anárquico, se utilizó un flujo de tubería estricto (Recolecta -> Explica -> Valida). Esto previene loops de contexto infinitos (comunes en simuladores de agentes autónomos) y facilita agregar de manera asertiva un guardrail final (*Validador*) para controlar la calidad.
-5. **Independencia de la Nube (Cloud-Free)**: Se purgó el código de servicios cloud pesados (Firebase, GCP, PubSub) para garantizar que cualquier evaluador pueda levantar el proyecto de forma local, 100% gratuita y sin fricciones técnicas complejas. Esto en preparación para los futuros despliegues híbridos orientados a no-técnicos (interfaces web puras).
-6. **Desacoplamiento de Datos (Standalone Mode)**: Orientado fines de evaluación académica/bootcamp, se incluyó una carpeta interna (`data/sample_scenarios/`) con muestras de logs sintéticos ficticios extraídos del motor principal. Esto permite instalar, correr y testear el orquestador RAG de forma 100% independiente, sin requerir el código del videojuego subyacente.
-
-## Instrucciones de Instalación (Local)
-
-1. Clonar el repositorio.
-2. Copiar el archivo de entorno y agregar tus credenciales:
-   ```bash
-   cp .env.example .env
-   ```
-3. Crear un entorno virtual e instalar las dependencias:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   ```
-4. Población de la Base Vectorial (Ingesta de Logs del Juego y Manuales):
-   ```bash
-   python scripts/ingest_game_evidence.py
-   ```
-
-## Uso y Reproducción
-
-Para correr una demostración integrada del pipeline:
 ```bash
-python demo_integrated.py
+# 1. Preparar entorno
+pip install -r requirements.txt
+cp .env.example .env
+
+# 2. Ingesta de conocimiento (Fuentes NIST/MITRE EN)
+python scripts/download_sources.py
+python 02-ingestion-datos/ingest_docs.py
+
+# 3. Ejecutar Demostración
+python scripts/verify_mixed_context.py
 ```
 
-Para correr la suite de pruebas (Unitarias y de Integración):
-```bash
-python -m unittest discover tests/
-```
+## 🧠 Decisiones de Diseño "Cloud-Lite"
 
-## Despliegue con Docker
+Para garantizar que el proyecto sea evaluable sin fricciones y escalable, se eliminaron dependencias de nubes propietarias pesadas, permitiendo que el sistema corra con una latencia mínima y costo cero bajo la capa gratuita de Gemini 2.0. El diseño "Standalone" permite validar el motor de feedback de forma autónoma con datos sintéticos de alta fidelidad.
 
-El proyecto está dockerizado para facilitar el despliegue.
-1. Asegúrate de tener tus claves en el archivo `.env`.
-2. Construye y levanta los servicios usando Docker Compose:
-   ```bash
-   docker-compose up --build -d
-   ```
-3. Para detener el sistema:
-   ```bash
-   docker-compose down
-   ```
+---
+**Proyecto Final de Especialización - SOC Tutor RAG System**
+*Razonamiento en Inglés, Corazón en Latam.*

@@ -18,7 +18,7 @@ except ImportError:
     CHROMA_AVAILABLE = False
     print("Chroma no disponible. Instalar: pip install chromadb")
 
-# Sentence Transformers for embeddings
+# Sentence Transformers para embeddings
 try:
     from sentence_transformers import SentenceTransformer
     ST_AVAILABLE = True
@@ -39,7 +39,7 @@ class RAGClient:
         self.collection_name = collection_name
         self.llm_client = llm_client
         
-        # Default path relative to project root
+        # Ruta por defecto relativa a la raíz del proyecto
         if not persist_directory:
             base_dir = Path(__file__).parent.parent.parent
             persist_directory = str(base_dir / "data" / "indices")
@@ -237,7 +237,7 @@ class RAGClient:
         return retrieved
 
     def _translate_query(self, query: str) -> str:
-        """Translates a technical query to English for better RAG matching."""
+        """Traduce una consulta técnica al inglés para mejorar el 'match' en el RAG."""
         if not self.llm_client:
             return query
             

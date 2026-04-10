@@ -62,7 +62,7 @@ class SemanticCache:
             self._model = SentenceTransformer('all-MiniLM-L6-v2')
 
     def _translate_intent(self, text: str) -> str:
-        """Translates player intent to English to enable cross-language cache hits."""
+        """Traduce la intención del jugador al inglés para permitir aciertos de caché entre idiomas."""
         if not self.llm_client or not text or text.strip() == "":
             return text
             
@@ -80,7 +80,7 @@ class SemanticCache:
         context: Dict[str, Any], 
         player_profile: Dict[str, Any]
     ) -> str:
-        """Creates a unique textual representation (fingerprint) in English."""
+        """Crea una representación textual única (fingerprint) en inglés para normalizar la búsqueda."""
         # Translate core intent to English to unify the cache across ES, PT, EN
         action_en = self._translate_intent(decision.get('accion', ''))
         justification_en = self._translate_intent(decision.get('justificacion', ''))
@@ -169,5 +169,5 @@ class SemanticCache:
         )
 
 def get_cache_client(llm_client: Optional[Any] = None) -> SemanticCache:
-    """Factory to get the cache client."""
+    """Factory para obtener el cliente de caché."""
     return SemanticCache(llm_client=llm_client)

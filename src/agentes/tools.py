@@ -1,8 +1,8 @@
 """
-Definition of Tools for the automated agents of the SOC Tutor system.
-These tools function as capabilities that allow the agent or "Tutor"
-to perform specific actions, such as consulting manuals (NIST, MITRE) or searching for evidence
-in the game simulation, in order to guide and help the player during training.
+Definición de las Herramientas (Tools) para los agentes automatizados del sistema SOC-Tutor.
+Estas herramientas funcionan como funciones que le permiten al agente o "Tutor"
+realizar acciones específicas, como consultar manuales (NIST, MITRE) o buscar pistas (evidencias)
+en la simulación del juego, para poder guiar y ayudar al jugador durante su entrenamiento.
 """
 
 from typing import List, Dict, Any, Optional
@@ -10,15 +10,15 @@ from langchain_core.tools import StructuredTool
 
 class SOCtools:
     """
-    Main container for tools designed to assist the SOC Analyst role.
-    Here we group all the tutor's search capabilities.
+    Contenedor principal de las herramientas diseñadas para asistir al rol de Analista SOC.
+    Aquí agrupamos todas las capacidades de búsqueda del tutor.
     """
     
     def __init__(self, rag_client):
         """
-        Constructor. Receives the RAG (Retrieval-Augmented Generation) client,
-        which is the component responsible for connecting to the knowledge base
-        and performing intelligent searches in documents.
+        Constructor de la clase. Recibe el cliente RAG (Retrieval-Augmented Generation), 
+        que es el componente encargado de conectarse a la base de datos de conocimiento
+        y realizar las búsquedas inteligentes en los documentos.
         """
         self.rag = rag_client
         self.current_scenario_id = "default"
@@ -30,9 +30,9 @@ class SOCtools:
 
     def buscar_en_nist(self, query: str) -> str:
         """
-        Tool: Search content in our NIST 800-61 best practices database.
-        Searches for the most relevant parts in the NIST framework documentation
-        based on a search string.
+        Herramienta número 1: Buscar contenido en nuestra base de datos de mejores prácticas de NIST 800-61.
+        A partir de un texto (query) enviado por el usuario o agente, busca las partes más relevantes 
+        en la documentación del marco de referencia de NIST.
         """
         # Hacemos una búsqueda pidiendo un máximo de 3 resultados, y filtramos específicamente por fuente 'nist'
         results = self.rag.retrieve(query, k=3, filter_source="nist")
@@ -47,8 +47,8 @@ class SOCtools:
 
     def buscar_en_mitre(self, query: str) -> str:
         """
-        Tool: Search information in our MITRE ATT&CK tactics and techniques database.
-        MITRE is a dictionary of known cyberattacker behaviors.
+        Herramienta número 2: Buscar información en nuestra base de datos de tácticas y técnicas de MITRE ATT&CK.
+        MITRE es un diccionario de comportamientos conocidos de los ciberatacantes.
         """
         # Búsqueda usando la fuente específica 'mitre' para asegurar que los resultados solo vengan de este catálogo.
         results = self.rag.retrieve(query, k=3, filter_source="mitre")
@@ -62,9 +62,9 @@ class SOCtools:
 
     def buscar_evidencia_en_juego(self, query: str) -> str:
         """
-        Tool: Search for real technical evidence collected from a specific game scenario.
-        Instead of searching theory or manuals, this searches in system logs or event journals
-        to find possible traces left by the attacker in the current player's simulation.
+        Herramienta número 3: Buscar información técnica real recopilada de un escenario de juego específico.
+        En lugar de buscar teoría o manuales, esto busca en los "logs", o "diarios" de eventos del sistema,
+        para encontrar posibles rastros que el atacante haya dejado en la simulación actual del jugador.
         """
         # Se solicita la búsqueda de evidencia, limitando a 5 fragmentos, y forzando a que la búsqueda 
         # se centre únicamente en el escenario que el usuario está jugando usando el ID guardado por la clase.
@@ -80,8 +80,10 @@ class SOCtools:
 
     def get_tools(self):
         """
-        Packages and returns all these functions in the format required by LangChain.
-        Provides detailed descriptions for the AI to know exactly when each tool is useful.
+        Método final clave: Empaqueta y devuelve todas estas funciones al formato requerido 
+        por 'LangChain', que es el gran cerebro lógico que coordina a los agentes de IA.
+        Aporta descripciones detalladas de qué hace cada herramienta, para que la Inteligencia Artificial 
+        sepa exactamente en qué momento es útil llamar a una u otra, según la duda que tenga el usuario.
         """
         return [
             StructuredTool.from_function(
