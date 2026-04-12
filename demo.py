@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Imports del proyecto
-from src.agentes.types import (
+from src.agents.types import (
     Decision,
     ContextoEscenario,
     PlayerProfile,
@@ -101,8 +101,8 @@ def run_demo_fallback():
     print("✓ Demo completado")
     print("   Para ejecutar con LLM real:")
     print("   1. pip install -r requirements.txt")
-    print("   2. python 02-ingestion-datos/download_docs.py")
-    print("   3. python 02-ingestion-datos/ingest_docs.py")
+    print("   2. python 02-data-ingestion/download_docs.py")
+    print("   3. python 02-data-ingestion/ingest_docs.py")
     print("   4. Configure API keys y ejecute este script")
     print("=" * 60)
 

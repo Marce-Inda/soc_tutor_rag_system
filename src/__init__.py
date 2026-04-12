@@ -13,7 +13,7 @@ __version__ = "1.0.0"
 __author__ = "Marcela Rosana Inda"
 
 # Exports principales
-from src.agentes.types import (
+from src.agents.types import (
     Decision,
     ContextoEscenario,
     PlayerProfile,

@@ -3,25 +3,31 @@ Analyst Agent - Technical evaluation of decisions using ReAct.
 Internal reasoning is performed in English to optimize token costs and consistency.
 """
 
+# ## AGENTE ANALISTA v2
+# Este agente utiliza el patrón ReAct (Razonamiento + Acción) para investigar incidencias.
+
+
+
 from typing import Dict, Any, List, Optional
 import json
 import re
 
-from ..agentes.types import (
+from ..agents.types import (
     Decision, 
     ContextoEscenario, 
     EvaluacionTecnica
 )
-from ..agentes.prompts import REACT_PROMPT_ANALISTA, build_prompt_analista
+from ..agents.prompts import REACT_PROMPT_ANALISTA, build_prompt_analista
 from ..utils.observability import tracer
 
 
-class AgenteAnalista:
+class AnalystAgent:
+
     """
-    Analyst Agent v2: Tool-Augmented Agent (ReAct).
-    Uses tools to deepen technical evaluation.
-    Internal reasoning is conducted in English.
+    Analyst Agent: Tool-augmented agent for deep technical investigation.
     """
+
+
     
     def __init__(self, llm_client, rag_client, tools=None):
         self.llm = llm_client
@@ -111,13 +117,16 @@ class AgenteAnalista:
         tracer.add_step("Analyst_Reasoning_Chain", {"chain": reasoning_chain})
 
         return EvaluacionTecnica(
-            strengths=result_json.get("strengths", []),
-            weaknesses=result_json.get("weaknesses", []),
-            evaluation=result_json.get("evaluation", "Evaluation completed via English reasoning loop"),
+            analysis=result_json.get("analysis", "Technical analysis completed"),
+            explanation=result_json.get("explanation", "No detailed explanation provided"),
+            best_practice=result_json.get("best_practice", "Consult standard manuals"),
             sources=rag_result["sources"] + result_json.get("sources", []),
             technical_score=result_json.get("technical_score", 70),
+            resilience_score=result_json.get("resilience_score", result_json.get("technical_score", 70)),
             forensic_notes=result_json.get("forensic_notes")
         )
+
+
 
 
     def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str) -> EvaluacionTecnica:
@@ -130,9 +139,11 @@ class AgenteAnalista:
         result = self.llm.generate_json(prompt)
         
         return EvaluacionTecnica(
-            strengths=result.get("strengths", []),
-            weaknesses=result.get("weaknesses", []),
-            evaluation=result.get("evaluation", "Direct evaluation"),
+            analysis=result.get("analysis", "Direct analysis"),
+            explanation=result.get("explanation", "Standard fallback explanation"),
+            best_practice=result.get("best_practice", "Consult NIST 800-61"),
             sources=result.get("sources", []),
-            technical_score=result.get("technical_score", 50)
+            technical_score=result.get("technical_score", 50),
+            resilience_score=result.get("resilience_score", 50),
+            forensic_notes=result.get("forensic_notes")
         )

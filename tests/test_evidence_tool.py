@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 from src.rag.rag_client import RAGClient
-from src.agentes.tools import SOCtools
+from src.agents.tools import SOCtools
 
 def main():
     print("Testing BuscadorEvidenciaJuego Tool...")

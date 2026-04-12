@@ -4,8 +4,9 @@ Ensures that the SOC Analyst (English Reasoning) correctly interprets the mixed 
 """
 
 from unittest.mock import MagicMock
-from src.agentes.types import Decision, ContextoEscenario, PlayerProfile
-from src.agentes.agente_analista import AgenteAnalista
+from src.agents.types import Decision, ContextoEscenario, PlayerProfile
+from src.agents.analyst_agent import AnalystAgent
+
 from src.rag.rag_client import RAGClient
 
 def test_mixed_context_reasoning():
@@ -33,7 +34,8 @@ def test_mixed_context_reasoning():
         "fuentes": []
     }
     
-    analista = AgenteAnalista(llm_client=mock_llm, rag_client=mock_rag)
+    analista = AnalystAgent(llm_client=mock_llm, rag_client=mock_rag)
+
     
     # 3. Decision and Context in English (but with Spanish Names)
     decision = Decision(

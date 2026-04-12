@@ -3,7 +3,7 @@
 ## Contenido
 
 ```
-04-integracion-de-herramientas/
+04-tool-integration/
 ├── requirements.txt    # Dependencias del proyecto
 ├── rag_client.py       # Cliente RAG con Chroma
 ├── langchain_setup.py  # Setup de LangChain
@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 | Herramienta | Uso | Costo |
 |-------------|-----|-------|
-| **LangChain** | Orquestación de agentes | $0 (open source) |
+| **LangChain** | Orquestación de agents | $0 (open source) |
 | **Chroma** | Vector store | $0 (local) |
 | **sentence-transformers** | Embeddings | $0 (local) |
 
@@ -65,11 +65,11 @@ result = setup.invoke_chain("analista", {
 ```
 soc-tutor-rag-system/
 ├── 01-ingenieria-de-prompts/     # ✅ Completado
-├── 02-ingestion-datos/            # ✅ Completado
-├── 03-configuracion-de-modelos/   # ✅ Completado
-├── 04-integracion-de-herramientas/  # 🔄 Actual
+├── 02-data-ingestion/            # ✅ Completado
+├── 03-model-configuration/   # ✅ Completado
+├── 04-tool-integration/  # 🔄 Actual
 ├── src/
-│   ├── agentes/                   # 📋 Prompts y tipos
+│   ├── agents/                   # 📋 Prompts y tipos
 │   └── ...
 ├── data/
 │   ├── docs/                     # 📥 Documentos RAG

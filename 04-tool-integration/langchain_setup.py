@@ -1,6 +1,6 @@
 """
 Setup e inicialización de LangChain.
-Conecta el LLM client con el RAG y los agentes.
+Conecta el LLM client con el RAG y los agents.
 """
 
 from typing import Optional, Dict, Any
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.agentes.prompts import (
+from src.agents.prompts import (
     build_prompt_analista,
     build_prompt_explicador,
     build_prompt_validador,
@@ -40,8 +40,9 @@ class LangChainSetup:
     def _init_prompts(self):
         """Inicializa los prompt templates de LangChain."""
         
-        # Prompt template para Analista
-        self._prompt_templates['analista'] = PromptTemplate(
+        # Prompt template para Analyst
+        self._prompt_templates['analyst'] = PromptTemplate(
+
             input_variables=["decision", "contexto", "contexto_rag"],
             template="Eres un Analista SOC Senior evaluando una decisión técnica.\n\n"
                     "DECISIÓN: {decision}\n"
@@ -50,8 +51,9 @@ class LangChainSetup:
                     "Responde en JSON con: fortalezas, debilidades, evaluacion, fuentes, score_tecnico"
         )
         
-        # Prompt template para Explicador
-        self._prompt_templates['explicador'] = PromptTemplate(
+        # Prompt template para Explainer
+        self._prompt_templates['explainer'] = PromptTemplate(
+
             input_variables=["evaluacion_analista", "player_level", "dilemma_index", "contexto_rag"],
             template="Eres un Instructor generando feedback pedagógico.\n\n"
                     "EVALUACIÓN DEL ANALISTA: {evaluacion_analista}\n"
@@ -61,8 +63,9 @@ class LangChainSetup:
                     "Responde en JSON con: evaluacion, explicacion, mejor_practica, fuentes_citadas"
         )
         
-        # Prompt template para Validador
-        self._prompt_templates['validador'] = PromptTemplate(
+        # Prompt template para Validator
+        self._prompt_templates['validator'] = PromptTemplate(
+
             input_variables=["evaluacion_analista", "feedback_explicador", "player_level", "contexto_rag"],
             template="Eres un Validador de Calidad revisando feedback.\n\n"
                     "EVALUACIÓN DEL ANALISTA: {evaluacion_analista}\n"

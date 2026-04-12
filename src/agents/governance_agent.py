@@ -1,17 +1,22 @@
 """
-Agente de Gobernanza. Especialista en cumplimiento legal y ética.
+Governance Agent - Specialist in legal compliance and ethics.
 """
+
+# ## AGENTE DE GOBERNANZA
+# Evalúa el impacto legal (GDPR) y los riesgos éticos de las decisiones del jugador.
 
 from typing import Dict, Any
 from .prompts import build_prompt_gobernanza
 from .types import EvaluacionGobernanza
 from ..utils.observability import tracer
 
+class GovernanceAgent:
 
-class AgenteGobernanza:
+
     """
-    Agente que evalúa el cumplimiento normativo (GDPR, Leyes Locales) y ética.
+    Agent that evaluates regulatory compliance (GDPR, local laws) and ethics.
     """
+
     
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
@@ -19,8 +24,9 @@ class AgenteGobernanza:
         
     def evaluar(self, decision: Dict[str, Any], contexto: Dict[str, Any]) -> EvaluacionGobernanza:
         """
-        Realiza la evaluación de gobernanza basándose en la decisión y el contexto RAG.
+        Performs the governance evaluation based on the decision and RAG context.
         """
+
         tracer.start_trace("evaluacion_gobernanza")
         
         # 1. Recuperar contexto RAG específico para cumplimiento
@@ -44,7 +50,9 @@ class AgenteGobernanza:
                 compliant=True, 
                 risks=["Error parsing legal evaluation"],
                 recommendations=[],
-                frameworks=[]
+                frameworks=[],
+                strategic_score=50,
+                ethical_score=50
             )
             
         tracer.end_trace({"cumplimiento": res.compliant})

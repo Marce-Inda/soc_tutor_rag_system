@@ -1,7 +1,7 @@
 # AUDITORÍA TÉCNICA v1.0 - SOC-Tutor-RAG
 
 ## Resumen Ejecutivo
-El sistema ha sido estructurado siguiendo estándares de producción. Se ha implementado un motor RAG funcional, agentes con capacidad de razonamiento ReAct y un orquestador con memoria y observabilidad. El proyecto está alineado con los requerimientos del Bootcamp AI Engineer.
+El sistema ha sido estructurado siguiendo estándares de producción. Se ha implementado un motor RAG funcional, agents con capacidad de razonamiento ReAct y un orquestador con memoria y observabilidad. El proyecto está alineado con los requerimientos del Bootcamp AI Engineer.
 
 **Puntuación General: 92 / 100**
 

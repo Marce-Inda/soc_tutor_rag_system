@@ -1,20 +1,21 @@
-# 📊 Reporte de Evaluación — SOC-Tutor-RAG
+# 📊 Evaluation Report — SOC-Tutor-RAG
 
-> **Generado:** 2026-04-09 16:09:25
-> **Dataset:** `tests/eval_dataset.json` (7 casos)
+> **Generated:** 2026-04-09 16:09:25
+> **Dataset:** `tests/eval_dataset.json` (7 cases)
 
 ---
 
-## Resumen Ejecutivo
+## Executive Summary
 
-| Métrica | Valor | Estado |
+| Metric | Value | Status |
 |---------|-------|--------|
 | Retrieval Success Rate | 100% | 🟢 |
 | Scenario Relevance | 100% | 🟢 |
-| Latencia RAG (promedio) | 960.7ms | 🟡 |
+| RAG Latency (average) | 960.7ms | 🟡 |
 | Guardrails Accuracy | 100% | 🟢 |
-| Guardrails TPR (ataques) | 100% | 🟢 |
-| Validador Accuracy | 100% | 🟢 |
+| Guardrails TPR (attacks) | 100% | 🟢 |
+| Validator Accuracy | 100% | 🟢 |
+
 | Fallback Keys Coverage | ✅ PASS | 🟢 |
 | Fallback Type Safety | ✅ PASS | 🟢 |
 | Concept Precision (RAG) | 39% | 🔴 |
@@ -23,9 +24,9 @@
 
 ## 1. RAG Retrieval
 
-Evalúa si el motor de búsqueda vectorial (ChromaDB) devuelve documentos relevantes para cada decisión del jugador.
+Evaluates whether the vector search engine (ChromaDB) returns relevant documents for each player decision.
 
-| Caso | Docs | Latencia | Match Escenario |
+| Case | Docs | Latency | Scenario Match |
 |------|------|----------|-----------------|
 | eval-001 | 5 | 6456.0ms | ✅ |
 | eval-002 | 5 | 30.1ms | ✅ |
@@ -35,64 +36,64 @@ Evalúa si el motor de búsqueda vectorial (ChromaDB) devuelve documentos releva
 | eval-006 | 5 | 23.1ms | ✅ |
 | eval-007 | 5 | 22.0ms | ✅ |
 
-**Documentos en índice:** 56
-**Escenarios únicos:** 7
+**Documents in index:** 56
+**Unique scenarios:** 7
 
 ---
 
-## 2. Guardrails (Seguridad)
+## 2. Guardrails (Security)
 
-Evalúa la capacidad del `GuardAgent` de detectar ataques de prompt injection y permitir inputs legítimos.
+Evaluates the `GuardAgent`'s ability to detect prompt injection attacks and allow legitimate inputs.
 
-| Métrica | Valor |
+| Metric | Value |
 |---------|-------|
-| True Positives (ataques bloqueados) | 6 |
-| True Negatives (legítimos permitidos) | 4 |
-| False Positives (legítimos bloqueados) | 0 |
-| False Negatives (ataques no detectados) | 0 |
+| True Positives (blocked attacks) | 6 |
+| True Negatives (legitimate allowed) | 4 |
+| False Positives (legitimate blocked) | 0 |
+| False Negatives (undetected attacks) | 0 |
 
 ---
 
-## 3. Agente Validador (QA Determinista)
+## 3. Validator Agent (Deterministic QA)
 
-Evalúa las reglas deterministas del `AgenteValidador` que detectan inconsistencias score↔tono sin necesidad de LLM.
+Evaluates the deterministic rules of the `ValidatorAgent` that detect score↔tone inconsistencies without needing an LLM call.
 
 - **Accuracy:** 100% (4/4)
 
 ---
 
-## 4. Fallback Determinista (Resiliencia)
+## 4. Deterministic Fallback (Resilience)
 
-Verifica que el JSON de emergencia del `LLMClient` cubre todos los campos requeridos por los modelos Pydantic de los 3 agentes.
+Verifies that the `LLMClient` emergency JSON covers all fields required by the Pydantic models of the 3 agents.
 
-| Agente | Campos Cubiertos | Estado |
+| Agent | Fields Covered | Status |
 |--------|-----------------|--------|
-| Analista (EvaluacionTecnica) | ✅ PASS | 🟢 |
-| Explicador (FeedbackPedagogico) | ✅ PASS | 🟢 |
-| Validador (ValidacionCalidad) | ✅ PASS | 🟢 |
+| Analyst (EvaluacionTecnica) | ✅ PASS | 🟢 |
+| Explainer (FeedbackPedagogico) | ✅ PASS | 🟢 |
+| Validator (ValidacionCalidad) | ✅ PASS | 🟢 |
 
 ---
 
-## 5. Cobertura Conceptual
+## 5. Conceptual Coverage
 
-Mide qué porcentaje de los conceptos técnicos esperados aparecen en el contexto RAG recuperado.
+Measures the percentage of expected technical concepts that appear in the retrieved RAG context.
 
-| Caso | Precision | Encontrados | Esperados |
+| Case | Precision | Found | Expected |
 |------|-----------|-------------|-----------|
-| eval-001 | 0% | [] | ['contención', 'firewall', 'IOC', 'bloqueo'] |
-| eval-002 | 25% | ['ransomware'] | ['aislar', 'impacto', 'crítico', 'ransomware'] |
-| eval-003 | 50% | ['evidencia', 'forense'] | ['cadena de custodia', 'preservación', 'evidencia', 'forense'] |
-| eval-004 | 50% | ['lateral', 'APT'] | ['segmentación', 'lateral', 'contención', 'APT'] |
-| eval-005 | 50% | ['notificación', 'datos'] | ['notificación', 'datos', 'regulación', 'breach'] |
-| eval-006 | 75% | ['evidencia', 'error', 'logs'] | ['preservar', 'evidencia', 'error', 'logs'] |
-| eval-007 | 25% | ['MFA'] | ['MFA', 'credenciales', 'autenticación', 'erradicación'] |
+| eval-001 | 0% | [] | ['containment', 'firewall', 'IOC', 'blocking'] |
+| eval-002 | 25% | ['ransomware'] | ['isolate', 'impact', 'critical', 'ransomware'] |
+| eval-003 | 50% | ['evidence', 'forensic'] | ['chain of custody', 'preservation', 'evidence', 'forensic'] |
+| eval-004 | 50% | ['lateral', 'APT'] | ['segmentation', 'lateral', 'containment', 'APT'] |
+| eval-005 | 50% | ['notification', 'data'] | ['notification', 'data', 'regulation', 'breach'] |
+| eval-006 | 75% | ['evidence', 'error', 'logs'] | ['preserve', 'evidence', 'error', 'logs'] |
+| eval-007 | 25% | ['MFA'] | ['MFA', 'credentials', 'authentication', 'eradication'] |
 
 ---
 
-## Notas Técnicas
+## Technical Notes
 
-- Las métricas RAG se ejecutan sobre el índice ChromaDB local (`data/indices/`).
-- Los guardrails se evalúan con inputs sintéticos adversariales y legítimos.
-- El validador se evalúa solo con reglas deterministas (sin llamada LLM).
-- El fallback se evalúa forzando un error de conexión en `LLMClient`.
-- La cobertura conceptual mide presencia de keywords en el contexto RAG, no semántica profunda.
+- RAG metrics are executed on the local ChromaDB index (`data/indices/`).
+- Guardrails are evaluated with adversarial and legitimate synthetic inputs.
+- The validator is evaluated only with deterministic rules (no LLM call).
+- Fallback is evaluated by forcing a connection error in `LLMClient`.
+- Conceptual coverage measures the presence of keywords in the RAG context, not deep semantics.

@@ -3,7 +3,7 @@
 ## Contenido
 
 ```
-03-configuracion-de-modelos/
+03-model-configuration/
 ├── llm_config.py       # Definición de configuraciones
 ├── llm_client.py       # Cliente unificado (Gemini/Groq)
 ├── config.json        # Configuración JSON

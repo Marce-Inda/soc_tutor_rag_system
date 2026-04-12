@@ -1,65 +1,67 @@
 # SOC Tutor (Cybersecurity RAG Multiagent System)
 
-Sistema profesional de feedback pedagógico basado en IA para entrenamiento en respuesta a incidentes de ciberseguridad. Optimizado con una arquitectura **"English-First Reasoning / Multilingual Delivery"** para máxima eficiencia de tokens y precisión técnica.
+📖 [Versión en Español](README_ES.md) | 📜 [Architectural Guidelines](CONTRIBUTING.md)
 
-## 🚀 Arquitectura Avanzada
+Professional AI-driven pedagogical feedback system for cybersecurity incident response training. Optimized with an **"English-First Reasoning / Multilingual Delivery"** architecture for maximum token efficiency and technical precision.
 
-Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de producción que prioriza el costo y la exactitud:
+## 🚀 Advanced Architecture
 
-1.  **Razonamiento Global (English-First)**: El núcleo lógico de los agentes (Analista, Explicador, Validador) utiliza prompts en inglés. Esto reduce el consumo de tokens en un ~25% y mejora la adherencia a manuales técnicos originales (NIST/MITRE).
-2.  **Caché Semántico Universal**: Implementamos una capa de caché que normaliza las intenciones del jugador al inglés antes de realizar el *matching*. Esto permite que una misma respuesta de IA sirva para jugadores en español, portugués e inglés, aumentando drásticamente el *hit rate* y reduciendo costos de LLM.
-3.  **RAG Híbrido con Capa de Traducción**: El sistema traduce automáticamente las consultas técnicas del jugador al inglés para buscar en las fuentes originales de mayor fidelidad, combinando búsqueda semántica con búsqueda exacta de IDs técnicos (IPs, Tácticas MITRE).
-4.  **Entrega Multilingüe Adaptativa**: El Agente Explicador traduce el análisis técnico a un lenguaje pedagógico en el idioma preferido del usuario (ES, PT, EN), ajustando el tono según su nivel de experiencia.
+This system has evolved from a basic Multi-Agent System (MAS) to a production-grade architecture that prioritizes cost and accuracy:
 
-## 🛠️ Tecnologías Core
+1.  **Global Reasoning (English-First)**: The logic core of the agents (Analyst, Explainer, Validator) uses English prompts. This reduces token consumption by ~25% and improves compliance with original technical manuals (NIST/MITRE).
+2.  **Universal Semantic Cache**: We implemented a cache layer that normalizes player intentions to English before matching. This allows a single AI response to serve players in Spanish, Portuguese, and English, drastically increasing the hit rate and reducing LLM costs.
+3.  **Hybrid RAG with Translation Layer**: The system automatically translates technical player queries into English to search the highest-fidelity original sources, combining semantic search with exact matching of technical IDs (IPs, MITRE Tactics).
+4.  **Adaptive Multilingual Delivery**: The **Explainer Agent** translates the technical analysis into pedagogical language in the user's preferred language (ES, PT, EN), adjusting the tone according to their experience level.
 
--   **Modelos**: Google `gemini-2.0-flash` (vía LLMClient unificado con soporte para Groq y Ollama).
--   **Vector DB**: ChromaDB (local y embebido).
--   **Embeddings**: `all-MiniLM-L6-v2` (ejecución 100% local).
--   **Orquestación**: Flujo secuencial determinista (Security Guard -> Memory -> RAG -> Analyst -> Explainer -> Validator).
--   **Frameworks**: LangChain, Pydantic, Tenacity (Resiliencia).
+## 🛠️ Core Technologies
 
-## 📊 Fuentes de Conocimiento (RAG)
+-   **Models**: Google `gemini-2.0-flash` (via a unified LLMClient with support for Groq and Ollama).
+-   **Vector DB**: ChromaDB (local and embedded).
+-   **Embeddings**: `all-MiniLM-L6-v2` (100% local execution).
+-   **Orchestration**: Deterministic sequential flow (Security Guard -> Memory -> RAG -> Analyst -> Explainer -> Validator).
+-   **Frameworks**: LangChain, Pydantic, Tenacity (Resilience).
 
-El sistema se fundamenta en documentación técnica oficial y actualizada:
--   **MITRE ATT&CK v18.1**: Catálogo nativo de tácticas y técnicas de adversarios.
--   **NIST 800-61 Rev. 2**: Guía de manejo de incidentes de seguridad informática.
--   **CISA / OWASP**: Marcos de referencia para remediación y vulnerabilidades.
+## 📊 Knowledge Sources (RAG)
 
-## 📂 Estructura del Proyecto
+The system is founded on official and updated technical documentation:
+-   **MITRE ATT&CK v18.1**: Native catalog of adversary tactics and techniques.
+-   **NIST 800-61 Rev. 2**: Computer Security Incident Handling Guide.
+-   **CISA / OWASP**: Reference frameworks for remediation and vulnerabilities.
+
+## 📂 Project Structure
 
 ```
 soc-tutor-rag-system/
 ├── src/
-│   ├── agentes/        # Lógica de agentes (Prompts EN, Output Multilenguaje)
-│   ├── orchest/        # Orquestador (Pipeline con Observabilidad y Caché)
-│   ├── rag/            # RAG Híbrido (English-Targeted Search)
-│   └── utils/          # Caché Semántico, LLMClient, Glosario
+│   ├── agents/        # Agent logic (EN Prompts, Multilingual Output)
+│   ├── orchest/       # Orchestrator (Pipeline with Observability and Cache)
+│   ├── rag/           # Hybrid RAG (English-Targeted Search)
+│   └── utils/         # Semantic Cache, LLMClient, Glossary
 ├── data/
-│   ├── docs/           # Fuentes oficiales (EN/ES)
-│   └── sample_scenarios/ # Escenarios standalone (Ej: ar-fintech-idor)
-└── scripts/            # Herramientas de ingesta y validación
+│   ├── docs/          # Official sources (EN/ES)
+│   └── sample_scenarios/ # Standalone scenarios (e.g., ar-fintech-idor)
+└── scripts/           # Ingestion and validation tools
 ```
 
-## 🚀 Instalación y Uso Standalone
+## 🚀 Installation and Standalone Usage
 
 ```bash
-# 1. Preparar entorno
+# 1. Prepare environment
 pip install -r requirements.txt
 cp .env.example .env
 
-# 2. Ingesta de conocimiento (Fuentes NIST/MITRE EN)
+# 2. Knowledge Ingestion (NIST/MITRE EN sources)
 python scripts/download_sources.py
-python 02-ingestion-datos/ingest_docs.py
+python 02-data-ingestion/ingest_docs.py
 
-# 3. Ejecutar Demostración
+# 3. Run Demonstration
 python scripts/verify_mixed_context.py
 ```
 
-## 🧠 Decisiones de Diseño "Cloud-Lite"
+## 🧠 "Cloud-Lite" Design Decisions
 
-Para garantizar que el proyecto sea evaluable sin fricciones y escalable, se eliminaron dependencias de nubes propietarias pesadas, permitiendo que el sistema corra con una latencia mínima y costo cero bajo la capa gratuita de Gemini 2.0. El diseño "Standalone" permite validar el motor de feedback de forma autónoma con datos sintéticos de alta fidelidad.
+To ensure the project is easy to evaluate and scalable, heavy proprietary cloud dependencies were removed, allowing the system to run with minimal latency and zero cost under the Gemini 2.0 free tier. The "Standalone" design allows validating the feedback engine independently with high-fidelity synthetic data.
 
 ---
-**Proyecto Final de Especialización - SOC Tutor RAG System**
-*Razonamiento en Inglés, Corazón en Latam.*
+**Final Specialization Project - SOC Tutor RAG System**
+*English Reasoning, LATAM Heart.*

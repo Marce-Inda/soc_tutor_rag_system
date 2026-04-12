@@ -21,14 +21,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from src.agentes.types import (
+from src.agents.types import (
     Decision, ContextoEscenario, PlayerProfile,
     FeedbackFinal, EvaluacionTecnica, FeedbackPedagogico, ValidacionCalidad
 )
 from src.orchest.uefs_orchestrator import UEFSOrchestrator
 from src.rag.rag_client import create_rag_client
 from src.utils.llm_client import create_llm_client, LLMClient
-from src.agentes.guard_agent import GuardAgent
+from src.agents.guard_agent import GuardAgent
 
 
 # ============================================================================
@@ -111,7 +111,7 @@ def eval_pipeline_completeness(orchestrator, test_cases, profiles) -> Dict[str, 
 
 
 # ============================================================================
-# MÉTRICA 2: Structural Validity (¿Los agentes producen outputs Pydantic válidos?)
+# MÉTRICA 2: Structural Validity (¿Los agents producen outputs Pydantic válidos?)
 # ============================================================================
 
 def eval_structural_validity(pipeline_results: list) -> Dict[str, Any]:

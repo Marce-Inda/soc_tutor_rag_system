@@ -128,7 +128,7 @@ class LLMClient:
         except Exception as e:
             # GRACEFUL DEGRADATION (Fallback Determinista)
             # Si pasaron todos los reintentos (ej. no hay internet), devolvemos este JSON universal súper-resiliente.
-            # Cubre todos los keys ("fortalezas", "evaluacion", "aprobado") de los 3 agentes para no romper el Pydantic.
+            # Cubre todos los keys ("fortalezas", "evaluacion", "aprobado") de los 3 agents para no romper el Pydantic.
             print(f"  [LLMClient Fallback] Conexión perdida. Activando Degradación Elegante. Error: {e}")
             return {
                 "evaluacion": "Aviso del Sistema: El enlace con el servidor avanzado de inteligencia se interrumpió temporalmente por saturación de red o caída. Hemos registrado tu acción como neutral para mantener vivo el juego.",

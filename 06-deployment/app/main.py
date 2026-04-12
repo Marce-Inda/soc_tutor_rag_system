@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.agentes.types import (
+from src.agents.types import (
     Decision,
     ContextoEscenario,
     PlayerProfile,

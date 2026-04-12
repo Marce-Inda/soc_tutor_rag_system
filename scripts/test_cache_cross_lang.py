@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from src.agentes.types import Decision, ContextoEscenario, PlayerProfile
+from src.agents.types import Decision, ContextoEscenario, PlayerProfile
 from src.orchest.uefs_orchestrator import UEFSOrchestrator
 from src.utils.semantic_cache import SemanticCache
 

@@ -7,7 +7,7 @@ Esta carpeta contiene los scripts para descargar e ingestar documentos para el R
 ### Estructura
 
 ```
-02-ingestion-datos/
+02-data-ingestion/
 ├── download_docs.py    # Descarga documentos de fuentes oficiales
 ├── ingest_docs.py      # Procesa y crea índice vectorial
 └── README.md           # Este archivo
@@ -27,7 +27,7 @@ Esta carpeta contiene los scripts para descargar e ingestar documentos para el R
 ### Paso 1: Descargar documentos
 
 ```bash
-cd 02-ingestion-datos
+cd 02-data-ingestion
 python download_docs.py
 ```
 

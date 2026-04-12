@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 from src.orchest.uefs_orchestrator import UEFSOrchestrator
-from src.agentes.types import Decision, ContextoEscenario, PlayerProfile
+from src.agents.types import Decision, ContextoEscenario, PlayerProfile
 
 class TestUEFSPipeline(unittest.TestCase):
     

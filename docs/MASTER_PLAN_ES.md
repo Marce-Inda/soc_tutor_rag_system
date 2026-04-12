@@ -14,7 +14,7 @@ Desarrollar un sistema de feedback pedagógico basado en RAG que asista a analis
 
 ## 3. Estándares de Producción
 - **Tipado**: Uso estricto de Pydantic.
-- **Testing**: Cobertura >70% en lógica de agentes.
+- **Testing**: Cobertura >70% en lógica de agents.
 - **Despliegue**: Dockerización completa.
 - **Seguridad**: Guardrails dinámicos.
 

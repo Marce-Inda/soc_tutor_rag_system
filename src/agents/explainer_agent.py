@@ -1,9 +1,14 @@
 """
-Explainer Agent - Pedagogical feedback for SOC Tutor.
+Explainer Agent - Pedagogical feedback and narrative generation for SOC Tutor.
 """
 
+# ## AGENTE EXPLICADOR
+# Traduce la evaluación técnica en un feedback narrativo y pedagógico.
+
+
+
 from typing import Dict, Any
-from ..agentes.types import (
+from ..agents.types import (
     EvaluacionTecnica,
     EvaluacionGobernanza,
     FeedbackPedagogico,
@@ -11,16 +16,13 @@ from ..agentes.types import (
 )
 
 
-class AgenteExplicador:
+class ExplainerAgent:
+
     """
     Explainer Agent: Translates technical evaluation into pedagogical feedback.
-    
-    Responsibilities:
-    - Convert technical jargon into accessible explanations.
-    - Provide educational context.
-    - Adapt to the player's level (Junior vs. Senior).
-    - Support localization via the Validator agent.
     """
+
+
     
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
@@ -55,11 +57,12 @@ class AgenteExplicador:
         
         # 3. Parse response
         return FeedbackPedagogico(
-            analysis=result.get("analysis", result.get("evaluacion", "Evaluation not available")),
-            explanation=result.get("explanation", result.get("explicacion", "No explanation provided")),
-            best_practice=result.get("best_practice", result.get("mejor_practica", "Consult manual")),
-            cited_sources=result.get("cited_sources", result.get("fuentes_citadas", []))
+            analysis=result.get("analysis", "Evaluation not available"),
+            explanation=result.get("explanation", "No explanation provided"),
+            best_practice=result.get("best_practice", "Consult manual"),
+            cited_sources=result.get("cited_sources", [])
         )
+
     
     def _build_prompt(
         self,

@@ -7,7 +7,7 @@ from typing import Dict, Any
 import json
 from unittest.mock import MagicMock
 
-from src.agentes.types import Decision, ContextoEscenario, PlayerProfile
+from src.agents.types import Decision, ContextoEscenario, PlayerProfile
 from src.orchest.uefs_orchestrator import UEFSOrchestrator
 
 class MockLLM:

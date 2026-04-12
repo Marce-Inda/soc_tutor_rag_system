@@ -1,27 +1,32 @@
 """
-Validator Agent - Quality verification for SOC Tutor feedback.
+Validator Agent - Quality verification and translation for SOC Tutor feedback.
 """
+
+# ## AGENTE VALIDADOR
+# Actúa como el 'Manager' del reporte final, asegurando calidad técnico-pedagógica y puliendo la traducción.
+
+
 
 from typing import Dict, Any
 
-from ..agentes.types import (
+from ..agents.types import (
     EvaluacionTecnica,
     FeedbackPedagogico,
     ValidacionCalidad,
-    PlayerProfile
+    PlayerProfile,
+    Score6D
 )
 
 
-class AgenteValidador:
+
+class ValidatorAgent:
+
+
     """
-    Validator Agent: Verifies the quality and consistency of the feedback.
-    
-    Responsibilities:
-    - Verify absence of hallucinations.
-    - Ensure consistency between technical evaluation and pedagogical feedback.
-    - Validate appropriateness for the player's level.
-    - Support multi-language validation (ES, PT, EN).
+    Validator Agent: Verifies quality and consistency of the final feedback.
     """
+
+
     
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
@@ -49,16 +54,22 @@ class AgenteValidador:
                 prompt=prompt
             )
             
-            approved = result.get("approved", result.get("aprobado", True))
-            inconsistencies = result.get("inconsistencies", result.get("inconsistencias", []))
-            quality_score = result.get("quality_score", result.get("nota", "Validation completed"))
+            approved = result.get("approved", True)
+            inconsistencies = result.get("inconsistencies", [])
+            quality_score = result.get("quality_score", "Validation completed")
+
             
             return ValidacionCalidad(
                 approved=approved,
                 inconsistencies=inconsistencies,
                 correction=result.get("correction", result.get("correccion")),
-                quality_score=quality_score
+                quality_score=quality_score,
+                numeric_score=result.get("numeric_score", 100),
+                evaluacion_6d=Score6D(**result.get("evaluacion_6d", {})) if result.get("evaluacion_6d") else None,
+                persona_role=result.get("persona_role")
             )
+
+
 
             
         except Exception as e:
@@ -67,8 +78,10 @@ class AgenteValidador:
             return ValidacionCalidad(
                 approved=True,
                 inconsistencies=["LLM Validation failed - manually audit required"],
-                quality_score="Accepted by default after error"
+                quality_score="Accepted by default after error",
+                numeric_score=50
             )
+
 
     
     def _build_prompt(

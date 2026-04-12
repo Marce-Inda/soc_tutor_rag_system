@@ -15,7 +15,7 @@ from pathlib import Path
 # subyacente para poder invocar sin líos con las dependencias locales.
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.agentes.types import Decision, ContextoEscenario, PlayerProfile
+from src.agents.types import Decision, ContextoEscenario, PlayerProfile
 from src.orchest.uefs_orchestrator import UEFSOrchestrator
 from src.utils.llm_client import create_llm_client
 from src.rag.rag_client import create_rag_client
@@ -64,7 +64,7 @@ def run_integrated_demo():
     perfil = PlayerProfile(player_id="marce-user", level=2) # Nivel Principiante (Lvl 2)
     
     print(f"\n[Falso Escenario Jugador] Emitiendo Orden Oficial hacia la máquina... '{decision.accion}' bajo la mira en dispositivo -> '{decision.target}'")
-    print(f"[Nervio Orquestador] Analizando el proceder y emitiendo un juicio justo y educativo con nuestros agentes...")
+    print(f"[Nervio Orquestador] Analizando el proceder y emitiendo un juicio justo y educativo con nuestros agents...")
     
     # 5. Pulsar "Correr" y generar toda la cadena mágica interna del Tutor Asesor
     try:

@@ -1,7 +1,11 @@
 """
-Cliente de Chroma para Retrieval Augmented Generation.
-Módulo de RAG para recuperar conocimiento de ciberseguridad.
+ChromaDB Client for Retrieval Augmented Generation.
+RAG module for retrieving cybersecurity knowledge.
 """
+
+# ## CLIENTE RAG (Retrieval Augmented Generation)
+# Componente encargado de la búsqueda semántica y exacta en la base de datos de conocimiento.
+
 
 import os
 from pathlib import Path
@@ -313,7 +317,7 @@ class RAGClient:
         # Recuperar usando modo Híbrido con traducción automática
         docs = self.retrieve_hybrid(query, k=k, translate=True)
         
-        # Formatear contexto para los agentes
+        # Formatear contexto para los agents
         context_parts = []
         for i, d in enumerate(docs):
             prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"

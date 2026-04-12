@@ -1,18 +1,15 @@
 """
-Definición de las Herramientas (Tools) para los agentes automatizados del sistema SOC-Tutor.
-Estas herramientas funcionan como funciones que le permiten al agente o "Tutor"
-realizar acciones específicas, como consultar manuales (NIST, MITRE) o buscar pistas (evidencias)
-en la simulación del juego, para poder guiar y ayudar al jugador durante su entrenamiento.
+Definition of Tools for the automated agents of the SOC-Tutor system.
 """
 
-from typing import List, Dict, Any, Optional
-from langchain_core.tools import StructuredTool
+# ## HERRAMIENTAS (TOOLS)
+# Funciones técnicas que permiten al agente realizar búsquedas en bases de datos (RAG).
 
 class SOCtools:
     """
-    Contenedor principal de las herramientas diseñadas para asistir al rol de Analista SOC.
-    Aquí agrupamos todas las capacidades de búsqueda del tutor.
+    Main container for tools designed to assist the SOC Analyst role.
     """
+
     
     def __init__(self, rag_client):
         """
@@ -81,7 +78,7 @@ class SOCtools:
     def get_tools(self):
         """
         Método final clave: Empaqueta y devuelve todas estas funciones al formato requerido 
-        por 'LangChain', que es el gran cerebro lógico que coordina a los agentes de IA.
+        por 'LangChain', que es el gran cerebro lógico que coordina a los agents de IA.
         Aporta descripciones detalladas de qué hace cada herramienta, para que la Inteligencia Artificial 
         sepa exactamente en qué momento es útil llamar a una u otra, según la duda que tenga el usuario.
         """

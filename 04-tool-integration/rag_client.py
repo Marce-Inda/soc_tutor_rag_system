@@ -160,7 +160,7 @@ class RAGClient:
         # Recuperar
         docs = self.retrieve(query, k=k)
         
-        # Formatear contexto para los agentes
+        # Formatear contexto para los agents
         contexto_rag = "\n\n".join([
             f"[{d['source']}] {d['text']}" 
             for d in docs
