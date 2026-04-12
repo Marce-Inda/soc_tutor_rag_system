@@ -51,23 +51,40 @@ class InputFeedbackRequest(BaseModel):
 
 class EvaluacionTecnica(BaseModel):
     """Output del Agente Analista."""
-    fortalezas: List[str] = Field(default_factory=list)
-    debilidades: List[str] = Field(default_factory=list)
-    evaluacion: str = Field(..., description="Evaluación resumida")
-    fuentes: List[str] = Field(default_factory=list, description="Referencias (MITRE, NIST, etc.)")
-    score_tecnico: int = Field(..., description="Score técnico calculado (0-100)")
+    strengths: List[str] = Field(default_factory=list, alias="fortalezas")
+    weaknesses: List[str] = Field(default_factory=list, alias="debilidades")
+    evaluation: str = Field(..., description="Technical summary", alias="evaluacion")
+    sources: List[str] = Field(default_factory=list, description="References (MITRE, NIST, etc.)", alias="fuentes")
+    technical_score: int = Field(..., description="Calculated technical score (0-100)", alias="score_tecnico")
+    forensic_notes: Optional[str] = Field(None, description="ISO 27037 compliance notes")
+
+    class Config:
+        populate_by_name = True
+
 
 
 # ============================================================================
-# Modelos de Salida - Agente Explicador
+# Modelos de Salida - Agente de Gobernanza
 # ============================================================================
+
+class EvaluacionGobernanza(BaseModel):
+    """Output del Agente de Gobernanza."""
+    compliant: bool = Field(..., description="If the decision follows laws/ethics")
+    risks: List[str] = Field(default_factory=list, description="Legal or ethical risks identified")
+    recommendations: List[str] = Field(default_factory=list, description="Governance best practices")
+    frameworks: List[str] = Field(default_factory=list, description="GDPR, Ley 25.326, etc.")
+
 
 class FeedbackPedagogico(BaseModel):
     """Output del Agente Explicador."""
-    evaluacion: str = Field(..., description="Evaluación en lenguaje natural")
-    explicacion: str = Field(..., description="Explicación del 'por qué'")
-    mejor_practica: str = Field(..., description="Best Practice recomendada")
-    fuentes_citadas: List[str] = Field(default_factory=list)
+    analysis: str = Field(..., description="Natural language evaluation", alias="evaluacion")
+    explanation: str = Field(..., description="Explanation of 'why'", alias="explicacion")
+    best_practice: str = Field(..., description="Recommended best practice", alias="mejor_practica")
+    cited_sources: List[str] = Field(default_factory=list, alias="fuentes_citadas")
+
+    class Config:
+        populate_by_name = True
+
 
 
 # ============================================================================
@@ -76,10 +93,16 @@ class FeedbackPedagogico(BaseModel):
 
 class ValidacionCalidad(BaseModel):
     """Output del Agente Validador."""
-    aprobado: bool
-    inconsistencias: List[str] = Field(default_factory=list)
-    correccion: Optional[str] = Field(None, description="Feedback corregido si hay problemas")
-    nota: str = Field(..., description="Nota general de calidad")
+    approved: bool = Field(..., alias="aprobado")
+    inconsistencies: List[str] = Field(default_factory=list, alias="inconsistencias")
+    correction: Optional[str] = Field(None, description="Corrected feedback if issues found", alias="correccion")
+    quality_score: str = Field(..., description="General quality note", alias="nota")
+    numeric_score: int = Field(default=100, description="Quality score from 0 to 100")
+
+    class Config:
+        populate_by_name = True
+
+
 
 
 # ============================================================================
@@ -93,8 +116,10 @@ class FeedbackFinal(BaseModel):
     mejor_practica: str
     fuentes_citadas: List[str]
     evaluacion_tecnica: EvaluacionTecnica
+    evaluacion_gobernanza: Optional[EvaluacionGobernanza] = None
     validacion: ValidacionCalidad
-    costo_estimado: float = Field(..., description="Costo en USD de la generación")
+    costo_estimado: float = Field(..., description="Estimated cost in USD")
+
 
 
 # ============================================================================

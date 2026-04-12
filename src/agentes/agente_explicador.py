@@ -3,10 +3,9 @@ Explainer Agent - Pedagogical feedback for SOC Tutor.
 """
 
 from typing import Dict, Any
-import json
-
 from ..agentes.types import (
     EvaluacionTecnica,
+    EvaluacionGobernanza,
     FeedbackPedagogico,
     PlayerProfile
 )
@@ -20,7 +19,7 @@ class AgenteExplicador:
     - Convert technical jargon into accessible explanations.
     - Provide educational context.
     - Adapt to the player's level (Junior vs. Senior).
-    - Support localization in ES, PT, EN.
+    - Support localization via the Validator agent.
     """
     
     def __init__(self, llm_client, rag_client):
@@ -30,6 +29,7 @@ class AgenteExplicador:
     def generar(
         self,
         evaluacion_analista: EvaluacionTecnica,
+        evaluacion_gobernanza: EvaluacionGobernanza,
         player_profile: PlayerProfile,
         contexto_rag: str = ""
     ) -> FeedbackPedagogico:
@@ -38,6 +38,7 @@ class AgenteExplicador:
         # 1. Build prompt with pedagogical rules and language
         prompt = self._build_prompt(
             evaluacion_analista,
+            evaluacion_gobernanza,
             player_profile,
             contexto_rag
         )
@@ -54,15 +55,16 @@ class AgenteExplicador:
         
         # 3. Parse response
         return FeedbackPedagogico(
-            evaluacion=result.get("evaluacion", "Evaluation not available"),
-            explicacion=result.get("explicacion", "No explanation provided"),
-            mejor_practica=result.get("mejor_practica", "Consult manual"),
-            fuentes_citadas=result.get("fuentes_citadas", [])
+            analysis=result.get("analysis", result.get("evaluacion", "Evaluation not available")),
+            explanation=result.get("explanation", result.get("explicacion", "No explanation provided")),
+            best_practice=result.get("best_practice", result.get("mejor_practica", "Consult manual")),
+            cited_sources=result.get("cited_sources", result.get("fuentes_citadas", []))
         )
     
     def _build_prompt(
         self,
-        evaluacion: EvaluacionTecnica,
+        evaluacion_analista: EvaluacionTecnica,
+        evaluacion_gobernanza: EvaluacionGobernanza,
         profile: PlayerProfile,
         contexto_rag: str
     ) -> str:
@@ -70,7 +72,8 @@ class AgenteExplicador:
         from .prompts import build_prompt_explicador
         
         return build_prompt_explicador(
-            evaluacion_analista=evaluacion.model_dump(),
+            evaluacion_analista=evaluacion_analista.model_dump(),
+            evaluacion_gobernanza=evaluacion_gobernanza.model_dump(),
             player_level=profile.level,
             target_language=profile.language,
             dilemma_index=profile.dilema_index_session,
@@ -81,22 +84,22 @@ class AgenteExplicador:
         """Language-adapted fallback feedback."""
         if language == "pt":
             return FeedbackPedagogico(
-                evaluacion=f"Sua decisão teve uma pontuação de {evaluacion.score_tecnico}/100",
-                explicacion="O sistema de feedback teve problemas técnicos.",
-                mejor_practica="Consulte as melhores práticas de resposta a incidentes NIST 800-61",
-                fuentes_citadas=["Fallback"]
+                analysis=f"Sua decisão teve una pontuação de {evaluacion.technical_score}/100",
+                explanation="O sistema de feedback teve problemas técnicos.",
+                best_practice="Consulte as melhores práticas de resposta a incidentes NIST 800-61",
+                cited_sources=["Fallback"]
             )
         elif language == "en":
             return FeedbackPedagogico(
-                evaluacion=f"Your decision had a score of {evaluacion.score_tecnico}/100",
-                explicacion="The feedback system encountered technical issues.",
-                mejor_practica="Consult NIST 800-61 incident response best practices",
-                fuentes_citadas=["Fallback"]
+                analysis=f"Your decision had a score of {evaluacion.technical_score}/100",
+                explanation="The feedback system encountered technical issues.",
+                best_practice="Consult NIST 800-61 incident response best practices",
+                cited_sources=["Fallback"]
             )
         else: # es
             return FeedbackPedagogico(
-                evaluacion=f"Tu decisión tuvo un score de {evaluacion.score_tecnico}/100",
-                explicacion="El sistema de feedback tuvo problemas técnicos.",
-                mejor_practica="Consulta las mejores prácticas de respuesta a incidentes NIST 800-61",
-                fuentes_citadas=["Fallback"]
+                analysis=f"Tu decisión tuvo un score de {evaluacion.technical_score}/100",
+                explanation="El sistema de feedback tuvo problemas técnicos.",
+                best_practice="Consulta las mejores prácticas de respuesta a incidentes NIST 800-61",
+                cited_sources=["Fallback"]
             )

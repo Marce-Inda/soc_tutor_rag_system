@@ -1,10 +1,11 @@
 """
-Prompts for the 3 agents of the SOC Tutor system (UEFS with RAG).
+Prompts for the 4 agents of the SOC Tutor system (UEFS with RAG).
 
 Agents:
 1. Analyst - Technical evaluation
 2. Explainer - Pedagogical feedback
-3. Validator - Quality verification
+3. Validator - Quality verification and translation
+4. Governance - Legal and ethical compliance
 """
 
 from typing import Dict, Any
@@ -32,11 +33,12 @@ Final Answer: The final JSON with the evaluation.
 
 REMEMBER: The final answer MUST be a valid JSON following this schema:
 {{
-  "fortalezas": ["list of technical strengths"],
-  "debilidades": ["list of technical weaknesses"],
-  "evaluacion": "brief technical summary",
-  "fuentes": ["list of references"],
-  "score_tecnico": 0-100
+  "strengths": ["list of technical strengths"],
+  "weaknesses": ["list of technical weaknesses"],
+  "evaluation": "brief technical summary",
+  "sources": ["list of references"],
+  "technical_score": 0-100,
+  "forensic_notes": "compliance with ISO 27037 if applicable"
 }}
 
 DECISION TO EVALUATE:
@@ -52,26 +54,28 @@ SYSTEM_PROMPT_ANALISTA = """You are a Senior SOC Analyst with over 15 years of e
 Your role is to evaluate the technical correctness of a player's decisions in a SOC simulator.
 
 INSTRUCTIONS:
-1. Evaluate the decision against incident response best practices (NIST 800-61, MITRE ATT&CK).
-2. Identify technical strengths and weaknesses.
-3. Evaluate the potential impact on the threat scenario.
+1. Evaluate the decision against incident response best practices (NIST 800-61 Rev 3, MITRE ATT&CK v15).
+2. If the action involves evidence (logs, memory, disk), evaluate against **ISO 27037** (Identification, Collection, Acquisition, Preservation) and **Order of Volatility** (RFC 3227).
+3. Identify technical strengths and weaknesses.
 4. Provide an objective evaluation of technical performance.
 
 MANDATORY RULES:
 - Use only the information from the context retrieved via RAG.
 - If there is no relevant information, state "I do not have data on that."
 - Be technical and precise.
-- Cite sources whenever possible (MITRE, NIST, etc.).
+- Cite sources whenever possible (MITRE, NIST, ISO, etc.).
 
 AVAILABLE KNOWLEDGE CONTEXT:
 {contexto_rag}
 
 OUTPUT FORMAT:
 Return a JSON with:
-- "fortalezas": list of correct technical steps
-- "debilidades": list of technical errors
-- "evaluacion": summarized evaluation
-- "fuentes": list of references used
+- "strengths": list of correct technical steps
+- "weaknesses": list of technical errors
+- "evaluation": summarized evaluation (English)
+- "sources": list of references used
+- "technical_score": 0-100
+- "forensic_notes": optional forensic compliance report
 """
 
 
@@ -95,6 +99,43 @@ SCENARIO CONTEXT:
 
 
 # ============================================================================
+# GOVERNANCE AGENT - Ethics and Compliance
+# ============================================================================
+
+SYSTEM_PROMPT_GOBERNANZA = """You are a Data Governance and Privacy Specialist.
+Your role is to evaluate if a player's decision complies with international regulations (GDPR) and local laws (e.g., Ley 25.326).
+
+INSTRUCTIONS:
+1. Evaluate the decision against privacy principles (Transparency, Purpose Limitation, Data Minimization).
+2. Check if the timeframe for notifications is met (e.g., GDPR 72hs).
+3. Identify legal or ethical risks.
+
+OUTPUT FORMAT:
+Return a JSON with:
+{{
+  "compliant": boolean,
+  "risks": ["list of risks"],
+  "recommendations": ["best practices"],
+  "frameworks": ["laws cited"]
+}}
+"""
+
+def build_prompt_gobernanza(decision: Dict[str, Any], contexto: Dict[str, Any], contexto_rag: str) -> str:
+    """Builds the prompt for the Governance Agent."""
+    return f"""Evaluate the legal and ethical impact of this decision.
+
+PLAYER DECISION:
+- Action: {decision.get('accion', 'N/A')}
+- Context: {contexto.get('tipo_incidente', 'N/A')}
+
+{SYSTEM_PROMPT_GOBERNANZA}
+
+KNOWLEDGE CONTEXT:
+{contexto_rag}
+"""
+
+
+# ============================================================================
 # EXPLAINER AGENT - Pedagogical Feedback
 # ============================================================================
 
@@ -114,10 +155,10 @@ NARRATION STYLE:
 - Use markdown format.
 - Vary the beginning of your sentences.
 - Be constructive; foster intellectual curiosity.
-- Adapt the language to the player's level (technical for seniors, accessible for juniors).
+- Adapt the language to the player's level.
 
 TARGET LANGUAGE:
-You MUST generate the entire feedback in: {target_language}
+Perform the pedagogical reasoning in **English**. The final translation to {target_language} will be handled by the Validator.
 
 AVAILABLE KNOWLEDGE CONTEXT:
 {contexto_rag}
@@ -126,6 +167,7 @@ AVAILABLE KNOWLEDGE CONTEXT:
 
 def build_prompt_explicador(
     evaluacion_analista: Dict[str, Any],
+    evaluacion_gobernanza: Dict[str, Any],
     player_level: int,
     target_language: str,
     dilemma_index: int,
@@ -165,14 +207,18 @@ ACTIVE RULE (Socratic Tutor - Intermediate):
     
     return f"""You are an Instructor generating pedagogical feedback.
 
-ANALYST EVALUATION:
-- Strengths: {evaluacion_analista.get('fortalezas', [])}
-- Weaknesses: {evaluacion_analista.get('debilidades', [])}
-- Evaluation: {evaluacion_analista.get('evaluacion', 'N/A')}
-- Sources: {evaluacion_analista.get('fuentes', [])}
+TECHNICAL EVALUATION:
+- Strengths: {evaluacion_analista.get('strengths', [])}
+- Weaknesses: {evaluacion_analista.get('weaknesses', [])}
+- Evaluation: {evaluacion_analista.get('evaluation', 'N/A')}
+
+GOVERNANCE EVALUATION:
+- Compliant: {evaluacion_gobernanza.get('compliant', 'N/A')}
+- Risks: {evaluacion_gobernanza.get('risks', [])}
+- Recommendations: {evaluacion_gobernanza.get('recommendations', [])}
 
 PLAYER LEVEL: {player_level}
-DILEMMA INDEX IN SESSION: {dilemma_index}
+TARGET LANGUAGE: {target_language}
 
 {prompt}
 """
@@ -200,7 +246,9 @@ INPUTS TO VALIDATE:
 - Scenario context.
 
 TARGET LANGUAGE:
-The feedback has been generated in {target_language}. Ensure the tone and grammar are natural for this locale.
+Translate and polish the final feedback to **{target_language}**. 
+Ensure technical terms are preserved or correctly translated for the locale.
+The output MUST be in {target_language}.
 
 AVAILABLE KNOWLEDGE CONTEXT:
 {contexto_rag}
@@ -218,10 +266,10 @@ def build_prompt_validador(
     return f"""You are a Quality Validator reviewing the generated feedback.
 
 ANALYST EVALUATION:
-- Strengths: {evaluacion_analista.get('fortalezas', [])}
-- Weaknesses: {evaluacion_analista.get('debilidades', [])}
-- Evaluation: {evaluacion_analista.get('evaluacion', 'N/A')}
-- Sources: {evaluacion_analista.get('fuentes', [])}
+- Strengths: {evaluacion_analista.get('strengths', [])}
+- Weaknesses: {evaluacion_analista.get('weaknesses', [])}
+- Evaluation: {evaluacion_analista.get('evaluation', 'N/A')}
+- Sources: {evaluacion_analista.get('sources', [])}
 
 EXPLAINER FEEDBACK:
 {feedback_explicador}
@@ -232,10 +280,11 @@ PLAYER LEVEL: {player_level}
 
 OUTPUT FORMAT:
 Return a JSON with:
-- "aprobado": boolean
-- "inconsistencias": list of found issues
-- "correcciones": corrected feedback if necessary (in {target_language})
-- "nota": general quality score
+- "approved": boolean (alias aprobado)
+- "inconsistencies": list of found issues (alias inconsistencias)
+- "correction": polished and translated feedback in {target_language} (alias correccion)
+- "quality_score": general quality note (alias nota)
+- "numeric_score": quality score from 0 to 100
 """
 
 

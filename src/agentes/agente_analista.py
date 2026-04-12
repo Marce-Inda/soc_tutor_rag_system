@@ -111,12 +111,14 @@ class AgenteAnalista:
         tracer.add_step("Analyst_Reasoning_Chain", {"chain": reasoning_chain})
 
         return EvaluacionTecnica(
-            fortalezas=result_json.get("fortalezas", []),
-            debilidades=result_json.get("debilidades", []),
-            evaluacion=result_json.get("evaluacion", "Evaluation completed via English reasoning loop"),
-            fuentes=rag_result["fuentes"] + result_json.get("fuentes", []),
-            score_tecnico=result_json.get("score_tecnico", 70)
+            strengths=result_json.get("strengths", []),
+            weaknesses=result_json.get("weaknesses", []),
+            evaluation=result_json.get("evaluation", "Evaluation completed via English reasoning loop"),
+            sources=rag_result["sources"] + result_json.get("sources", []),
+            technical_score=result_json.get("technical_score", 70),
+            forensic_notes=result_json.get("forensic_notes")
         )
+
 
     def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str) -> EvaluacionTecnica:
         """Simple fallback without tools, using English prompts."""
@@ -128,9 +130,9 @@ class AgenteAnalista:
         result = self.llm.generate_json(prompt)
         
         return EvaluacionTecnica(
-            fortalezas=result.get("fortalezas", []),
-            debilidades=result.get("debilidades", []),
-            evaluacion=result.get("evaluacion", "Direct evaluation"),
-            fuentes=result.get("fuentes", []),
-            score_tecnico=result.get("score_tecnico", 50)
+            strengths=result.get("strengths", []),
+            weaknesses=result.get("weaknesses", []),
+            evaluation=result.get("evaluation", "Direct evaluation"),
+            sources=result.get("sources", []),
+            technical_score=result.get("technical_score", 50)
         )

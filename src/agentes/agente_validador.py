@@ -49,25 +49,27 @@ class AgenteValidador:
                 prompt=prompt
             )
             
-            aprobado = result.get("aprobado", True)
-            inconsistencias = result.get("inconsistencias", [])
-            nota = result.get("nota", "Validation completed")
+            approved = result.get("approved", result.get("aprobado", True))
+            inconsistencies = result.get("inconsistencies", result.get("inconsistencias", []))
+            quality_score = result.get("quality_score", result.get("nota", "Validation completed"))
             
             return ValidacionCalidad(
-                aprobado=aprobado,
-                inconsistencias=inconsistencias,
-                correccion=result.get("correcciones") if not aprobado else None,
-                nota=nota
+                approved=approved,
+                inconsistencies=inconsistencies,
+                correction=result.get("correction", result.get("correccion")),
+                quality_score=quality_score
             )
+
             
         except Exception as e:
             print(f"  [Validator] Error: {e}")
             # Fallback: Accept with warning if LLM fails
             return ValidacionCalidad(
-                aprobado=True,
-                inconsistencias=["LLM Validation failed - manually audit required"],
-                nota="Accepted by default after error"
+                approved=True,
+                inconsistencies=["LLM Validation failed - manually audit required"],
+                quality_score="Accepted by default after error"
             )
+
     
     def _build_prompt(
         self,
@@ -81,7 +83,7 @@ class AgenteValidador:
         
         return build_prompt_validador(
             evaluacion_analista=evaluacion.model_dump(),
-            feedback_explicador=f"Evaluation: {feedback.evaluacion}\nExplanation: {feedback.explicacion}\nBest Practice: {feedback.mejor_practica}",
+            feedback_explicador=f"Analysis: {feedback.analysis}\nExplanation: {feedback.explanation}\nBest Practice: {feedback.best_practice}",
             player_level=profile.level,
             target_language=profile.language,
             contexto_rag=contexto_rag

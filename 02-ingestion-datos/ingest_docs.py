@@ -108,10 +108,19 @@ class DocumentProcessor:
         return chunks
     
     def process_all(self):
-        """Procesa todos los documentos, priorizando las fuentes en inglés."""
+        """Procesa todos los documentos, priorizando las fuentes globales y en inglés."""
         all_chunks = []
         
-        # 1. Procesar fuentes en inglés (Fase 2)
+        # 1. Procesar nuevas fuentes Globales (Estructura mejorada)
+        global_categories = ["frameworks", "forensics", "compliance", "techniques"]
+        for cat in global_categories:
+            cat_dir = DOCS_DIR / cat
+            if cat_dir.exists():
+                print(f"Buscando fuentes globales en: {cat_dir}")
+                for md_file in cat_dir.glob("*.md"):
+                    all_chunks.extend(self.process_markdown(md_file, f"{cat.upper()} (Global)"))
+
+        # 2. Procesar fuentes en inglés (Fase 2 Legacy structure)
         target_docs_en = DOCS_DIR / "en"
         if target_docs_en.exists():
             print(f"Buscando fuentes oficiales en: {target_docs_en}")
@@ -123,10 +132,13 @@ class DocumentProcessor:
             
             # Otros archivos MD en 'en/'
             for md_file in target_docs_en.glob("**/*.md"):
+                # Evitar procesar dos veces si ya se procesó en las categorías globales
+                if any(cat in str(md_file) for cat in global_categories):
+                    continue
                 source_name = md_file.parent.name.upper()
                 all_chunks.extend(self.process_markdown(md_file, f"{source_name} (EN)"))
 
-        # 2. Mantener compatibilidad con fuentes originales (ES/Legacy)
+        # 3. Mantener compatibilidad con fuentes originales (ES/Legacy)
         # MITRE
         mitre_legacy = DOCS_DIR / "mitre" / "enterprise-attack.json"
         if mitre_legacy.exists() and not (target_docs_en / "mitre").exists():
