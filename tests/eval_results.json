@@ -1,0 +1,221 @@
+{
+  "rag": {
+    "retrieval_success_rate": 1.0,
+    "scenario_relevance_rate": 1.0,
+    "avg_latency_ms": 960.7,
+    "avg_docs_per_query": 5.0,
+    "details": [
+      {
+        "id": "eval-001",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 18279,
+        "latency_ms": 6456.0
+      },
+      {
+        "id": "eval-002",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 27585,
+        "latency_ms": 30.1
+      },
+      {
+        "id": "eval-003",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 33520,
+        "latency_ms": 70.5
+      },
+      {
+        "id": "eval-004",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 44393,
+        "latency_ms": 104.4
+      },
+      {
+        "id": "eval-005",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 37801,
+        "latency_ms": 19.1
+      },
+      {
+        "id": "eval-006",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 27525,
+        "latency_ms": 23.1
+      },
+      {
+        "id": "eval-007",
+        "has_docs": true,
+        "num_docs": 5,
+        "source_match": true,
+        "scenario_match": true,
+        "context_length": 12878,
+        "latency_ms": 22.0
+      }
+    ]
+  },
+  "guardrails": {
+    "true_positive_rate": 1.0,
+    "true_negative_rate": 1.0,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0,
+    "accuracy": 1.0,
+    "tp": 6,
+    "tn": 4,
+    "fp": 0,
+    "fn": 0
+  },
+  "validador": {
+    "accuracy": 1.0,
+    "correct": 4,
+    "total": 4
+  },
+  "fallback": {
+    "all_keys_covered": true,
+    "type_safety": true,
+    "fallback_json_preview": {
+      "evaluacion": "str",
+      "score_tecnico": "int",
+      "fortalezas": "list",
+      "debilidades": "list",
+      "fuentes": "list",
+      "explicacion": "str",
+      "mejor_practica": "str",
+      "aprobado": "bool",
+      "inconsistencias": "list",
+      "nota": "str"
+    },
+    "details": {
+      "Analista (EvaluacionTecnica)": {
+        "passed": true,
+        "missing": []
+      },
+      "Explicador (FeedbackPedagogico)": {
+        "passed": true,
+        "missing": []
+      },
+      "Validador (ValidacionCalidad)": {
+        "passed": true,
+        "missing": []
+      }
+    }
+  },
+  "concepts": {
+    "avg_concept_precision": 0.393,
+    "details": [
+      {
+        "id": "eval-001",
+        "expected": [
+          "contención",
+          "firewall",
+          "IOC",
+          "bloqueo"
+        ],
+        "found": [],
+        "precision": 0.0
+      },
+      {
+        "id": "eval-002",
+        "expected": [
+          "aislar",
+          "impacto",
+          "crítico",
+          "ransomware"
+        ],
+        "found": [
+          "ransomware"
+        ],
+        "precision": 0.25
+      },
+      {
+        "id": "eval-003",
+        "expected": [
+          "cadena de custodia",
+          "preservación",
+          "evidencia",
+          "forense"
+        ],
+        "found": [
+          "evidencia",
+          "forense"
+        ],
+        "precision": 0.5
+      },
+      {
+        "id": "eval-004",
+        "expected": [
+          "segmentación",
+          "lateral",
+          "contención",
+          "APT"
+        ],
+        "found": [
+          "lateral",
+          "APT"
+        ],
+        "precision": 0.5
+      },
+      {
+        "id": "eval-005",
+        "expected": [
+          "notificación",
+          "datos",
+          "regulación",
+          "breach"
+        ],
+        "found": [
+          "notificación",
+          "datos"
+        ],
+        "precision": 0.5
+      },
+      {
+        "id": "eval-006",
+        "expected": [
+          "preservar",
+          "evidencia",
+          "error",
+          "logs"
+        ],
+        "found": [
+          "evidencia",
+          "error",
+          "logs"
+        ],
+        "precision": 0.75
+      },
+      {
+        "id": "eval-007",
+        "expected": [
+          "MFA",
+          "credenciales",
+          "autenticación",
+          "erradicación"
+        ],
+        "found": [
+          "MFA"
+        ],
+        "precision": 0.25
+      }
+    ]
+  },
+  "num_cases": 7,
+  "total_docs_in_index": 56,
+  "unique_scenarios": 7
+}

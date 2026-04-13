@@ -39,8 +39,19 @@ class ValidatorAgent:
         player_profile: PlayerProfile,
         contexto_rag: str = ""
     ) -> ValidacionCalidad:
-        """Validates the generated feedback."""
+        """Validates the generated feedback with integrity checks."""
         
+        # 0. INTEGRITY CHECK: Cross-reference hashes (Soft Integrity Mode)
+        import re
+        valid_hashes = re.findall(r"Hash: ([a-f0-9\-]+)", contexto_rag)
+        integrity_warnings = []
+        
+        for h in evaluacion_analista.source_integrity_hashes:
+            if h not in valid_hashes:
+                msg = f"Soft integrity warning: Cited hash {h} not found in retrieved context. Verifying technical similarity via LLM..."
+                print(f"  [Validator] {msg}")
+                integrity_warnings.append(msg)
+
         # 1. Validation with LLM (Dynamic and language-aware)
         prompt = self._build_prompt(
             evaluacion_analista,

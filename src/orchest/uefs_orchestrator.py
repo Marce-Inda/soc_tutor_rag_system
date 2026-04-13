@@ -103,6 +103,10 @@ class UEFSOrchestrator:
             if turns >= self.MAX_TURNS_PER_SESSION:
                  return self._get_safe_block_response("Session turn limit reached. Please start a new simulation.")
 
+            # Check Cost limits
+            if self.current_session_cost >= self.MAX_COST_PER_SESSION:
+                 return self._get_safe_block_response("API Budget exceeded for this session. Please contact support.")
+
             is_safe, error_msg = self.guard.validate_input(decision)
             if not is_safe:
                 tracer.end_trace({"error": error_msg}, status="blocked")
@@ -124,10 +128,12 @@ class UEFSOrchestrator:
             k=5
         )
         
-        # 4. DUO DE ANALISTAS (Técnico + Gobernanza)
+        # 4. ANALYST DUO (Technical + Governance)
         print(f" [Orchestrator] Running parallel evaluations...")
         evaluacion_analista = self.analyst_agent.evaluar(decision, contexto)
+        self.current_session_cost += self.llm.last_usage["cost"]
         evaluacion_gobernanza = self.governance_agent.evaluar(decision, contexto)
+        self.current_session_cost += self.llm.last_usage["cost"]
         
         # 5. GENERACIÓN Y VALIDACIÓN (Manager of Drafts Loop)
         max_retries = 1
@@ -145,6 +151,7 @@ class UEFSOrchestrator:
                 player_profile=player_profile,
                 contexto_rag=rag_result["contexto_rag"]
             )
+            self.current_session_cost += self.llm.last_usage["cost"]
             
             # El Validador traduce y pule
 
@@ -154,6 +161,7 @@ class UEFSOrchestrator:
                 player_profile=player_profile,
                 contexto_rag=rag_result["contexto_rag"]
             )
+            self.current_session_cost += self.llm.last_usage["cost"]
 
             
             if validacion.approved or validacion.numeric_score >= 70:
@@ -177,7 +185,7 @@ class UEFSOrchestrator:
             evaluacion_gobernanza=evaluacion_gobernanza,
             evaluacion_6d=validacion.evaluacion_6d,
             validacion=validacion,
-            costo_estimado=0.0008,
+            costo_estimado=self.current_session_cost,
             persona_role=validacion.persona_role or "Senior Analyst"
         )
 
@@ -210,7 +218,13 @@ class UEFSOrchestrator:
             explicacion="The system detected an entry or output that does not comply with security policies.",
             mejor_practica="Ensure your actions are technically focused on incident response.",
             fuentes_citadas=[],
-            evaluacion_tecnica=EvaluacionTecnica(strengths=[], weaknesses=[], evaluation="Blocked", sources=[], technical_score=0),
+            evaluacion_tecnica=EvaluacionTecnica(
+                analysis="Blocked by security filters",
+                explanation="Input does not comply with system safety requirements.",
+                best_practice="Ensure your actions are technically focused on incident response.",
+                sources=[],
+                technical_score=0
+            ),
             evaluacion_gobernanza=EvaluacionGobernanza(compliant=False, risks=["Security Block"], recommendations=[], frameworks=[], strategic_score=0, ethical_score=0),
             validacion=ValidacionCalidad(approved=False, inconsistencies=["Security Violation"], quality_score="High Risk", numeric_score=0),
             costo_estimado=0.0001,

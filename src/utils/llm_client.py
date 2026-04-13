@@ -10,6 +10,7 @@ import os
 import json
 from typing import Optional, Dict, Any
 from pathlib import Path
+from .token_counter import TokenCounter
 
 # Intentamos importar LangChain. LangChain es una librería externa súper útil que 
 # funciona como un intermediario o adaptador estandarizado para comunicarse con cualquier IA.
@@ -46,6 +47,8 @@ class LLMClient:
         self.model = model
         self.temperature = temperature
         self._client = None
+        self._backup_client = None
+        self.last_usage = {"input_tokens": 0, "output_tokens": 0, "cost": 0.0}
     
     def _init_client(self):
         """
@@ -113,7 +116,42 @@ class LLMClient:
         
         # Hacemos la consulta por internet a la IA y obtenemos la respuesta (.invoke)
         # Usamos el contenedor con retry para soportar backoff si ocurre un error 429
-        return self._generate_with_retry(messages)
+        try:
+            response_text = self._generate_with_retry(messages)
+        except Exception as e:
+            # REDUNDANZA: Si falla el principal, intentamos con el backup (Groq)
+            if self.provider == "gemini" and os.getenv("GROQ_API_KEY"):
+                print(f"  [LLMClient] Primary provider (Gemini) failed: {e}. Falling back to Groq...")
+                # Inicializar backup si no existe
+                if not self._backup_client:
+                    self._backup_client = ChatGroq(
+                        model="llama-3.3-70b-versatile",
+                        temperature=self.temperature,
+                        groq_api_key=os.getenv("GROQ_API_KEY"),
+                        timeout=15.0
+                    )
+                response = self._backup_client.invoke(messages)
+                response_text = response.content
+                # Update current provider for usage tracking
+                current_provider = "groq"
+            else:
+                raise e
+        else:
+            current_provider = self.provider
+
+        # Track Tokens
+        input_text = " ".join([msg[1] for msg in messages])
+        in_tokens = TokenCounter.count_tokens(input_text)
+        out_tokens = TokenCounter.count_tokens(response_text)
+        cost = TokenCounter.estimate_cost(in_tokens, out_tokens, current_provider)
+        
+        self.last_usage = {
+            "input_tokens": in_tokens,
+            "output_tokens": out_tokens,
+            "cost": cost
+        }
+        
+        return response_text
     
     def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
         """

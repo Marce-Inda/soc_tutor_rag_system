@@ -232,6 +232,7 @@ class RAGClient:
             
         for i in range(len(results['documents'][0])):
             retrieved.append({
+                'id': results['ids'][0][i],
                 'text': results['documents'][0][i],
                 'source': results['metadatas'][0][i]['source'],
                 'type': results['metadatas'][0][i].get('type', 'unknown'),
@@ -241,12 +242,20 @@ class RAGClient:
         return retrieved
 
     def _translate_query(self, query: str) -> str:
-        """Traduce una consulta técnica al inglés para mejorar el 'match' en el RAG."""
+        """Traduce una consulta técnica al inglés para mejorar el 'match' en el RAG protegiendo contexto."""
         if not self.llm_client:
             return query
             
         system_prompt = "You are a specialized translator for cybersecurity technical terms."
-        prompt = f"Translate the following technical incident response query to English. Keep technical IDs (IPs, MITRE) as they are. Return ONLY the translation:\n\n{query}"
+        prompt = f"""Translate the following technical incident response query to English to optimize RAG retrieval.
+MANDATORY RULES:
+1. Preserve technical IDs (IPs, MITRE ATT&CK IDs, CVEs, Hashes) exactly as they are.
+2. PROTECT proper names and official entity names (e.g., "AEPD", "Policía Federal", "Plan Nacional de Ciberseguridad") - DO NOT translate them.
+3. Translate the pedagogical and technical intent accurately.
+
+QUERY: "{query}"
+
+Return ONLY the translation:"""
         
         try:
             translation = self.llm_client.generate(prompt, system_prompt=system_prompt)
@@ -321,7 +330,8 @@ class RAGClient:
         context_parts = []
         for i, d in enumerate(docs):
             prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
-            context_parts.append(f"{prefix} ({d['source']}): {d['text']}")
+            doc_id = d.get('id', 'no-id')[:8]
+            context_parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {d['text']}")
             
         contexto_rag = "\n\n".join(context_parts)
         fuentes = list(set([d['source'] for d in docs]))
@@ -329,7 +339,7 @@ class RAGClient:
         return {
             'contexto_rag': contexto_rag,
             'documentos_recuperados': docs,
-            'fuentes': fuentes
+            'sources': fuentes
         }
     
     def count_documents(self) -> int:

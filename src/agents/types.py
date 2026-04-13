@@ -68,6 +68,7 @@ class EvaluacionTecnica(BaseModel):
     technical_score: int = Field(..., description="Calculated technical score (0-100)")
     resilience_score: int = Field(default=0, description="Resilience and preservation score (ISO 27037)")
     forensic_notes: Optional[str] = Field(None, description="Forensic compliance notes")
+    source_integrity_hashes: List[str] = Field(default_factory=list, description="Unique hashes of RAG sources used")
 
 
     class Config:

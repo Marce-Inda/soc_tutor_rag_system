@@ -123,7 +123,8 @@ class AnalystAgent:
             sources=rag_result["sources"] + result_json.get("sources", []),
             technical_score=result_json.get("technical_score", 70),
             resilience_score=result_json.get("resilience_score", result_json.get("technical_score", 70)),
-            forensic_notes=result_json.get("forensic_notes")
+            forensic_notes=result_json.get("forensic_notes"),
+            source_integrity_hashes=result_json.get("source_integrity_hashes", [])
         )
 
 

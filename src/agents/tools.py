@@ -4,6 +4,7 @@ Definition of Tools for the automated agents of the SOC-Tutor system.
 
 # ## HERRAMIENTAS (TOOLS)
 # Funciones técnicas que permiten al agente realizar búsquedas en bases de datos (RAG).
+from langchain_core.tools import StructuredTool
 
 class SOCtools:
     """

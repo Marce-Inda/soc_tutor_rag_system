@@ -8,13 +8,11 @@ Agents:
 4. Governance - Legal and ethical compliance
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 
 # ## CAPA DE DEFENSA COMPARTIDA (SOC-Guard)
 # Protocolos de seguridad obligatorios para prevenir Inyecciones de Prompts.
-
-
 
 SYSTEM_PROMPT_DEFENSE = """
 DEFENSE PROTOCOL [MANDATORY]:
@@ -28,8 +26,7 @@ DEFENSE PROTOCOL [MANDATORY]:
 # ## AGENTE ANALISTA - Evaluación Técnica (ReAct)
 # Este agente realiza el razonamiento técnico profundo usando herramientas.
 
-
-
+# DEFINICIÓN DEL PROMPT RE-ACT
 REACT_PROMPT_ANALISTA = """You are a Senior SOC Analyst with the ability to use research tools.
 Your goal is to technically evaluate a player's decision.
 
@@ -47,16 +44,15 @@ Thought: I now have enough information.
 Final Answer: The final JSON with the evaluation.
 
 REMEMBER: The final answer MUST be a valid JSON following this schema:
-{
+{{
   "analysis": "Evaluation reasoning in English",
   "explanation": "Brief explanation in English",
   "best_practice": "Technical recommendation in English",
-  "cited_sources": ["list of references"],
+  "sources": ["list of references"],
   "technical_score": 0-100,
   "resilience_score": 0-100,
   "forensic_notes": "compliance with ISO 27037 if applicable"
-}
-
+}}
 
 DECISION TO EVALUATE:
 - Action: {accion}
@@ -64,10 +60,10 @@ DECISION TO EVALUATE:
 - Context: {tipo_incidente} in {fase} phase
 
 INITIAL RAG KNOWLEDGE:
-{contexto_rag}
-"""
+{{contexto_rag}}
 
-{SYSTEM_PROMPT_DEFENSE}
+""" + SYSTEM_PROMPT_DEFENSE
+
 
 SYSTEM_PROMPT_ANALISTA = """You are a Senior SOC Analyst with over 15 years of experience in incident response.
 Your role is to evaluate the technical correctness of a player's decisions in a SOC simulator.
@@ -85,45 +81,38 @@ MANDATORY RULES:
 - Cite sources whenever possible (MITRE, NIST, ISO, etc.).
 
 AVAILABLE KNOWLEDGE CONTEXT:
-{contexto_rag}
+{{contexto_rag}}
 
 OUTPUT FORMAT:
-Return a JSON with:
-- "strengths": list of correct technical steps
-- "weaknesses": list of technical errors
-- "evaluation": summarized evaluation (English)
-- "sources": list of references used
-- "technical_score": 0-100
-- "forensic_notes": optional forensic compliance report
-"""
+Return a JSON with matching fields.
+""" + SYSTEM_PROMPT_DEFENSE
 
 
-def build_prompt_analista(decision: Dict[str, Any], contexto: Dict[str, Any], contexto_rag: str) -> str:
+def _get_val(obj: Union[Dict, Any], key: str, default: Any = "N/A") -> Any:
+    """Helper to get value from either a Dict or a Pydantic object."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+def build_prompt_analista(decision: Any, contexto: Any, contexto_rag: str) -> str:
     """Builds the prompt for the Analyst Agent."""
-
-
     return f"""You are a Senior SOC Analyst evaluating a technical decision.
 
 PLAYER DECISION:
-- Action: {decision.get('accion', 'N/A')}
-- IP/Affected System: {decision.get('target', 'N/A')}
-- Timestamp: {decision.get('timestamp', 'N/A')}
+- Action: [USER_DATA] {_get_val(decision, 'accion')} [/USER_DATA]
+- IP/Affected System: {_get_val(decision, 'target')}
+- Timestamp: {_get_val(decision, 'timestamp')}
 
 SCENARIO CONTEXT:
-- Incident Type: {contexto.get('tipo_incidente', 'N/A')}
-- Current Phase: {contexto.get('fase', 'N/A')}
-- Affected Systems: {contexto.get('sistemas_afectados', [])}
-- Previous Score: {contexto.get('score', 'N/A')}
+- Incident Type: {_get_val(contexto, 'tipo_incidente')}
+- Current Phase: {_get_val(contexto, 'fase')}
+- Affected Systems: {_get_val(contexto, 'sistemas_afectados', [])}
 
-{SYSTEM_PROMPT_ANALISTA.format(contexto_rag=contexto_rag)}
+{SYSTEM_PROMPT_ANALISTA.replace('{{contexto_rag}}', contexto_rag)}
 """
 
 
 # ## AGENTE DE GOBERNANZA - Ética y Cumplimiento
-# Evalúa el impacto legal (GDPR) y los riesgos éticos de la decisión.
-
-
-{SYSTEM_PROMPT_DEFENSE}
 
 SYSTEM_PROMPT_GOBERNANZA = """You are a Data Governance and Privacy Specialist.
 Your role is to evaluate if a player's decision complies with international regulations (GDPR) and local laws (e.g., Ley 25.326).
@@ -143,16 +132,15 @@ Return a JSON with:
   "strategic_score": 0-100,
   "ethical_score": 0-100
 }}
+""" + SYSTEM_PROMPT_DEFENSE
 
-"""
-
-def build_prompt_gobernanza(decision: Dict[str, Any], contexto: Dict[str, Any], contexto_rag: str) -> str:
+def build_prompt_gobernanza(decision: Any, contexto: Any, contexto_rag: str) -> str:
     """Builds the prompt for the Governance Agent."""
     return f"""Evaluate the legal and ethical impact of this decision.
 
 PLAYER DECISION:
-- Action: {decision.get('accion', 'N/A')}
-- Context: {contexto.get('tipo_incidente', 'N/A')}
+- Action: [USER_DATA] {_get_val(decision, 'accion')} [/USER_DATA]
+- Context: {_get_val(contexto, 'tipo_incidente')}
 
 {SYSTEM_PROMPT_GOBERNANZA}
 
@@ -162,10 +150,6 @@ KNOWLEDGE CONTEXT:
 
 
 # ## AGENTE EXPLICADOR - Feedback Pedagógico
-# Traduce la evaluación técnica en un reporte narrativo adaptado al nivel del jugador.
-
-
-{SYSTEM_PROMPT_DEFENSE}
 
 SYSTEM_PROMPT_EXPLICADOR = """You are an expert Cyber-Incident Storyteller.
 Your role is to narrate the outcome of a decision as if it were a real mission report.
@@ -184,168 +168,115 @@ NARRATION PERSONA BY LEVEL:
 NARRATION STYLE:
 - Use markdown format.
 - Adopt the persona's voice throughout the text.
-- Be immersive; use terminology from the 6 Dimensions of the L4 Standard.
+- Be immersive.
 
 PEDAGOGICAL RULES ACCORDING TO PLAYER LEVEL:
-{reglas_pedagogicas}
-
-NARRATION STYLE:
-- Use markdown format.
-- Vary the beginning of your sentences.
-- Be constructive; foster intellectual curiosity.
-- Adapt the language to the player's level.
+{{reglas}}
 
 TARGET LANGUAGE:
-Perform the pedagogical reasoning in **English**. The final translation to {target_language} will be handled by the Validator.
+Perform the pedagogical reasoning in **English**. The final translation to {{target_language}} will be handled by the Validator.
 
 AVAILABLE KNOWLEDGE CONTEXT:
-{contexto_rag}
-"""
+{{contexto_rag}}
+""" + SYSTEM_PROMPT_DEFENSE
 
 
 def build_prompt_explicador(
-    evaluacion_analista: Dict[str, Any],
-    evaluacion_gobernanza: Dict[str, Any],
+    evaluacion_analista: Any,
+    evaluacion_gobernanza: Any,
     player_level: int,
     target_language: str,
-    dilemma_index: int,
     contexto_rag: str
 ) -> str:
     """Builds the prompt for the Explainer Agent."""
     
-    # Pedagogical rules by level
     if player_level <= 2:
-        reglas = """
-ACTIVE RULE (Friendly Tutor - Beginner):
-- It is FORBIDDEN to be condescending or destructive. The goal is to avoid frustration.
-- ALWAYS start by validating their intuition ("Good instinct", "It's very logical to think that...", "Good initiative").
-- Limit corrections to AT MOST 1 concept. Do not overwhelm them.
-- Use the sandwich technique (Success > Gentle Socratic question > Encouragement).
-"""
+        reglas = "Friendly Tutor - Beginner: Focus on encouragement and gentle socratic questions."
     elif player_level >= 5:
-        reglas = """
-ACTIVE RULE (CISO Auditor - Senior):
-- Be direct, analytical, and corporate. Eliminate empty compliments.
-- Focus the 'Best Practice' on business impact, regulatory fines, or PR crises.
-- Treat them colleague to colleague.
-"""
+        reglas = "CISO Auditor - Senior: Direct, analytical, and corporate tone."
     else:
-        reglas = """
-ACTIVE RULE (Socratic Tutor - Intermediate):
-- Use intermediate technical jargon.
-- Push their critical thinking to the limit using hypothetical questions if they fail ("What would have happened if you isolated the entire network while the payment gateway was operating?").
-- Balance positive and negative feedback objectively.
-"""
+        reglas = "Socratic Tutor - Intermediate: Balanced feedback and critical thinking questions."
 
-    prompt = SYSTEM_PROMPT_EXPLICADOR.format(
-        target_language=target_language,
-        contexto_rag=contexto_rag
-    )
+    prompt = SYSTEM_PROMPT_EXPLICADOR.replace('{{reglas}}', reglas).replace('{{target_language}}', target_language).replace('{{contexto_rag}}', contexto_rag)
     
-    # Select Persona based on level
-    if player_level <= 3:
-        persona = "Senior Analyst (Mentor)"
-        instructions = "Talk as a mentor. Use words like 'Buen instinto', 'Colega', 'Fíjate en esto'. Validate their effort."
-    else:
-        persona = "Incident Response Lead (Commander)"
-        instructions = "Talk as a commander. Use direct, professional tone. Focus on 'Cumplimiento', 'Continuidad', 'Responsabilidad Legal'."
+    persona = "Senior Analyst (Mentor)" if player_level <= 3 else "Incident Response Lead (Commander)"
 
     return f"""You are acting as: {persona}
-INSTRUCTIONS FOR THIS PERSONA: {instructions}
 
-TECHNICAL/RESILIENCE DATA:
-- Strengths: {evaluacion_analista.get('strengths', [])}
-- Weaknesses: {evaluacion_analista.get('weaknesses', [])}
-- Technical Score: {evaluacion_analista.get('technical_score', 0)}
-- Resilience Score: {evaluacion_analista.get('resilience_score', 0)}
+TECHNICAL DATA:
+- Strengths: {_get_val(evaluacion_analista, 'strengths', [])}
+- Weaknesses: {_get_val(evaluacion_analista, 'weaknesses', [])}
+- Technical Score: {_get_val(evaluacion_analista, 'technical_score', 0)}
 
-STRATEGIC/ETHICAL DATA:
-- Compliant: {evaluacion_gobernanza.get('compliant', 'N/A')}
-- Strategic Score: {evaluacion_gobernanza.get('strategic_score', 0)}
-- Ethical Score: {evaluacion_gobernanza.get('ethical_score', 0)}
-- Risks: {evaluacion_gobernanza.get('risks', [])}
-
-PLAYER LEVEL: {player_level} / 6
-TARGET LANGUAGE: {target_language}
+STRATEGIC DATA:
+- Compliant: {_get_val(evaluacion_gobernanza, 'compliant')}
+- Strategic Score: {_get_val(evaluacion_gobernanza, 'strategic_score', 0)}
 
 {prompt}
 """
 
 
-
 # ## AGENTE VALIDADOR - Verificación de Calidad y Traducción
-# Actúa como el 'Manager' del reporte final, puliendo el lenguaje y verificando la consistencia.
 
-
-{SYSTEM_PROMPT_DEFENSE}
-
-SYSTEM_PROMPT_VALIDADOR = """You are a Quality Validator ensuring that the generated feedback is:
-1. Technically correct and free of hallucinations.
-2. Consistent with the Analyst's evaluation.
-3. Appropriate for the player's level.
-4. Pedagogically effective.
+SYSTEM_PROMPT_VALIDADOR = """You are a Quality Validator ensuring that the generated feedback is technically correct, pedagogical and free of hallucinations.
 
 VALIDATION RULES:
 - Verify that the feedback does not contradict cybersecurity principles.
-- Detect potential biases or contradictory information.
-- Confirm it cites sources when necessary.
+- Cite sources when necessary.
 - Ensure the tone is constructive.
 
-INPUTS TO VALIDATE:
-- Technical evaluation from the Analyst Agent.
-- Pedagogical feedback from the Explainer Agent.
-- Scenario context.
-
 TARGET LANGUAGE:
-Translate and polish the final feedback to **{target_language}**. 
-Ensure technical terms are preserved or correctly translated for the locale.
-The output MUST be in {target_language}.
+Translate and polish the final feedback to **{{target_language}}**. 
+MANDATORY TRANSLATION RULES:
+1. Preserve technical IDs (IPs, MITRE IDs) exactly.
+2. PROTECT proper names of official entities (e.g., "AEPD", "GDPR", "NIST").
+3. Ensure professional tone in {{target_language}}.
 
 AVAILABLE KNOWLEDGE CONTEXT:
-{contexto_rag}
-"""
+{{contexto_rag}}
+""" + SYSTEM_PROMPT_DEFENSE
 
 
 def build_prompt_validador(
-    evaluacion_analista: Dict[str, Any],
+    evaluacion_analista: Any,
     feedback_explicador: str,
     player_level: int,
     target_language: str,
     contexto_rag: str
 ) -> str:
     """Builds the prompt for the Validator Agent."""
+    
+    prompt_base = SYSTEM_PROMPT_VALIDADOR.replace('{{target_language}}', target_language).replace('{{contexto_rag}}', contexto_rag)
+    
     return f"""You are a Quality Validator reviewing the generated feedback.
 
 ANALYST EVALUATION:
-- Strengths: {evaluacion_analista.get('strengths', [])}
-- Weaknesses: {evaluacion_analista.get('weaknesses', [])}
-- Evaluation: {evaluacion_analista.get('evaluation', 'N/A')}
-- Sources: {evaluacion_analista.get('sources', [])}
+- Evaluation: {_get_val(evaluacion_analista, 'analysis', 'Evaluation reasoning in English')}
+- Sources: {_get_val(evaluacion_analista, 'sources', [])}
 
 EXPLAINER FEEDBACK:
 {feedback_explicador}
 
-PLAYER LEVEL: {player_level}
-
-{SYSTEM_PROMPT_VALIDADOR.format(target_language=target_language, contexto_rag=contexto_rag)}
+{prompt_base}
 
 OUTPUT FORMAT:
 Return a JSON with:
-- "approved": boolean
-- "inconsistencies": list of found issues
-- "correction": polished and translated feedback
-- "quality_score": general quality note
-- "numeric_score": quality score from 0 to 100
-- "evaluacion_6d": {{
-    "technical": int,
-    "strategic": int,
-    "ethical": int,
-    "communicative": int,
-    "resilience": int,
-    "learning": int
-  }}
-- "persona_role": string (the persona used)
-
+{{
+  "approved": boolean,
+  "inconsistencies": ["list of found issues"],
+  "correction": "polished and translated feedback",
+  "quality_score": "general quality note",
+  "numeric_score": 0-100,
+  "evaluacion_6d": {{
+    "technical": 0-100,
+    "strategic": 0-100,
+    "ethical": 0-100,
+    "communicative": 0-100,
+    "resilience": 0-100,
+    "learning": 0-100
+  }},
+  "persona_role": "string"
+}}
 """
 
 
@@ -354,16 +285,8 @@ Return a JSON with:
 # ============================================================================
 
 PROMPT_RETRIEVAL = """You are a cybersecurity knowledge retrieval assistant.
-Your task is to retrieve relevant information to evaluate an incident response decision.
 
-Query about: {query}
-
+Search about: {query}
 Incident context: {tipo_incidente}
 Current phase: {fase}
-
-Retrieve information about:
-- Related MITRE ATT&CK techniques
-- NIST 800-61 best practices
-- OWASP Top 10 recommendations if applicable
-- Relevant response playbooks
 """

@@ -1,5 +1,7 @@
 # Environments
 .env
+.env.*
+!.env.example
 .venv/
 env/
 venv/
@@ -9,22 +11,37 @@ venv.bak/
 
 # Vector Databases and Data
 data/indices/
+data/sessions/
 tests/tmp_chroma/
 chroma_db/
 *.sqlite3
+*.db
 
-# Python Cache
+# Python Cache and Build
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
 
-# Logs
+# Logs and Traces
 logs/
 *.log
+src/orchest/traces/
+.tracer_cache/
 
-# IDEs
+# IDEs and OS
 .vscode/
 .idea/
 *.swp
+*.swo
 .DS_Store
+Thumbs.db
+
+# Documentation / Large binaries (optional, keeping as reminders)
+# *.pdf
+# *.docx

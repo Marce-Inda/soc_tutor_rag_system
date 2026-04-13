@@ -99,3 +99,10 @@ class SessionMemory:
             summary += f"[{i+1}] Acción ejecutada: '{accion}' -> aplicada directamente hacia: '{target}' \n"
             
         return summary
+
+    def get_session_turn_count(self, session_id: str) -> int:
+        """
+        Devuelve el número de turnos (decisiones) guardados en esta sesión.
+        """
+        data = self.load_session(session_id)
+        return len(data.get("steps", []))

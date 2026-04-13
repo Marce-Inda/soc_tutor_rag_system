@@ -79,7 +79,6 @@ class ExplainerAgent:
             evaluacion_gobernanza=evaluacion_gobernanza.model_dump(),
             player_level=profile.level,
             target_language=profile.language,
-            dilemma_index=profile.dilema_index_session,
             contexto_rag=contexto_rag
         )
     

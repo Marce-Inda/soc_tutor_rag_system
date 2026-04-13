@@ -26,19 +26,17 @@ class GovernanceAgent:
         """
         Performs the governance evaluation based on the decision and RAG context.
         """
-
-        tracer.start_trace("evaluacion_gobernanza")
         
         # 1. Recuperar contexto RAG específico para cumplimiento
-        query = f"Compliance and legal risks for {decision.get('accion')} in {contexto.get('tipo_incidente')}"
+        query = f"Compliance and legal risks for {decision.accion} in {contexto.tipo_incidente}"
         rag_res = self.rag.retrieve(query, k=3)
-        contexto_rag = "\n".join(rag_res.get("documentos_recuperados", []))
+        contexto_rag = "\n".join([d['text'] for d in rag_res])
         
         # 2. Construir prompt
         prompt = build_prompt_gobernanza(decision, contexto, contexto_rag)
         
         # 3. Llamar al LLM
-        response = self.llm.complete(prompt, json_mode=True)
+        response = self.llm.generate_json(prompt)
         
         # 4. Parsear resultado
         try:
@@ -55,5 +53,4 @@ class GovernanceAgent:
                 ethical_score=50
             )
             
-        tracer.end_trace({"cumplimiento": res.compliant})
         return res
