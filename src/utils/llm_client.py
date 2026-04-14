@@ -79,7 +79,7 @@ class LLMClient:
                 raise ValueError("La llave maestra (GROQ_API_KEY) no está configurada.")
             
             self._client = ChatGroq(
-                model=self.model or "llama-3-70b-versatile",
+                model=self.model or "llama-3.3-70b-versatile",
                 temperature=self.temperature,
                 groq_api_key=api_key,
                 timeout=15.0 # Timeout global de seguridad

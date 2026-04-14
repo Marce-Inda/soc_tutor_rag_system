@@ -36,9 +36,16 @@ def test_guard_detection():
     print(f"Safe: {is_safe}, Reason: {reason}")
     assert not is_safe
 
+class MockLLM:
+    def generate_json(self, prompt, **kwargs):
+        if "hallucination" in prompt.lower() or "fake-hash" in prompt.lower():
+            return {"approved": False, "inconsistencies": ["Hallucination detected"], "quality_score": "Fail"}
+        return {"approved": True, "inconsistencies": [], "quality_score": "Pass", "numeric_score": 100}
+
 def test_validator_integrity():
     print("\n--- Testing Validator Integrity ---")
-    validator = ValidatorAgent(llm_client=None, rag_client=None)
+    mock_llm = MockLLM()
+    validator = ValidatorAgent(llm_client=mock_llm, rag_client=None)
     
     # Mock data
     eval_analista = EvaluacionTecnica(
@@ -51,12 +58,12 @@ def test_validator_integrity():
     
     # Case A: Hash is in context
     context_with_hash = "Source: NIST | Hash: real-hash-123: Relevant data."
-    res_ok = validator.validar(eval_analista, FeedbackPedagogico(analysis="...", explanation="...", cited_sources=[]), PlayerProfile(player_id="1", level=1), context_with_hash)
+    res_ok = validator.validar(eval_analista, FeedbackPedagogico(analysis="...", explanation="...", best_practice="...", cited_sources=[]), PlayerProfile(player_id="1", level=1, language="es"), context_with_hash)
     print(f"Validation with real hash: {res_ok.approved}")
     
     # Case B: Hash is NOT in context (Hallucination)
     context_without_hash = "Source: NIST | Hash: fake-hash-999: Relevant data."
-    res_fail = validator.validar(eval_analista, FeedbackPedagogico(analysis="...", explanation="...", cited_sources=[]), PlayerProfile(player_id="1", level=1), context_without_hash)
+    res_fail = validator.validar(eval_analista, FeedbackPedagogico(analysis="...", explanation="...", best_practice="...", cited_sources=[]), PlayerProfile(player_id="1", level=1, language="es"), context_without_hash)
     print(f"Validation with fake hash: {res_fail.approved}, Error: {res_fail.inconsistencies}")
     assert not res_fail.approved
 

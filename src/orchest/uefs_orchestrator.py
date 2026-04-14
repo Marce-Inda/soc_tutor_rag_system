@@ -91,7 +91,7 @@ class UEFSOrchestrator:
             player_profile=player_profile.model_dump()
         )
         if cached_res:
-             tracer.add_step("HIT_EN_CACHE_SEMANTICO")
+             tracer.add_step("HIT_EN_CACHE_SEMANTICO", {"msg": "Result found in semantic cache"})
              res = FeedbackFinal(**cached_res)
              tracer.end_trace({"Proceso": "Caché"}, status="cache_hit")
              return res
@@ -122,11 +122,26 @@ class UEFSOrchestrator:
         if contexto.scenario_id:
             self.tools.set_scenario(contexto.scenario_id)
 
-        rag_result = self.rag.retrieve_with_context(
+        # Optimization: k=3 + content truncation to stay under Groq 12k TPM
+        raw_rag = self.rag.retrieve_with_context(
             decision=decision.model_dump(),
             contexto=contexto.model_dump(),
-            k=5
+            k=3
         )
+        
+        # 4. Truncate and rebuild context string
+        docs = raw_rag.get('documentos_recuperados', [])
+        context_parts = []
+        for i, d in enumerate(docs):
+            content = d.get('text', '')
+            if len(content) > 1500:
+                content = content[:1500] + "... [TRUNCATED]"
+            
+            prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
+            doc_id = d.get('id', 'no-id')[:8]
+            context_parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {content}")
+            
+        contexto_rag_str = "\n\n".join(context_parts)
         
         # 4. ANALYST DUO (Technical + Governance)
         print(f" [Orchestrator] Running parallel evaluations...")
@@ -149,28 +164,38 @@ class UEFSOrchestrator:
                 evaluacion_analista=evaluacion_analista,
                 evaluacion_gobernanza=evaluacion_gobernanza,
                 player_profile=player_profile,
-                contexto_rag=rag_result["contexto_rag"]
+                contexto_rag=contexto_rag_str
             )
             self.current_session_cost += self.llm.last_usage["cost"]
             
-            # El Validador traduce y pule
+            # El Validador traduce y pule (solo si está habilitado)
+            if self.enable_validation:
+                validacion = self.validator_agent.validar(
+                    evaluacion_analista=evaluacion_analista,
+                    feedback_explicador=feedback_explicador,
+                    player_profile=player_profile,
+                    contexto_rag=contexto_rag_str
+                )
+                self.current_session_cost += self.llm.last_usage["cost"]
 
-            validacion = self.validator_agent.validar(
-                evaluacion_analista=evaluacion_analista,
-                feedback_explicador=feedback_explicador,
-                player_profile=player_profile,
-                contexto_rag=rag_result["contexto_rag"]
-            )
-            self.current_session_cost += self.llm.last_usage["cost"]
-
-            
-            if validacion.approved or validacion.numeric_score >= 70:
-                print(f" [Orchestrator] Draft approved with score {validacion.numeric_score}")
+                if validacion.approved or validacion.numeric_score >= 70:
+                    print(f" [Orchestrator] Draft approved with score {validacion.numeric_score}")
+                    break
+                
+                print(f" [Orchestrator] Draft rejected (Score: {validacion.numeric_score}). Retrying...")
+                current_retry += 1
+                tracer.add_step(f"retry_draft_{current_retry}", {"inconsistencies": validacion.inconsistencies})
+            else:
+                # Si la validación está desactivada, el primer draft es el final
+                print(" [Orchestrator] Skipping validation as requested.")
+                # Creamos un objeto validacion vacío o básico para que no rompa el ensamblaje final
+                from src.agents.types import ValidacionCalidad
+                validacion = ValidacionCalidad(
+                    approved=True, 
+                    correction=feedback_explicador.analysis, # Usamos el texto del explainer como "corrección"
+                    numeric_score=100
+                )
                 break
-            
-            print(f" [Orchestrator] Draft rejected (Score: {validacion.numeric_score}). Retrying...")
-            current_retry += 1
-            tracer.add_step(f"retry_draft_{current_retry}", {"inconsistencies": validacion.inconsistencies})
 
         # 6. ENSAMBLAJE FINAL
         # Usamos la corrección del validador si existe, sino el feedback original
@@ -180,7 +205,7 @@ class UEFSOrchestrator:
             evaluacion=final_text,
             explicacion=feedback_explicador.explanation,
             mejor_practica=feedback_explicador.best_practice,
-            fuentes_citadas=rag_result["sources"] + feedback_explicador.cited_sources,
+            fuentes_citadas=raw_rag["sources"] + feedback_explicador.cited_sources,
             evaluacion_tecnica=evaluacion_analista,
             evaluacion_gobernanza=evaluacion_gobernanza,
             evaluacion_6d=validacion.evaluacion_6d,
