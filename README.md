@@ -15,11 +15,12 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 
 ## 🛠️ Core Technologies
 
--   **Models**: Google `gemini-2.0-flash` (via a unified LLMClient with support for Groq and Ollama).
+-   **Models**: Google `gemini-2.0-flash` (via a unified LLMClient with support for Groq as high-speed backbone).
 -   **Vector DB**: ChromaDB (local and embedded).
 -   **Embeddings**: `all-MiniLM-L6-v2` (100% local execution).
--   **Orchestration**: Deterministic sequential flow (Security Guard -> Memory -> RAG -> Analyst -> Explainer -> Validator).
--   **Frameworks**: LangChain, Pydantic, Tenacity (Resilience).
+-   **Orchestration**: Deterministic sequential flow (ReAct Analyst -> Explainer -> Validator).
+-   **Frontend**: Next.js 14, Tailwind CSS, Framer Motion (for visceral impact), Lucide Icons.
+-   **Infrastructure**: Decoupled architecture (Frontend on Vercel, Backend on HuggingFace Spaces).
 
 ## 📊 Knowledge Sources (RAG)
 
@@ -32,15 +33,18 @@ The system is founded on official and updated technical documentation:
 
 ```
 soc-tutor-rag-system/
-├── src/
-│   ├── agents/        # Agent logic (EN Prompts, Multilingual Output)
-│   ├── orchest/       # Orchestrator (Pipeline with Observability and Cache)
-│   ├── rag/           # Hybrid RAG (English-Targeted Search)
-│   └── utils/         # Semantic Cache, LLMClient, Glossary
+├── src/           # Python Backend (Multi-Agent System)
+│   ├── agents/    # Agent logic (EN Prompts, Multilingual Output)
+│   ├── orchest/   # Orchestrator (Pipeline with Observability and Cache)
+│   ├── rag/       # Hybrid RAG (English-Targeted Search)
+│   └── utils/     # Semantic Cache, LLMClient, Glossary
+├── frontend/      # Next.js 14 Application (SOC Workstation)
+│   ├── src/app/   # Workstation pages and layout
+│   └── components/# Tactical UI components
 ├── data/
 │   ├── docs/          # Official sources (EN/ES)
-│   └── sample_scenarios/ # Standalone scenarios (e.g., ar-fintech-idor)
-└── scripts/           # Ingestion and validation tools
+│   └── sample_scenarios/ # Standalone scenarios
+└── scripts/           # Ingestion and simulation tools
 ```
 
 ## 🚀 Installation and Standalone Usage
@@ -58,9 +62,14 @@ python 02-data-ingestion/ingest_docs.py
 python scripts/verify_mixed_context.py
 ```
 
-## 🧠 "Cloud-Lite" Design Decisions
+## 🧠 Professional Design Decisions
 
-To ensure the project is easy to evaluate and scalable, heavy proprietary cloud dependencies were removed, allowing the system to run with minimal latency and zero cost under the Gemini 2.0 free tier. The "Standalone" design allows validating the feedback engine independently with high-fidelity synthetic data.
+To ensure the project is easy to evaluate and scalable, the following strategic choices were made:
+
+1.  **HuggingFace Spaces (Backend)**: Chosen as the hosting provider for the Python engine due to its **16GB RAM free tier**, which is necessary for the RAG index and local embedding models.
+2.  **Next.js 14 (Frontend)**: Utilized the App Router for optimal performance. The decoupled architecture allows the frontend to run on Vercel with zero latency.
+3.  **Framer Motion & Tailwind**: Selected to provide a **"Visceral Impact"** for the academic jury, ensuring the UI feels like a state-of-the-art SOC workstation rather than a simple chat bot.
+4.  **"Manager of Drafts" UI**: The interface is designed as an **Advisor Sidebar**, promoting socratic learning where the AI evaluates and guides instead of just providing answers.
 
 ---
 **Final Specialization Project - SOC Tutor RAG System**

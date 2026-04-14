@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  /* Cyber-Midnight Theme Tokens */
+  --background: #020617; /* Slate 950 - Abyssal Blue */
+  --foreground: #f8fafc; /* Slate 50 */
+  
+  --primary: #22d3ee;    /* Cyan 400 - Neon Tech */
+  --secondary: #fbbf24;  /* Amber 400 - Tactical Warning */
+  --accent: #818cf8;     /* Indigo 400 - AI Intelligence */
+  
+  --card: rgba(15, 23, 42, 0.7); /* Translucent Slate 900 */
+  --card-border: rgba(51, 65, 85, 0.5); /* Slate 700 semi-transparent */
+  
+  --muted: #64748b;      /* Slate 500 */
+  --success: #10b981;    /* Emerald 500 */
+  --danger: #ef4444;     /* Red 500 */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-muted: var(--muted);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism Utility */
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Neon Glow Utility */
+.glow-primary {
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
+}
+
+.glow-text-primary {
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+/* Scrollbar Styling for SOC Look */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
