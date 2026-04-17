@@ -1,5 +1,7 @@
-# Requirements - Production
+# Requirements - Production (Optimized for CPU)
 # Instalar: pip install -r requirements-prod.txt
+
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 # Core
 pydantic>=2.0.0
@@ -19,7 +21,8 @@ langchain-groq>=0.0.2
 # Vector Store
 chromadb>=0.4.0
 
-# Embeddings
+# Embeddings (CPU optimized)
+torch --index-url https://download.pytorch.org/whl/cpu
 sentence-transformers>=2.2.0
 
 # Utils

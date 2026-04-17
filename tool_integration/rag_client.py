@@ -38,7 +38,8 @@ class RAGClient:
         
         # Default path
         if not persist_directory:
-            base_dir = Path(__file__).parent.parent.parent
+            # tool_integration/rag_client.py -> .parent is tool_integration -> .parent is project_root
+            base_dir = Path(__file__).parent.parent
             persist_directory = str(base_dir / "data" / "indices")
         
         self.persist_directory = persist_directory

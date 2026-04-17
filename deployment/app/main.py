@@ -12,7 +12,8 @@ import os
 # Importar tipos
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.agents.types import (
     Decision,
@@ -77,8 +78,8 @@ def get_orchestrator():
         
         # Importar aquí para evitar errores si no están instalados
         try:
-            from 03_configuracion_de_modelos.llm_client import LLMClient
-            from 04_integracion_de_herramientas.rag_client import RAGClient
+            from model_configuration.llm_client import LLMClient
+            from tool_integration.rag_client import RAGClient
             from src.orchest.uefs_orchestrator import UEFSOrchestrator
             
             _llm_client = LLMClient()

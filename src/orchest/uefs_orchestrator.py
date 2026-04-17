@@ -68,6 +68,16 @@ class UEFSOrchestrator:
         self.MAX_COST_PER_SESSION = 0.05
         self.current_session_cost = 0.0
 
+    def health_check(self) -> Dict[str, Any]:
+        """Returns the health status of the orchestrator and its components."""
+        return {
+            "status": "healthy",
+            "llm_provider": self.llm.get_provider(),
+            "rag_documents": self.rag.count_documents(),
+            "validation_enabled": self.enable_validation,
+            "session_id": self.session_id
+        }
+
     
     def generar_feedback(
         self,

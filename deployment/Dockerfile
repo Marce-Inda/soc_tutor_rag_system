@@ -10,15 +10,17 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (layer caching)
-COPY requirements-prod.txt .
+COPY deployment/requirements-prod.txt ./requirements-prod.txt
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Copy application code
 COPY src/ ./src/
-COPY 03_configuracion_de_modelos/ ./03_configuracion_de_modelos/
-COPY 04_integracion_de_herramientas/ ./04_integracion_de_herramientas/
+COPY model_configuration/ ./model_configuration/
+COPY tool_integration/ ./tool_integration/
 COPY data/ ./data/
+COPY data_ingestion/ ./data_ingestion/
 COPY config/ ./config/
+COPY deployment/app/ ./app/
 
 # Create indices directory if not exists
 RUN mkdir -p /app/data/indices
@@ -31,4 +33,4 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

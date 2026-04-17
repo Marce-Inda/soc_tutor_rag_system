@@ -3,8 +3,8 @@ version: '3.8'
 services:
   api:
     build:
-      context: ..
-      dockerfile: 06-deployment/Dockerfile
+      context: .
+      dockerfile: deployment/Dockerfile
     container_name: soc-tutor-rag-api
     ports:
       - "8000:8000"
@@ -12,8 +12,9 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - LOG_LEVEL=INFO
+      - PYTHONHASHSEED=0
     volumes:
-      - ../data:/app/data
+      - ./data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -21,13 +22,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - soc-tutor-net
 
-  # Optional: Redis for caching (future)
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: soc-tutor-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - soc-tutor-net
 
 networks:
-  default:
+  soc-tutor-net:
     name: soc-tutor-network

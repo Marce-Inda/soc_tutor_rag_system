@@ -4,6 +4,8 @@
 
 Sistema profesional de feedback pedagógico basado en IA para entrenamiento en respuesta a incidentes de ciberseguridad. Optimizado con una arquitectura **"English-First Reasoning / Multilingual Delivery"** para máxima eficiencia de tokens y precisión técnica.
 
+[![Demo en Vivo](https://img.shields.io/badge/Demo-Probar%20en%20Vivo-cyan?style=for-the-badge&logo=vercel)](https://soc-tutor-workstation.vercel.app)
+
 ## 🚀 Arquitectura Avanzada
 
 Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de producción que prioriza el costo y la exactitud:
@@ -34,31 +36,36 @@ El sistema se fundamenta en documentación técnica oficial y actualizada:
 
 ```
 soc-tutor-rag-system/
-├── src/
-│   ├── agents/        # Lógica de agents (Prompts EN, Output Multilenguaje)
-│   ├── orchest/        # Orquestador (Pipeline con Observabilidad y Caché)
-│   ├── rag/            # RAG Híbrido (English-Targeted Search)
-│   └── utils/          # Caché Semántico, LLMClient, Glosario
-├── data/
-│   ├── docs/           # Fuentes oficiales (EN/ES)
-│   └── sample_scenarios/ # Escenarios standalone (Ej: ar-fintech-idor)
-└── scripts/            # Herramientas de ingesta y validación
+├── src/                # Lógica core de Agentes
+├── data_ingestion/     # Pipeline de ingesta para RAG
+├── model_configuration/# Cliente de LLMs y Proveedores
+├── tool_integration/   # Cliente RAG y configuración de LangChain
+├── deployment/         # Backend FastAPI y configs de Docker
+├── frontend/           # Aplicación Next.js (Workstation)
+├── data/               # Fuentes oficiales y Vector DB
+└── scripts/            # Herramientas de simulación y verificación
 ```
 
-## 🚀 Instalación y Uso Standalone
+## 🐳 Instalación con Docker (Recomendado)
+
+Todo el ecosistema (Frontend + Backend) puede desplegarse con un solo comando. Este es el método recomendado para evaluación profesional.
 
 ```bash
-# 1. Preparar entorno
-pip install -r requirements.txt
-cp .env.example .env
+# 1. Entrar a la carpeta del proyecto
+cd soc-tutor-rag-system
 
-# 2. Ingesta de conocimiento (Fuentes NIST/MITRE EN)
-python scripts/download_sources.py
-python 02-data-ingestion/ingest_docs.py
+# 2. Configurar variables de entorno
+# Asegúrate de que el archivo .env tenga GEMINI_API_KEY o GROQ_API_KEY
+cp .env.example .env 
 
-# 3. Ejecutar Demostración
-python scripts/verify_mixed_context.py
+# 3. Levantar todo el stack
+docker compose up -d --build
 ```
+
+- **Frontend (Workstation)**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+## 🛠️ Instalación Manual (Standalone)
 
 ## 🧠 Decisiones de Diseño "Cloud-Lite"
 
