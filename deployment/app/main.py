@@ -6,8 +6,9 @@ API para servir el sistema de feedback.
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
+from .queue_manager import QueueManager, QueueStatus
 
 # Importar tipos
 import sys
@@ -50,7 +51,9 @@ class FeedbackResponse(BaseModel):
     explicacion: str
     mejor_practica: str
     fuentes_citadas: List[str]
-    score_tecnico: int
+    score_tecnico: float
+    persona_role: str = "Mentor (Analista L2)"
+    evaluacion_gobernanza: Optional[Dict[str, Any]] = None
     aprobado: bool
     costo_estimado: float
 
@@ -65,6 +68,7 @@ class HealthResponse(BaseModel):
 _llm_client = None
 _rag_client = None
 _orchestrator = None
+queue_manager = QueueManager(max_concurrent=3)
 
 
 def get_orchestrator():
@@ -84,7 +88,19 @@ def get_orchestrator():
             
             _llm_client = LLMClient()
             _rag_client = RAGClient()
-            _orchestrator = UEFSOrchestrator(_llm_client, _rag_client)
+            
+            # Inicializar el juez asimétrico con Groq (Llama 3) si la clave está presente
+            if os.getenv("GROQ_API_KEY"):
+                _validator_llm_client = LLMClient()
+                _validator_llm_client.switch_provider("groq")
+            else:
+                _validator_llm_client = None
+            
+            _orchestrator = UEFSOrchestrator(
+                llm_client=_llm_client, 
+                rag_client=_rag_client,
+                validator_llm_client=_validator_llm_client
+            )
         except ImportError as e:
             raise RuntimeError(f"Dependencias no instaladas: {e}")
     
@@ -114,10 +130,30 @@ def health():
     )
 
 
+@app.get("/queue/status/{user_id}", response_model=QueueStatus)
+def get_queue_status(user_id: str):
+    """Obtiene el estado del usuario en la cola."""
+    return queue_manager.get_user_status(user_id)
+
+
+@app.post("/queue/heartbeat/{user_id}")
+def heartbeat(user_id: str):
+    """Mantiene activa la sesión del usuario."""
+    return queue_manager.heartbeat(user_id)
+
+
 @app.post("/feedback", response_model=FeedbackResponse)
-def generar_feedback(request: FeedbackRequest):
+def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
     """Genera feedback para una decisión del jugador."""
     
+    # Validar que el usuario esté activo en la cola
+    status = queue_manager.get_user_status(user_id)
+    if status.status != "ACTIVE":
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Debe esperar su turno en la lista de espera. Posición: {status.position}"
+        )
+
     try:
         orchestrator = get_orchestrator()
         
@@ -129,13 +165,20 @@ def generar_feedback(request: FeedbackRequest):
         )
         
         # Mapear respuesta
+        gov_eval = (
+            feedback.evaluacion_gobernanza.model_dump() 
+            if feedback.evaluacion_gobernanza 
+            else None
+        )
         return FeedbackResponse(
             evaluacion=feedback.evaluacion,
             explicacion=feedback.explicacion,
             mejor_practica=feedback.mejor_practica,
             fuentes_citadas=feedback.fuentes_citadas,
-            score_tecnico=feedback.evaluacion_tecnica.score_tecnico,
-            aprobado=feedback.validacion.aprobado,
+            score_tecnico=feedback.evaluacion_tecnica.score_tecnico if feedback.evaluacion_tecnica else 0,
+            persona_role=feedback.validacion.persona_role if feedback.validacion and hasattr(feedback.validacion, 'persona_role') and feedback.validacion.persona_role else "SISTEMA MENTOR",
+            evaluacion_gobernanza=gov_eval,
+            aprobado=feedback.validacion.aprobado if feedback.validacion else True,
             costo_estimado=feedback.costo_estimado
         )
         

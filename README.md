@@ -15,6 +15,13 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 3.  **Hybrid RAG with Translation Layer**: The system automatically translates technical player queries into English to search the highest-fidelity original sources, combining semantic search with exact matching of technical IDs (IPs, MITRE Tactics).
 4.  **Adaptive Multilingual Delivery**: The **Explainer Agent** translates the technical analysis into pedagogical language in the user's preferred language (ES, PT, EN), adjusting the tone according to their experience level.
 
+
+## 🌟 Recent Updates (Latest Sessions)
+
+- **MCP Integration (Model Context Protocol)**: Integrated EDR and SIEM log simulations using MCP servers, decoupling interactive tools from the core RAG system for a more realistic immersive experience.
+- **Enhanced UI/UX Immersion**: Added ambient audio to the SOC Workstation and refined the Analyst Mentor interface for high-fidelity gameplay.
+- **Waitlist & Queue Management**: Implemented a backend queue manager and frontend waitlist to gracefully handle API rate limits during live demonstrations.
+
 ## 🛠️ Core Technologies
 
 -   **Models**: Google `gemini-2.0-flash` (via a unified LLMClient with support for Groq as high-speed backbone).

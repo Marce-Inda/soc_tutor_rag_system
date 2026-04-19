@@ -28,9 +28,16 @@ export interface PlayerProfile {
   language: string;
 }
 
-export async function getFeedback(decision: Decision, contexto: Contexto, playerProfile: PlayerProfile) {
+export interface QueueStatus {
+  status: 'ACTIVE' | 'WAITING' | 'EXPIRED';
+  position: number;
+  codename: string;
+  is_ready: boolean;
+}
+
+export async function getFeedback(decision: Decision, contexto: Contexto, playerProfile: PlayerProfile, userId: string = 'guest') {
   try {
-    const response = await api.post('/feedback', {
+    const response = await api.post(`/feedback?user_id=${userId}`, {
       decision,
       contexto,
       player_profile: playerProfile,
@@ -40,6 +47,16 @@ export async function getFeedback(decision: Decision, contexto: Contexto, player
     console.error('Error fetching feedback:', error);
     throw error;
   }
+}
+
+export async function getQueueStatus(userId: string): Promise<QueueStatus> {
+  const response = await api.get(`/queue/status/${userId}`);
+  return response.data;
+}
+
+export async function sendHeartbeat(userId: string) {
+  const response = await api.post(`/queue/heartbeat/${userId}`);
+  return response.data;
 }
 
 export async function checkHealth() {

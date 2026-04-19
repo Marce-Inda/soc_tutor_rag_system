@@ -1,0 +1,72 @@
+[
+  {
+    "log_id": "L-001",
+    "timestamp": "2026-03-20T09:45:12Z",
+    "service": "NGINX_FRONTEND",
+    "message": "192.168.1.45 - - [20/Mar/2026:09:45:12 +0000] \"GET /api/v1/health HTTP/1.1\" 200 45 \"-\" \"HealthChecker/1.0\"",
+    "severity": "info"
+  },
+  {
+    "log_id": "L-002",
+    "timestamp": "2026-03-20T09:47:01Z",
+    "service": "ACTIVE_DIRECTORY",
+    "message": "Failed login attempt for user 'service_scanner' from IP 10.0.0.51 - Bad Password.",
+    "severity": "warning"
+  },
+  {
+    "log_id": "L-003",
+    "timestamp": "2026-03-20T09:48:15Z",
+    "service": "FIREWALL_EDGE",
+    "message": "Traffic allowed: TCP 10.0.0.5:443 -> 203.0.113.44:443 (Rule: Outbound_HTTPS_Allow)",
+    "severity": "info"
+  },
+  {
+    "log_id": "L-004",
+    "timestamp": "2026-03-20T09:50:22Z",
+    "service": "NGINX_FRONTEND",
+    "message": "192.168.1.112 - - [20/Mar/2026:09:50:22 +0000] \"POST /api/v1/auth/login HTTP/1.1\" 200 128 \"-\" \"Mozilla/5.0\"",
+    "severity": "info"
+  },
+  {
+    "log_id": "L-005",
+    "timestamp": "2026-03-20T09:52:05Z",
+    "service": "DATABASE_POSTGRES",
+    "message": "User 'app_admin' executed SELECT COUNT(*) FROM users. Execution time: 45ms.",
+    "severity": "info"
+  },
+  {
+    "log_id": "L-006",
+    "timestamp": "2026-03-20T09:55:10Z",
+    "service": "ACTIVE_DIRECTORY",
+    "message": "Successful login for user 'mkt_agent_03' from IP 10.0.0.101.",
+    "severity": "info"
+  },
+  {
+    "log_id": "L-007",
+    "timestamp": "2026-03-20T09:58:44Z",
+    "service": "FIREWALL_EDGE",
+    "message": "Traffic blocked: UDP 192.168.1.15:53 -> 8.8.8.8:53 (Rule: Default_Deny_DNS_Outbound)",
+    "severity": "warning"
+  },
+  {
+    "log_id": "L-008",
+    "timestamp": "2026-03-20T10:00:05Z",
+    "service": "SMTP_RELAY",
+    "message": "SUCCESS: Message sent to 2,500 recipients. [Header Analysis] CC: <2,500 addresses exposed in CC field instead of BCC> Subject: EXCLUSIVO: Promo Semana Santa 2026",
+    "severity": "critical"
+  },
+  {
+    "log_id": "L-009",
+    "timestamp": "2026-03-20T10:02:11Z",
+    "service": "syslog-ng",
+    "message": "syslog-ng[812]: Accepted connection from 10.0.0.1",
+    "severity": "info"
+  },
+  {
+    "log_id": "L-010",
+    "timestamp": "2026-03-20T10:05:00Z",
+    "service": "NGINX_FRONTEND",
+    "message": "10.0.0.5 - - [20/Mar/2026:10:05:00 +0000] \"GET /static/css/main.css HTTP/1.1\" 304 0 \"-\" \"Mozilla/5.0\"",
+    "severity": "info"
+  }
+]

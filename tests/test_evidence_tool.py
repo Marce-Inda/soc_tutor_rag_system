@@ -16,10 +16,10 @@ def main():
 
     # Obtener la herramienta de la lista configurada por Langchain
     tools_list = tools.get_tools()
-    evidencia_tool = next(t for t in tools_list if t.name == "buscar_evidencia_en_juego")
+    telemetry_tool = next(t for t in tools_list if t.name == "telemetry_mcp_client")
     
     print(f"\nQuerying: '{query}' for Scenario: '{scenario_test}'")
-    result = evidencia_tool.invoke({"query": query, "scenario_id": scenario_test})
+    result = telemetry_tool.invoke({"action_type": "analyze_logs"})
     
     print("\n[RESULTADOS DE LA HERRAMIENTA]")
     print(result[:1000] + "..." if len(result) > 1000 else result)

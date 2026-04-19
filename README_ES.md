@@ -17,6 +17,13 @@ Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de pr
 4.  **Entrega Multilingüe Adaptativa**: El **Explainer Agent** traduce el análisis técnico a un lenguaje pedagógico en el idioma preferido del usuario (ES, PT, EN), ajustando el tono según su nivel de experiencia.
 
 
+
+## 🌟 Últimas Actualizaciones (Sesiones Recientes)
+
+- **Integración de MCP (Model Context Protocol)**: Se integraron herramientas de contención EDR y análisis de logs SIEM utilizando servidores MCP, desacoplando la interacción táctica del sistema RAG principal para un realismo superior.
+- **Inmersión UI/UX Mejorada**: Se añadió audio ambiental inmersivo a la Workstation del SOC y se finalizó el diseño de la interfaz para una demostración de alta fidelidad.
+- **Lista de Espera y Gestión de Colas**: Se implementó un *Queue Manager* en el backend y una *Waitlist* en el frontend para evitar sobrecargas de API durante demos con concurrencia.
+
 ## 🛠️ Tecnologías Core
 
 -   **Modelos**: Google `gemini-2.0-flash` (vía LLMClient unificado con soporte para Groq y Ollama).

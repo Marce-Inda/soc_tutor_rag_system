@@ -19,7 +19,7 @@ class LLMConfig(BaseModel):
 
 class GeminiConfig(LLMConfig):
     """Configuración para Google Gemini."""
-    model: str = "gemini-1.5-flash"
+    model: str = "gemini-2.0-flash"
     temperature: float = 0.3  # Bajo para reducir alucinaciones
     max_tokens: int = 512
     top_p: float = 0.8

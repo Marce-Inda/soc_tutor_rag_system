@@ -13,14 +13,23 @@ import {
   Loader2,
   BookOpen,
   Info,
-  Shield
+  Shield,
+  Briefcase
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIncidentStore } from '@/store/incidentStore';
-import { getFeedback } from '@/utils/api';
+import { getFeedback, getQueueStatus, sendHeartbeat } from '@/utils/api';
+import { audioSystem } from '@/utils/audio';
+import { musicManager } from '@/utils/ambientAudio';
 import IncidentNodeMap from '@/components/IncidentNodeMap';
+import { useRouter } from 'next/navigation';
 
 export default function WorkstationPage() {
+  const router = useRouter();
+  const [userId, setUserId] = React.useState<string | null>(null);
+  const [codename, setCodename] = React.useState<string>('UNKNOWN-ANALYST');
+  const [lastActionTime, setLastActionTime] = React.useState<number>(Date.now());
+
   const { 
     logs, 
     score, 
@@ -38,9 +47,92 @@ export default function WorkstationPage() {
     resetIncident
   } = useIncidentStore();
 
+  // 1. GESTOR DE IDENTIDAD Y ACCESO (GATEKEEPER)
+  useEffect(() => {
+    let savedId = localStorage.getItem('soc_tutor_user_id');
+    if (!savedId) {
+      router.push('/waitlist');
+      return;
+    }
+    setUserId(savedId);
+
+    const verifyAccess = async () => {
+      try {
+        const status = await getQueueStatus(savedId);
+        if (status.status !== 'ACTIVE') {
+          router.push('/waitlist');
+        } else {
+          setCodename(status.codename);
+        }
+      } catch (err) {
+        console.error('Core Link Failure');
+      }
+    };
+
+    verifyAccess();
+    
+    // Heartbeat cada 30 segundos
+    const hbInterval = setInterval(() => {
+      sendHeartbeat(savedId!);
+    }, 30000);
+
+    return () => {
+      clearInterval(hbInterval);
+      musicManager.stopAll();
+    };
+  }, [router]);
+
+  // 2. TEMPORIZADOR DE INACTIVIDAD (MÚSICA)
+  useEffect(() => {
+    const checkIdle = setInterval(() => {
+      const idleTime = Date.now() - lastActionTime;
+      if (idleTime > 60000) { // 60 Segundos
+        musicManager.deescalate();
+      }
+    }, 5000);
+
+    return () => clearInterval(checkIdle);
+  }, [lastActionTime]);
+
+  // 3. GENERADOR DE RUIDO SIEM (BACKGROUND LOGS)
+  useEffect(() => {
+    if (isCompleted) return;
+    
+    // Background noise strings
+    const noiseLogs = [
+      "syslog-ng[812]: Accepted connection from 10.0.5.42",
+      "kernel: [14234.12] DROP IN=eth0 OUT= MAC=... SRC=192.168.1.100",
+      "sshd[1024]: pam_unix(sshd:session): session opened for user root",
+      "nginx: 192.168.1.50 - - [GET /api/health HTTP/1.1] 200",
+      "systemd[1]: Started Daily Cleanup of Temporary Directories",
+      "auth: Login successful for user 'system_svc'",
+      "dns_forwarder: req AAAA graph.windows.net",
+      "ntpd[88]: synchronized to 162.159.200.1, stratum 3"
+    ];
+
+    const generateNoise = () => {
+      // 40% probability of inserting a log every 2.5s
+      if (Math.random() > 0.6) {
+         const randomNoise = noiseLogs[Math.floor(Math.random() * noiseLogs.length)];
+         const type = Math.random() > 0.8 ? 'warning' : 'info';
+         addLog(randomNoise, type);
+      }
+    };
+
+    const noiseInterval = setInterval(generateNoise, 2500);
+
+    return () => clearInterval(noiseInterval);
+  }, [addLog, isCompleted]);
+
   const handleAction = async (toolName: string, action: string, risk: string) => {
     if (isAnalyzing) return;
 
+    // Asegurar que la música arranca (bypass autoplay)
+    musicManager.start();
+    musicManager.escalate();
+    setLastActionTime(Date.now());
+
+    audioSystem.playClick();
     addLog(`INICIANDO ACCIÓN: ${toolName}...`, 'info');
     setAnalyzing(true);
 
@@ -65,9 +157,10 @@ export default function WorkstationPage() {
         language: 'es'
       };
 
-      const feedback = await getFeedback(decision, contexto, profile);
+      const feedback = await getFeedback(decision, contexto, profile, userId || 'guest');
       
       setFeedback(feedback);
+      audioSystem.playSync();
       addLog(`RESPUESTA RECIBIDA [${feedback.persona_role}]`, 'success');
       
       // Actualizar score basado en la evaluación (ejemplo: proporcional a score_tecnico)
@@ -77,6 +170,7 @@ export default function WorkstationPage() {
     } catch (error) {
       addLog('ERROR DE CONEXIÓN CON EL MOTOR DE IA', 'error');
       setAnalyzing(false);
+      musicManager.deescalate(); // Bajar tensión en error
     }
   };
 
@@ -261,18 +355,59 @@ export default function WorkstationPage() {
           </div>
 
           <div className="mt-auto space-y-4">
-             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 backdrop-blur-sm">
-                <p className="text-[10px] text-primary/70 mb-2 font-black uppercase tracking-widest">System Status</p>
-                <div className="flex items-center gap-3">
-                   <div className={`h-2 w-2 rounded-full ${isAnalyzing ? 'bg-secondary animate-pulse' : 'bg-success'}`} />
-                   <span className="text-[10px] font-bold uppercase tracking-tighter">
-                    {isAnalyzing ? 'Engine Work...' : 'Online'}
-                   </span>
+             {/* TACTICAL MINIMAP */}
+             <div className="aspect-square w-full relative overflow-hidden rounded-lg border border-card-border bg-background/50 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)] flex items-center justify-center">
+               <div className="scale-75 origin-center w-[120%] h-[120%] flex items-center justify-center absolute">
+                 <IncidentNodeMap />
+               </div>
+               <AnimatePresence>
+                 {isAnalyzing && (
+                   <motion.div 
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     className="absolute inset-0 z-20 bg-background/60 backdrop-blur-sm flex items-center justify-center overflow-hidden"
+                   >
+                     <div className="relative flex flex-col items-center gap-2">
+                        <Loader2 className="text-secondary animate-spin" size={24} />
+                        <span className="text-[8px] font-black text-secondary tracking-widest uppercase">Analyzing...</span>
+                     </div>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+             </div>
+
+             <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 backdrop-blur-sm space-y-4">
+                <div>
+                   <p className="text-[10px] text-primary/70 mb-2 font-black uppercase tracking-widest flex items-center justify-between">
+                     <span>Estado de Conexión</span>
+                     <span className="text-[8px] text-muted-foreground/50">SEC-CORE v1.2</span>
+                   </p>
+                   <div className="flex items-center gap-3 bg-background/50 p-2 rounded border border-card-border/50">
+                      <div className={`h-2 w-2 rounded-full shadow-[0_0_8px_currentColor] ${isAnalyzing ? 'bg-secondary animate-pulse' : 'bg-success'}`} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/90">
+                       {isAnalyzing ? 'Correlacionando Logs...' : 'En Línea - Estable'}
+                      </span>
+                   </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 border-t border-primary/10 pt-3">
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[8px] text-muted-foreground uppercase font-black tracking-wider">Firewall Nodo</span>
+                      <span className="text-[9px] text-primary font-bold uppercase">Activo</span>
+                   </div>
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[8px] text-muted-foreground uppercase font-black tracking-wider">Zero Trust</span>
+                      <span className="text-[9px] text-success font-bold uppercase">Validado</span>
+                   </div>
                 </div>
              </div>
 
              <button 
-                onClick={completeIncident}
+                onClick={() => {
+                  audioSystem.playSuccess();
+                  completeIncident();
+                }}
                 disabled={isAnalyzing || isCompleted}
                 className="w-full py-3 rounded-lg border border-danger/40 bg-danger/5 hover:bg-danger/20 hover:border-danger transition-all flex items-center justify-center gap-2 group disabled:opacity-30 disabled:cursor-not-allowed"
              >
@@ -282,31 +417,9 @@ export default function WorkstationPage() {
           </div>
         </aside>
 
-        {/* CENTER: INCIDENT VISUALIZER */}
-        <section className="flex-1 relative bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px] overflow-hidden flex flex-col">
-          <div className="flex-1 relative">
-             <IncidentNodeMap />
-             
-             {/* OVERLAY DE CARGA */}
-             <AnimatePresence>
-               {isAnalyzing && (
-                 <motion.div 
-                   initial={{ opacity: 0 }}
-                   animate={{ opacity: 1 }}
-                   exit={{ opacity: 0 }}
-                   className="absolute inset-0 z-20 bg-background/40 backdrop-blur-[2px] flex items-center justify-center"
-                 >
-                   <div className="flex flex-col items-center gap-4">
-                      <Loader2 className="text-primary animate-spin" size={48} />
-                      <span className="text-[10px] font-bold text-primary animate-pulse tracking-[.3em] uppercase">IA Mentor Consultando RAG...</span>
-                   </div>
-                 </motion.div>
-               )}
-             </AnimatePresence>
-          </div>
-          
-          {/* ACTION CONSOLE (FLOATING BOTTOM) */}
-          <div className="h-48 glass m-6 rounded-xl border border-card-border p-5 flex flex-col shadow-2xl relative overflow-hidden">
+        {/* CENTER: ACTION CONSOLE */}
+        <section className="flex-1 relative bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:32px_32px] overflow-hidden flex flex-col p-6">
+          <div className="flex-1 glass rounded-xl border border-card-border p-5 flex flex-col shadow-2xl relative overflow-hidden backdrop-blur-sm">
              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -346,35 +459,55 @@ export default function WorkstationPage() {
                       className="absolute left-0 w-full h-1/2 bg-gradient-to-b from-primary/20 to-transparent pointer-events-none"
                     />
                  </div>
-                 <div>
+                 <div className="flex-1">
                     <h4 className="text-md font-black text-primary tracking-tight leading-none mb-1 uppercase">
                       {currentFeedback?.persona_role || 'SISTEMA MENTOR'}
                     </h4>
                     <div className="flex items-center gap-2">
-                       <span className="text-[9px] text-muted uppercase font-bold tracking-widest">Asesor Táctico de Ciberseguridad</span>
+                       <span className="text-[9px] text-muted uppercase font-bold tracking-widest">{codename}</span>
                        <div className="h-1 w-1 rounded-full bg-muted" />
-                       <span className="text-[9px] text-success font-bold uppercase">Online</span>
+                       <span className="text-[9px] text-success font-bold uppercase">Active Link</span>
                     </div>
+                 </div>
+
+                 {/* SYNC RATE MODULE */}
+                 <div className="flex flex-col items-end gap-1">
+                    <span className="text-[8px] font-black text-muted uppercase tracking-[0.2em]">Sync Rate</span>
+                    <div className="w-24 h-4 bg-black/40 border border-card-border rounded-sm relative overflow-hidden flex items-center px-1">
+                       <motion.div 
+                         initial={{ width: 0 }}
+                         animate={{ 
+                           width: `${currentFeedback?.score_tecnico || 0}%`,
+                           backgroundColor: (currentFeedback?.score_tecnico || 0) > 70 ? '#22d3ee' : (currentFeedback?.score_tecnico || 0) > 40 ? '#fbbf24' : '#ef4444'
+                         }}
+                         className="h-2 rounded-sm shadow-[0_0_10px_currentColor]"
+                       />
+                    </div>
+                    <span className="text-[10px] font-black text-foreground">
+                       {currentFeedback ? `${currentFeedback.score_tecnico}%` : '--%'}
+                    </span>
                  </div>
               </div>
            </div>
 
-           <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-[linear-gradient(rgba(34,211,238,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.02)_1px,transparent_1px)] bg-[size:20px_20px] flex flex-col">
-              <div className="flex-1">
+           <div className="flex-1 p-8 bg-[linear-gradient(rgba(34,211,238,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.02)_1px,transparent_1px)] bg-[size:20px_20px] flex flex-col h-full overflow-hidden">
+              
+              {/* 1. TUTOR PANEL (60%) */}
+              <div className="basis-[60%] overflow-y-auto custom-scrollbar pr-4 pb-4">
                 <AnimatePresence mode="wait">
                   {currentFeedback ? (
                     <motion.div 
                       key={currentFeedback.explicacion}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="space-y-10"
+                      className="space-y-8"
                     >
                        <div>
                           <div className="flex items-center gap-2 mb-4">
                              <Activity className="text-secondary" size={18} />
                              <h5 className="text-[11px] text-secondary font-black uppercase tracking-widest">Evaluación de la Acción</h5>
                           </div>
-                          <p className="text-base leading-relaxed text-foreground/90 font-medium bg-secondary/5 p-6 rounded-lg border-l-4 border-secondary shadow-lg">
+                          <p className="text-sm leading-relaxed text-foreground/90 font-medium bg-secondary/5 p-5 rounded-lg border-l-4 border-secondary shadow-lg">
                             {currentFeedback.evaluacion}
                           </p>
                        </div>
@@ -384,30 +517,30 @@ export default function WorkstationPage() {
                              <Info className="text-primary" size={18} />
                              <h5 className="text-[11px] text-primary font-black uppercase tracking-widest">Por qué es importante?</h5>
                           </div>
-                          <p className="text-base leading-relaxed text-muted-foreground italic pl-4 border-l border-primary/20">
+                          <p className="text-sm leading-relaxed text-muted-foreground italic pl-4 border-l border-primary/20">
                             {currentFeedback.explicacion}
                           </p>
                        </div>
 
-                       <div className="p-6 rounded-xl border border-primary/30 bg-primary/5 space-y-4 shadow-inner">
+                       <div className="p-5 rounded-xl border border-primary/30 bg-primary/5 space-y-3 shadow-inner">
                           <div className="flex items-center gap-2">
-                             <Shield size={20} className="text-primary" />
+                             <Shield size={18} className="text-primary" />
                              <h5 className="text-[11px] text-primary font-black uppercase tracking-widest">Mejor Práctica Recomendada</h5>
                           </div>
-                          <p className="text-base font-bold text-foreground/90">
+                          <p className="text-sm font-bold text-foreground/90">
                              {currentFeedback.mejor_practica}
                           </p>
                        </div>
 
                        {currentFeedback.fuentes_citadas.length > 0 && (
-                          <div className="space-y-4 pt-6 border-t border-card-border">
+                          <div className="space-y-3 pt-4 border-t border-card-border">
                              <div className="flex items-center gap-2">
-                                <BookOpen size={16} className="text-muted" />
+                                <BookOpen size={14} className="text-muted" />
                                 <h5 className="text-[10px] text-muted font-black uppercase tracking-[0.2em]">Fuentes Originales (RAG)</h5>
                              </div>
-                             <div className="flex flex-wrap gap-3">
+                             <div className="flex flex-wrap gap-2">
                                {currentFeedback.fuentes_citadas.map((src, idx) => (
-                                 <span key={idx} className="px-3 py-1.5 rounded bg-background border border-card-border text-[10px] text-muted-foreground font-bold hover:border-primary/40 hover:text-primary transition-colors cursor-help">
+                                 <span key={idx} className="px-2 py-1 rounded bg-background border border-card-border text-[9px] text-muted-foreground font-bold hover:border-primary/40 hover:text-primary transition-colors cursor-help">
                                    {src}
                                  </span>
                                ))}
@@ -419,41 +552,86 @@ export default function WorkstationPage() {
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex flex-col h-full justify-between pb-10"
+                      className="flex flex-col h-full justify-center space-y-10 pb-6"
                     >
-                       <div className="space-y-10">
-                          <div>
-                             <h5 className="text-[11px] text-secondary font-black uppercase tracking-widest mb-6">Briefing de la Operación</h5>
-                             <div className="p-8 rounded-xl border border-warning/30 bg-warning/5 relative overflow-hidden group shadow-2xl">
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-40 transition-opacity">
-                                   <ShieldAlert className="text-warning" size={48} />
-                                 </div>
-                                <p className="text-xl leading-tight text-foreground relative z-10 font-black mb-6 tracking-tight text-warning/90 uppercase">
-                                  [OPERACIÓN: GDPR BREACH]
-                                </p>
-                                <p className="text-base leading-relaxed text-foreground/80 relative z-10 font-medium">
-                                    Error humano masivo detectado: Newsletter enviada con 50,000 correos en CC (visible) en lugar de CCO. 
-                                    Como DPO, debes gestionar la contención del servidor SMTP y la notificación obligatoria a la AEPD antes de 72 horas.
-                                </p>
-                             </div>
-                          </div>
-
-                          <div className="p-8 rounded-2xl border border-card-border bg-background/50 italic text-sm text-muted-foreground leading-relaxed relative shadow-inner">
-                             <span className="absolute -top-3 left-6 px-3 bg-background text-[10px] font-black text-primary tracking-[0.4em] uppercase">Regla de Oro</span>
-                             "En ciberseguridad, la invisibilidad es poder. Un buen analista detecta lo que intenta no ser visto."
+                       <div>
+                          <h5 className="text-[12px] text-secondary font-black uppercase tracking-[0.3em] mb-6">Briefing de la Operación</h5>
+                          <div className="p-8 rounded-2xl border border-warning/30 bg-warning/5 relative overflow-hidden group shadow-2xl">
+                             <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-40 transition-opacity">
+                                <ShieldAlert className="text-warning" size={64} />
+                              </div>
+                             <p className="text-xl leading-snug text-foreground relative z-10 font-black mb-6 tracking-tight text-warning/90 uppercase">
+                               [OPERACIÓN: GDPR BREACH]
+                             </p>
+                             <p className="text-base leading-loose text-foreground/80 relative z-10 font-medium pr-8">
+                                 Error humano masivo detectado: Newsletter enviada con 50,000 correos en CC (visible) en lugar de CCO.<br/><br/>
+                                 Como responsable de la crisis corporativa, tu mandato es escanear los logs en la terminal, ejecutar medidas de contención contundentes sobre el servidor comprometido y orquestar las notificaciones legales obligatorias antes de que finalice la ventana regulatoria.
+                             </p>
                           </div>
                        </div>
-                       
-                       <div className="mt-12 p-6 border border-card-border rounded-xl bg-card/20 backdrop-blur-sm">
-                          <div className="flex items-center gap-3 mb-2">
-                            <Activity size={14} className="text-success animate-pulse" />
-                            <span className="text-[10px] font-black text-muted uppercase tracking-widest">Mentor Status</span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">Analizando tráfico de red y comparando con normativas RAG locales e internacionales.</p>
+
+                       <div className="p-6 rounded-2xl border border-card-border bg-background/50 italic text-sm text-muted-foreground leading-loose relative shadow-inner">
+                          <span className="absolute -top-3 left-8 px-4 bg-background text-[10px] font-black text-primary tracking-[0.4em] uppercase">Regla de Oro</span>
+                          "En ciberseguridad, la invisibilidad es poder. Un buen analista detecta lo que intenta no ser visto."
                        </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
+
+              {/* 2. CISO STRATEGIC MEMOS PANEL (40%) */}
+              <div className="basis-[40%] shrink-0 border-t border-card-border pt-6 mt-2 overflow-y-auto custom-scrollbar pr-4">
+                 <div className="flex items-center gap-2 mb-4">
+                     <Briefcase size={16} className="text-warning" />
+                     <h5 className="text-[10px] text-warning font-black uppercase tracking-[0.2em]">CISO Strategic Directives</h5>
+                 </div>
+                 
+                 <AnimatePresence mode="wait">
+                   {currentFeedback?.evaluacion_gobernanza ? (
+                     <motion.div 
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       className="p-5 rounded-xl border border-warning/30 bg-warning/5 space-y-4"
+                     >
+                        <div className="flex justify-between items-center border-b border-warning/20 pb-3 mb-3">
+                          <span className="text-[10px] font-black uppercase text-warning/70">Compliance Status</span>
+                          <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${currentFeedback.evaluacion_gobernanza.compliant ? 'bg-success/20 text-success border border-success/30' : 'bg-danger/20 text-danger border border-danger/30'}`}>
+                            {currentFeedback.evaluacion_gobernanza.compliant ? 'ACCEPTABLE' : 'CRITICAL RISK'}
+                          </span>
+                        </div>
+                        
+                        {currentFeedback.evaluacion_gobernanza.risks.length > 0 && (
+                          <div className="space-y-1.5">
+                            <span className="text-[9px] text-danger uppercase font-black tracking-widest flex items-center gap-1">
+                               <AlertTriangle size={10} /> Riesgos Identificados:
+                            </span>
+                            <ul className="list-disc pl-4 text-[11px] text-muted-foreground flex flex-col gap-1">
+                              {currentFeedback.evaluacion_gobernanza.risks.slice(0, 2).map((risk, idx) => (
+                                <li key={idx}>{risk}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {currentFeedback.evaluacion_gobernanza.frameworks.length > 0 && (
+                          <div className="pt-3 flex flex-wrap gap-2">
+                            {currentFeedback.evaluacion_gobernanza.frameworks.map((fw, idx) => (
+                              <span key={idx} className="px-2 py-1 bg-background text-[9px] text-warning rounded border border-warning/30 font-bold uppercase tracking-wider">{fw}</span>
+                            ))}
+                          </div>
+                        )}
+                     </motion.div>
+                   ) : (
+                     <motion.div 
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: 1 }}
+                       className="p-6 rounded-xl border border-card-border bg-card/20 flex flex-col items-center justify-center text-center gap-3 h-32"
+                     >
+                        <Briefcase size={24} className="text-muted opacity-30" />
+                        <span className="text-[10px] text-muted font-bold uppercase tracking-widest opacity-50">Esperando escalamiento o directivas...</span>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
               </div>
            </div>
         </aside>

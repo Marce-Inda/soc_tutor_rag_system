@@ -40,7 +40,8 @@ class UEFSOrchestrator:
         llm_client,
         rag_client,
         enable_validation: bool = True,
-        session_id: str = "sesion-default"
+        session_id: str = "sesion-default",
+        validator_llm_client = None
     ):
         self.llm = llm_client
         self.rag = rag_client
@@ -58,7 +59,10 @@ class UEFSOrchestrator:
         self.analyst_agent = AnalystAgent(llm_client, rag_client, tools=self.tools)
         self.governance_agent = GovernanceAgent(llm_client, rag_client)
         self.explainer_agent = ExplainerAgent(llm_client, rag_client)
-        self.validator_agent = ValidatorAgent(llm_client, rag_client)
+        
+        # Juez asimétrico: si existe un cliente LLM de otra familia, lo usa el validador
+        judge_client = validator_llm_client if validator_llm_client else llm_client
+        self.validator_agent = ValidatorAgent(judge_client, rag_client)
 
         
         self.cache = get_cache_client(llm_client=llm_client)

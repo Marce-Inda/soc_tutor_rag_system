@@ -7,6 +7,14 @@ export interface LogEntry {
   type: 'info' | 'success' | 'warning' | 'error';
 }
 
+export interface EvaluacionGobernanza {
+  compliant: boolean;
+  risks: string[];
+  recommendations: string[];
+  frameworks: string[];
+  strategic_score: number;
+}
+
 export interface MentorFeedback {
   evaluacion: string;
   explicacion: string;
@@ -14,6 +22,7 @@ export interface MentorFeedback {
   fuentes_citadas: string[];
   score_tecnico: number;
   persona_role: string;
+  evaluacion_gobernanza?: EvaluacionGobernanza;
 }
 
 export interface IncidentState {

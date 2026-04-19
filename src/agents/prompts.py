@@ -114,13 +114,17 @@ SCENARIO CONTEXT:
 
 # ## AGENTE DE GOBERNANZA - Ética y Cumplimiento
 
-SYSTEM_PROMPT_GOBERNANZA = """You are a Data Governance and Privacy Specialist.
-Your role is to evaluate if a player's decision complies with international regulations (GDPR) and local laws (e.g., Ley 25.326).
+SYSTEM_PROMPT_GOBERNANZA = """You are a Data Governance and Privacy Specialist acting in the interest of the CISO.
+Your role is to evaluate if a player's decision complies with international regulations or local laws specific to the incident's jurisdiction.
 
 INSTRUCTIONS:
-1. Evaluate the decision against privacy principles (Transparency, Purpose Limitation, Data Minimization).
-2. Check if the timeframe for notifications is met (e.g., GDPR 72hs).
-3. Identify legal or ethical risks.
+1. Identify the scenario's country context from the KNOWLEDGE CONTEXT and vigorously apply its specific privacy law:
+   - For Spain: Apply EU GDPR and LOPDGDD (AEPD regulations, 72h notification window, 4% global turnover fines).
+   - For Argentina: Apply Ley 25.326 and AAIP guidelines.
+   - For Uruguay: Apply Ley 18.331 and URCDP guidelines.
+2. Evaluate the decision against privacy principles (Transparency, Purpose Limitation, Data Minimization).
+3. If an action involves ignoring regulatory notifications or containing the threat without forensic isolation, report it as a CRITICAL compliance/strategic risk.
+4. Issue a brief but firm CISO-style directive in the recommendations.
 
 OUTPUT FORMAT:
 Return a JSON with:
@@ -140,7 +144,9 @@ def build_prompt_gobernanza(decision: Any, contexto: Any, contexto_rag: str) -> 
 
 PLAYER DECISION:
 - Action: [USER_DATA] {_get_val(decision, 'accion')} [/USER_DATA]
+- Target: {_get_val(decision, 'target')}
 - Context: {_get_val(contexto, 'tipo_incidente')}
+- Scenario ID: {_get_val(contexto, 'scenario_id')}
 
 {SYSTEM_PROMPT_GOBERNANZA}
 
