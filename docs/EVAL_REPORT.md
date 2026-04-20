@@ -1,99 +1,95 @@
-# 📊 Evaluation Report — SOC-Tutor-RAG
+# 📊 Evaluación del Sistema Multiagente — SOC-Tutor-RAG
 
-> **Generated:** 2026-04-09 16:09:25
-> **Dataset:** `tests/eval_dataset.json` (7 cases)
-
----
-
-## Executive Summary
-
-| Metric | Value | Status |
-|---------|-------|--------|
-| Retrieval Success Rate | 100% | 🟢 |
-| Scenario Relevance | 100% | 🟢 |
-| RAG Latency (average) | 960.7ms | 🟡 |
-| Guardrails Accuracy | 100% | 🟢 |
-| Guardrails TPR (attacks) | 100% | 🟢 |
-| Validator Accuracy | 100% | 🟢 |
-
-| Fallback Keys Coverage | ✅ PASS | 🟢 |
-| Fallback Type Safety | ✅ PASS | 🟢 |
-| Concept Precision (RAG) | 39% | 🔴 |
+> **Generado:** 2026-04-19 18:29:37
+> **Provider LLM:** gemini / gemini-2.0-flash
+> **Dataset:** `tests/eval_dataset.json` (7 casos × 2 perfiles = 14 ejecuciones)
 
 ---
 
-## 1. RAG Retrieval
+## Resumen Ejecutivo
 
-Evaluates whether the vector search engine (ChromaDB) returns relevant documents for each player decision.
-
-| Case | Docs | Latency | Scenario Match |
-|------|------|----------|-----------------|
-| eval-001 | 5 | 6456.0ms | ✅ |
-| eval-002 | 5 | 30.1ms | ✅ |
-| eval-003 | 5 | 70.5ms | ✅ |
-| eval-004 | 5 | 104.4ms | ✅ |
-| eval-005 | 5 | 19.1ms | ✅ |
-| eval-006 | 5 | 23.1ms | ✅ |
-| eval-007 | 5 | 22.0ms | ✅ |
-
-**Documents in index:** 56
-**Unique scenarios:** 7
+| # | Métrica | Valor | Estado |
+|---|---------|-------|--------|
+| 1 | Pipeline Completeness | 86% | 🟢 |
+| 2 | Structural Validity (Analista) | 100% | 🟢 |
+| 2 | Structural Validity (Explicador) | 100% | 🟢 |
+| 2 | Structural Validity (Validador) | 100% | 🟢 |
+| 3 | Score Discrimination | Gap: 35.0 pts | 🟢 |
+| 4 | Faithfulness (cita fuentes) | 83% | 🟢 |
+| 5 | Pedagogical Adaptation | 0% | 🔴 |
+| 6 | Validator Approval Rate | 0% | 🔴 |
+|   | **Latencia promedio** | **279.04s** | 🔴 |
 
 ---
 
-## 2. Guardrails (Security)
+## 1. Pipeline Completeness
 
-Evaluates the `GuardAgent`'s ability to detect prompt injection attacks and allow legitimate inputs.
+Ejecuta el flujo completo del orquestador: `Guard → Memory → RAG → Analista (ReAct) → Explicador → Validador → FeedbackFinal`.
 
-| Metric | Value |
-|---------|-------|
-| True Positives (blocked attacks) | 6 |
-| True Negatives (legitimate allowed) | 4 |
-| False Positives (legitimate blocked) | 0 |
-| False Negatives (undetected attacks) | 0 |
+- **Success Rate:** 86% (12/14)
+- **Latencia promedio:** 279.04s por ejecución
 
 ---
 
-## 3. Validator Agent (Deterministic QA)
+## 2. Structural Validity
 
-Evaluates the deterministic rules of the `ValidatorAgent` that detect score↔tone inconsistencies without needing an LLM call.
+Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`EvaluacionTecnica`, `FeedbackPedagogico`, `ValidacionCalidad`).
 
-- **Accuracy:** 100% (4/4)
-
----
-
-## 4. Deterministic Fallback (Resilience)
-
-Verifies that the `LLMClient` emergency JSON covers all fields required by the Pydantic models of the 3 agents.
-
-| Agent | Fields Covered | Status |
-|--------|-----------------|--------|
-| Analyst (EvaluacionTecnica) | ✅ PASS | 🟢 |
-| Explainer (FeedbackPedagogico) | ✅ PASS | 🟢 |
-| Validator (ValidacionCalidad) | ✅ PASS | 🟢 |
+| Modelo Pydantic | Compliance |
+|----------------|------------|
+| EvaluacionTecnica (Analista) | 100% |
+| FeedbackPedagogico (Explicador) | 100% |
+| ValidacionCalidad (Validador) | 100% |
+| FeedbackFinal (Orquestador) | 100% |
 
 ---
 
-## 5. Conceptual Coverage
+## 3. Score Discrimination
 
-Measures the percentage of expected technical concepts that appear in the retrieved RAG context.
+¿El Analista diferencia buenas de malas decisiones?
 
-| Case | Precision | Found | Expected |
-|------|-----------|-------------|-----------|
-| eval-001 | 0% | [] | ['containment', 'firewall', 'IOC', 'blocking'] |
-| eval-002 | 25% | ['ransomware'] | ['isolate', 'impact', 'critical', 'ransomware'] |
-| eval-003 | 50% | ['evidence', 'forensic'] | ['chain of custody', 'preservation', 'evidence', 'forensic'] |
-| eval-004 | 50% | ['lateral', 'APT'] | ['segmentation', 'lateral', 'containment', 'APT'] |
-| eval-005 | 50% | ['notification', 'data'] | ['notification', 'data', 'regulation', 'breach'] |
-| eval-006 | 75% | ['evidence', 'error', 'logs'] | ['preserve', 'evidence', 'error', 'logs'] |
-| eval-007 | 25% | ['MFA'] | ['MFA', 'credentials', 'authentication', 'eradication'] |
+| Tipo | Score Promedio | Scores Individuales |
+|------|---------------|---------------------|
+| Decisiones Buenas | 75.0 | [80, 80, 60, 60, 80, 80, 80, 80] |
+| Decisiones Malas | 40.0 | [80, 80, 0, 0] |
+
+- **Gap:** 35.0 puntos
+- **¿Discrimina?** ✅ Sí
 
 ---
 
-## Technical Notes
+## 4. Faithfulness (Citación de Fuentes RAG)
 
-- RAG metrics are executed on the local ChromaDB index (`data/indices/`).
-- Guardrails are evaluated with adversarial and legitimate synthetic inputs.
-- The validator is evaluated only with deterministic rules (no LLM call).
-- Fallback is evaluated by forcing a connection error in `LLMClient`.
-- Conceptual coverage measures the presence of keywords in the RAG context, not deep semantics.
+¿El feedback final cita fuentes de la base de conocimiento?
+
+- **Tasa de citación:** 83%
+- **Fuentes promedio por respuesta:** 1.0
+
+---
+
+## 5. Pedagogical Adaptation
+
+¿El Explicador adapta el lenguaje al nivel del jugador (Junior vs Senior)?
+
+- **Tasa de adaptación:** 0% (0/6 casos)
+
+---
+
+## 6. Validator Effectiveness
+
+¿El Agente Validador aprueba/rechaza coherentemente?
+
+| Estado | Cantidad |
+|--------|----------|
+| Aprobados | 0 |
+| Rechazados | 12 |
+| Con inconsistencias | 12 |
+
+---
+
+## Notas Técnicas
+
+- Evaluación ejecutada con **gemini** modelo **gemini-2.0-flash** (para validar flujo).
+- Se usaron 2 perfiles de jugador (Junior y Senior) por caso para medir adaptación pedagógica.
+- Los resultados de calidad del LLM dependen del modelo; estas métricas evalúan el **sistema multiagente**, no el modelo.
+- Para resultados de producción, re-ejecutar con `--provider gemini --model gemini-2.5-flash`.

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "eval-005",
+    "titulo": "Notificación de breach bajo GDPR",
+    "decision": {
+      "accion": "notificar_autoridades",
+      "target": "DPA-Nacional",
+      "detalle": "Notificar a la autoridad de protección de datos tras confirmar exfiltración"
+    },
+    "contexto": {
+      "tipo_incidente": "data_breach",
+      "fase": "recuperacion",
+      "scenario_id": "pa-logistics-saas-data-leak"
+    },
+    "expected_concepts": ["notificación", "datos", "regulación", "breach"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 75,
+    "decision_quality": "buena"
+  },
+  {
+    "id": "eval-006",
+    "titulo": "Borrar logs tras detectar intrusión",
+    "decision": {
+      "accion": "borrar_logs",
+      "target": "SERVER-WEB-01",
+      "detalle": "Borrar los logs del servidor para que el atacante no vea que lo detectamos"
+    },
+    "contexto": {
+      "tipo_incidente": "intrusion",
+      "fase": "deteccion",
+      "scenario_id": "ar-fintech-idor"
+    },
+    "expected_concepts": ["preservar", "evidencia", "error", "logs"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 15,
+    "decision_quality": "mala"
+  },
+  {
+    "id": "eval-007",
+    "titulo": "Reseteo de MFA tras bypass detectado",
+    "decision": {
+      "accion": "resetear_mfa_corporativo",
+      "target": "ALL-USERS",
+      "detalle": "Resetear credenciales MFA de todos los usuarios tras detectar bypass"
+    },
+    "contexto": {
+      "tipo_incidente": "credential_compromise",
+      "fase": "erradicacion",
+      "scenario_id": "ar-fintech-mfabypass"
+    },
+    "expected_concepts": ["MFA", "credenciales", "autenticación", "erradicación"],
+    "expected_rag_sources": ["game_evidence"],
+    "min_score": 70,
+    "decision_quality": "buena"
+  }
+]

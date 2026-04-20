@@ -79,7 +79,7 @@ def run_integrated_demo():
         print(f"\n💡 TRADUCCIÓN SIMPLIFICADA PEDAGÓGICA (Del Experto IA Explicador): {feedback.explicacion}")
         print(f"\n🏆 INSTRUCCIÓN MANUAL BASADA EN NIST: {feedback.mejor_practica}")
         print(f"\n📚 DOCUMENTACIÓN O SUSTENTO LEGAL DEL RAG: {', '.join(feedback.fuentes_citadas)}")
-        print(f"\n⭐ PUNTAJE OBTENIDO (SISTEMA CRUDO Y NUMERADO): {feedback.evaluacion_tecnica.score_tecnico}/100 Puntos a tu bolsa")
+        print(f"\n⭐ PUNTAJE OBTENIDO (SISTEMA CRUDO Y NUMERADO): {feedback.evaluacion_tecnica.technical_score}/100 Puntos a tu bolsa")
         print("-" * 60)
         
         # Comentarios finales en torno a auditorías de backoffice

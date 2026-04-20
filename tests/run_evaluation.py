@@ -81,7 +81,7 @@ def eval_pipeline_completeness(orchestrator, test_cases, profiles) -> Dict[str, 
                     "expected_concepts": case.get("expected_concepts", [])
                 })
                 success += 1
-                print(f"    ✅ [{label}] OK en {latency:.1f}s | Score: {feedback.evaluacion_tecnica.score_tecnico}")
+                print(f"    ✅ [{label}] OK en {latency:.1f}s | Score: {feedback.evaluacion_tecnica.technical_score}")
 
             except Exception as e:
                 latency = time.perf_counter() - start
@@ -139,10 +139,9 @@ def eval_structural_validity(pipeline_results: list) -> Dict[str, Any]:
 
         # EvaluacionTecnica
         et = fb.evaluacion_tecnica
-        if (isinstance(et.score_tecnico, int) and
-            isinstance(et.fortalezas, list) and
-            isinstance(et.debilidades, list) and
-            isinstance(et.evaluacion, str) and len(et.evaluacion) > 0):
+        if (isinstance(et.technical_score, int) and
+            isinstance(et.analysis, str) and len(et.analysis) > 0 and
+            isinstance(et.explanation, str) and len(et.explanation) > 0):
             checks["evaluacion_tecnica_valid"] += 1
 
         # FeedbackPedagogico (dentro de FeedbackFinal)
@@ -153,9 +152,9 @@ def eval_structural_validity(pipeline_results: list) -> Dict[str, Any]:
 
         # ValidacionCalidad
         v = fb.validacion
-        if (isinstance(v.aprobado, bool) and
-            isinstance(v.inconsistencias, list) and
-            isinstance(v.nota, str)):
+        if (isinstance(v.approved, bool) and
+            isinstance(v.inconsistencies, list) and
+            isinstance(v.quality_score, str)):
             checks["validacion_calidad_valid"] += 1
 
         # FeedbackFinal completo
@@ -193,7 +192,7 @@ def eval_score_discrimination(pipeline_results: list) -> Dict[str, Any]:
     for r in pipeline_results:
         if not r["success"]:
             continue
-        score = r["feedback"].evaluacion_tecnica.score_tecnico
+        score = r["feedback"].evaluacion_tecnica.technical_score
         quality = r["decision_quality"]
 
         if quality == "buena":
@@ -346,16 +345,16 @@ def eval_validator_effectiveness(pipeline_results: list) -> Dict[str, Any]:
         total += 1
         v = r["feedback"].validacion
 
-        if v.aprobado:
+        if v.approved:
             approved += 1
         else:
             rejected += 1
 
-        if v.inconsistencias:
+        if v.inconsistencies:
             with_inconsistencies += 1
-            print(f"  ⚠️  [{r['case_id']}-{r['profile']}] Inconsistencias: {v.inconsistencias}")
+            print(f"  ⚠️  [{r['case_id']}-{r['profile']}] Inconsistencias: {v.inconsistencies}")
         else:
-            print(f"  ✅ [{r['case_id']}-{r['profile']}] Aprobado: {v.nota[:60]}...")
+            print(f"  ✅ [{r['case_id']}-{r['profile']}] Aprobado: {v.quality_score[:60]}...")
 
     approval_rate = approved / total if total else 0
     metrics = {
@@ -494,7 +493,8 @@ def main():
     parser = argparse.ArgumentParser(description="Evaluación del Sistema Multiagente SOC-Tutor-RAG")
     parser.add_argument("--provider", default="ollama", help="Provider LLM: gemini, groq, ollama")
     parser.add_argument("--model", default="llama3.2", help="Modelo a usar")
-    parser.add_argument("--cases", type=int, default=None, help="Cantidad de casos a evaluar (default: todos)")
+    parser.add_argument("--cases", type=int, help="Número de casos a ejecutar (opcional)")
+    parser.add_argument("--dataset", type=str, default="eval_dataset.json", help="Nombre del archivo dataset en folder tests/")
     args = parser.parse_args()
 
     print("\n" + "=" * 60)
@@ -503,7 +503,7 @@ def main():
     print("=" * 60)
 
     # Cargar dataset
-    dataset_path = Path(__file__).parent / "eval_dataset.json"
+    dataset_path = Path(__file__).parent / args.dataset
     with open(dataset_path, 'r', encoding='utf-8') as f:
         test_cases = json.load(f)
 

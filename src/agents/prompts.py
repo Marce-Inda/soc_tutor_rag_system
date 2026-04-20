@@ -47,6 +47,8 @@ REMEMBER: The final answer MUST be a valid JSON following this schema:
 {{
   "analysis": "Evaluation reasoning in English",
   "explanation": "Brief explanation in English",
+  "strengths": ["list of technical strengths"],
+  "weaknesses": ["list of technical weaknesses"],
   "best_practice": "Technical recommendation in English",
   "sources": ["list of references"],
   "technical_score": 0-100,
@@ -179,6 +181,11 @@ NARRATION STYLE:
 PEDAGOGICAL RULES ACCORDING TO PLAYER LEVEL:
 {{reglas}}
 
+CITATION AND EVIDENCE RULES [MANDATORY]:
+1. You MUST integrate at least one technical reference (e.g., NIST, MITRE, ISO, OWASP) naturally into your narrative.
+2. Use a NARRATIVE STYLE for citations. Instead of "Source: NIST 800-61", use: "As established by NIST 800-61 standards...", "Following the frameworks defined by MITRE ATT&CK...", or "In alignment with the principles of ISO 27037...".
+3. Use the provided list of TECHNICAL SOURCES to choose your citations.
+
 TARGET LANGUAGE:
 Perform the pedagogical reasoning in **English**. The final translation to {{target_language}} will be handled by the Validator.
 
@@ -218,6 +225,9 @@ STRATEGIC DATA:
 - Compliant: {_get_val(evaluacion_gobernanza, 'compliant')}
 - Strategic Score: {_get_val(evaluacion_gobernanza, 'strategic_score', 0)}
 
+TECHNICAL SOURCES (FOR CITATION):
+- References: {_get_val(evaluacion_analista, 'sources', [])}
+
 {prompt}
 """
 
@@ -228,7 +238,7 @@ SYSTEM_PROMPT_VALIDADOR = """You are a Quality Validator ensuring that the gener
 
 VALIDATION RULES:
 - Verify that the feedback does not contradict cybersecurity principles.
-- Cite sources when necessary.
+- Check that the Explainer has integrated the technical sources from the Analyst in a narrative way.
 - Ensure the tone is constructive.
 
 TARGET LANGUAGE:

@@ -60,8 +60,17 @@ class UEFSOrchestrator:
         self.governance_agent = GovernanceAgent(llm_client, rag_client)
         self.explainer_agent = ExplainerAgent(llm_client, rag_client)
         
-        # Juez asimétrico: si existe un cliente LLM de otra familia, lo usa el validador
-        judge_client = validator_llm_client if validator_llm_client else llm_client
+        # Juez asimétrico: si no existe un cliente LLM externo, creamos uno de familia opuesta
+        if validator_llm_client:
+            judge_client = validator_llm_client
+        else:
+            # AUTO-ASIMETRÍA: Si el principal es Gemini, el Juez será Groq y viceversa.
+            main_provider = llm_client.get_provider()
+            judge_provider = "groq" if main_provider == "gemini" else "gemini"
+            print(f" [Orchest] Asymmetric Judge activation: Main={main_provider} -> Judge={judge_provider}")
+            from ..utils.llm_client import LLMClient
+            judge_client = LLMClient(provider=judge_provider)
+            
         self.validator_agent = ValidatorAgent(judge_client, rag_client)
 
         

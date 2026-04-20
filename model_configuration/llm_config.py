@@ -31,7 +31,7 @@ class GeminiConfig(LLMConfig):
 
 class GroqConfig(LLMConfig):
     """Configuración para Groq (Llama 3)."""
-    model: str = "llama-3.1-8b-instant"
+    model: str = "llama-3.3-70b-versatile"
     temperature: float = 0.3
     max_tokens: int = 512
     top_p: float = 0.8

@@ -119,6 +119,8 @@ class AnalystAgent:
         return EvaluacionTecnica(
             analysis=result_json.get("analysis", "Technical analysis completed"),
             explanation=result_json.get("explanation", "No detailed explanation provided"),
+            strengths=result_json.get("strengths", []),
+            weaknesses=result_json.get("weaknesses", []),
             best_practice=result_json.get("best_practice", "Consult standard manuals"),
             sources=rag_result["sources"] + result_json.get("sources", []),
             technical_score=result_json.get("technical_score", 70),
@@ -142,6 +144,8 @@ class AnalystAgent:
         return EvaluacionTecnica(
             analysis=result.get("analysis", "Direct analysis"),
             explanation=result.get("explanation", "Standard fallback explanation"),
+            strengths=result.get("strengths", []),
+            weaknesses=result.get("weaknesses", []),
             best_practice=result.get("best_practice", "Consult NIST 800-61"),
             sources=result.get("sources", []),
             technical_score=result.get("technical_score", 50),

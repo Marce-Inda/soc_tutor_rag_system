@@ -1,221 +1,242 @@
 {
-  "rag": {
-    "retrieval_success_rate": 1.0,
-    "scenario_relevance_rate": 1.0,
-    "avg_latency_ms": 960.7,
-    "avg_docs_per_query": 5.0,
-    "details": [
+  "provider": "gemini",
+  "model": "gemini-2.0-flash",
+  "num_cases": 7,
+  "num_profiles": 2,
+  "pipeline": {
+    "success_rate": 0.8571428571428571,
+    "total_runs": 14,
+    "successful_runs": 12,
+    "avg_latency_sec": 279.04,
+    "results": [
       {
-        "id": "eval-001",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 18279,
-        "latency_ms": 6456.0
-      },
-      {
-        "id": "eval-002",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 27585,
-        "latency_ms": 30.1
-      },
-      {
-        "id": "eval-003",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 33520,
-        "latency_ms": 70.5
-      },
-      {
-        "id": "eval-004",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 44393,
-        "latency_ms": 104.4
-      },
-      {
-        "id": "eval-005",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 37801,
-        "latency_ms": 19.1
-      },
-      {
-        "id": "eval-006",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 27525,
-        "latency_ms": 23.1
-      },
-      {
-        "id": "eval-007",
-        "has_docs": true,
-        "num_docs": 5,
-        "source_match": true,
-        "scenario_match": true,
-        "context_length": 12878,
-        "latency_ms": 22.0
-      }
-    ]
-  },
-  "guardrails": {
-    "true_positive_rate": 1.0,
-    "true_negative_rate": 1.0,
-    "false_positive_rate": 0.0,
-    "false_negative_rate": 0.0,
-    "accuracy": 1.0,
-    "tp": 6,
-    "tn": 4,
-    "fp": 0,
-    "fn": 0
-  },
-  "validador": {
-    "accuracy": 1.0,
-    "correct": 4,
-    "total": 4
-  },
-  "fallback": {
-    "all_keys_covered": true,
-    "type_safety": true,
-    "fallback_json_preview": {
-      "evaluacion": "str",
-      "score_tecnico": "int",
-      "fortalezas": "list",
-      "debilidades": "list",
-      "fuentes": "list",
-      "explicacion": "str",
-      "mejor_practica": "str",
-      "aprobado": "bool",
-      "inconsistencias": "list",
-      "nota": "str"
-    },
-    "details": {
-      "Analista (EvaluacionTecnica)": {
-        "passed": true,
-        "missing": []
-      },
-      "Explicador (FeedbackPedagogico)": {
-        "passed": true,
-        "missing": []
-      },
-      "Validador (ValidacionCalidad)": {
-        "passed": true,
-        "missing": []
-      }
-    }
-  },
-  "concepts": {
-    "avg_concept_precision": 0.393,
-    "details": [
-      {
-        "id": "eval-001",
-        "expected": [
+        "case_id": "eval-001",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 121.62,
+        "decision_quality": "buena",
+        "min_score": 70,
+        "expected_concepts": [
           "contención",
           "firewall",
           "IOC",
           "bloqueo"
-        ],
-        "found": [],
-        "precision": 0.0
+        ]
       },
       {
-        "id": "eval-002",
-        "expected": [
+        "case_id": "eval-001",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 114.8,
+        "decision_quality": "buena",
+        "min_score": 70,
+        "expected_concepts": [
+          "contención",
+          "firewall",
+          "IOC",
+          "bloqueo"
+        ]
+      },
+      {
+        "case_id": "eval-002",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 116.33,
+        "decision_quality": "mala",
+        "min_score": 30,
+        "expected_concepts": [
           "aislar",
           "impacto",
           "crítico",
           "ransomware"
-        ],
-        "found": [
-          "ransomware"
-        ],
-        "precision": 0.25
+        ]
       },
       {
-        "id": "eval-003",
-        "expected": [
+        "case_id": "eval-002",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 115.76,
+        "decision_quality": "mala",
+        "min_score": 30,
+        "expected_concepts": [
+          "aislar",
+          "impacto",
+          "crítico",
+          "ransomware"
+        ]
+      },
+      {
+        "case_id": "eval-003",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 117.09,
+        "decision_quality": "buena",
+        "min_score": 80,
+        "expected_concepts": [
           "cadena de custodia",
           "preservación",
           "evidencia",
           "forense"
-        ],
-        "found": [
-          "evidencia",
-          "forense"
-        ],
-        "precision": 0.5
+        ]
       },
       {
-        "id": "eval-004",
-        "expected": [
+        "case_id": "eval-003",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 123.14,
+        "decision_quality": "buena",
+        "min_score": 80,
+        "expected_concepts": [
+          "cadena de custodia",
+          "preservación",
+          "evidencia",
+          "forense"
+        ]
+      },
+      {
+        "case_id": "eval-004",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 115.42,
+        "decision_quality": "buena",
+        "min_score": 85,
+        "expected_concepts": [
           "segmentación",
           "lateral",
           "contención",
           "APT"
-        ],
-        "found": [
-          "lateral",
-          "APT"
-        ],
-        "precision": 0.5
+        ]
       },
       {
-        "id": "eval-005",
-        "expected": [
+        "case_id": "eval-004",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 117.7,
+        "decision_quality": "buena",
+        "min_score": 85,
+        "expected_concepts": [
+          "segmentación",
+          "lateral",
+          "contención",
+          "APT"
+        ]
+      },
+      {
+        "case_id": "eval-005",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 1183.27,
+        "decision_quality": "buena",
+        "min_score": 75,
+        "expected_concepts": [
           "notificación",
           "datos",
           "regulación",
           "breach"
-        ],
-        "found": [
-          "notificación",
-          "datos"
-        ],
-        "precision": 0.5
+        ]
       },
       {
-        "id": "eval-006",
-        "expected": [
+        "case_id": "eval-005",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 116.44,
+        "decision_quality": "buena",
+        "min_score": 75,
+        "expected_concepts": [
+          "notificación",
+          "datos",
+          "regulación",
+          "breach"
+        ]
+      },
+      {
+        "case_id": "eval-006",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 232.15,
+        "decision_quality": "mala",
+        "min_score": 15,
+        "expected_concepts": [
           "preservar",
           "evidencia",
           "error",
           "logs"
-        ],
-        "found": [
+        ]
+      },
+      {
+        "case_id": "eval-006",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 232.3,
+        "decision_quality": "mala",
+        "min_score": 15,
+        "expected_concepts": [
+          "preservar",
           "evidencia",
           "error",
           "logs"
-        ],
-        "precision": 0.75
+        ]
       },
       {
-        "id": "eval-007",
-        "expected": [
-          "MFA",
-          "credenciales",
-          "autenticación",
-          "erradicación"
-        ],
-        "found": [
-          "MFA"
-        ],
-        "precision": 0.25
+        "case_id": "eval-007",
+        "profile": "Lvl1-analyst",
+        "success": false,
+        "latency_sec": 582.84,
+        "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01khw01w13evmah5dva8xc85f8` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99435, Requested 1107. Please try again in 7m48.288s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
+      },
+      {
+        "case_id": "eval-007",
+        "profile": "Lvl5-ciso",
+        "success": false,
+        "latency_sec": 617.67,
+        "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01khw01w13evmah5dva8xc85f8` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99324, Requested 866. Please try again in 2m44.16s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
       }
     ]
   },
-  "num_cases": 7,
-  "total_docs_in_index": 56,
-  "unique_scenarios": 7
+  "structure": {
+    "evaluacion_tecnica_valid": 1.0,
+    "feedback_pedagogico_valid": 1.0,
+    "validacion_calidad_valid": 1.0,
+    "feedback_final_valid": 1.0,
+    "total_checked": 12
+  },
+  "discrimination": {
+    "avg_good_score": 75.0,
+    "avg_bad_score": 40.0,
+    "discriminates": true,
+    "score_gap": 35.0,
+    "good_scores": [
+      80,
+      80,
+      60,
+      60,
+      80,
+      80,
+      80,
+      80
+    ],
+    "bad_scores": [
+      80,
+      80,
+      0,
+      0
+    ]
+  },
+  "faithfulness": {
+    "faithfulness_rate": 0.833,
+    "avg_sources_per_response": 1.0,
+    "total_checked": 12
+  },
+  "adaptation": {
+    "adaptation_rate": 0.0,
+    "adapted_cases": 0,
+    "total_comparable_cases": 6
+  },
+  "validator": {
+    "approval_rate": 0.0,
+    "approved": 0,
+    "rejected": 12,
+    "with_inconsistencies": 12,
+    "total": 12
+  }
 }

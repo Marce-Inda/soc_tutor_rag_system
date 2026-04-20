@@ -63,6 +63,8 @@ class EvaluacionTecnica(BaseModel):
     """Detailed result of the technical evaluation performed by the Analyst Agent."""
     analysis: str = Field(..., description="Technical reasoning of the finding")
     explanation: str = Field(..., description="Detailed technical explanation")
+    strengths: List[str] = Field(default_factory=list, description="Technical strengths of the decision")
+    weaknesses: List[str] = Field(default_factory=list, description="Technical weaknesses or risks")
     best_practice: str = Field(..., description="Technical recommendation based on standards")
     sources: List[str] = Field(default_factory=list, description="References (MITRE, NIST, ISO, etc.)")
     technical_score: int = Field(..., description="Calculated technical score (0-100)")
