@@ -81,16 +81,22 @@ class SemanticCache:
         player_profile: Dict[str, Any]
     ) -> str:
         """Crea una representación textual única (fingerprint) en inglés para normalizar la búsqueda."""
+        # Unificar representación del incidente y fase para proteger jurisdicción
+        scenario = context.get('scenario_id', 'unknown')
+        incident = context.get('tipo_incidente', 'unknown')
+        fase = context.get('fase', 'unknown')
+        
         # Translate core intent to English to unify the cache across ES, PT, EN
         action_en = self._translate_intent(decision.get('accion', ''))
-        justification_en = self._translate_intent(decision.get('justificacion', ''))
         
         parts = [
-            f"SCENARIO: {context.get('scenario_id', 'unknown')}",
+            f"SCENARIO: {scenario}",
+            f"INCIDENT: {incident}",
+            f"PHASE: {fase}",
             f"ACTION: {action_en}",
             f"TARGET: {decision.get('target', '')}",
-            f"JUSTIFICATION: {justification_en}",
-            f"LEVEL: {player_profile.get('level', '1')}"
+            f"LEVEL: {player_profile.get('level', '1')}",
+            f"ROLE: {player_profile.get('rol', 'analyst')}"
         ]
         return " | ".join(parts)
 
@@ -164,6 +170,8 @@ class SemanticCache:
             metadatas=[{
                 "created_at": datetime.now().isoformat(),
                 "scenario_id": context.get("scenario_id", "unknown"),
+                "tipo_incidente": context.get("tipo_incidente", "unknown"),
+                "fase": context.get("fase", "unknown"),
                 "feedback_json": feedback_json
             }]
         )

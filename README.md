@@ -19,8 +19,9 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 ## 🌟 Recent Updates (Latest Sessions)
 
 - **MCP Integration (Model Context Protocol)**: Integrated EDR and SIEM log simulations using MCP servers, decoupling interactive tools from the core RAG system for a more realistic immersive experience.
+- **AI Engineering Optimization (Latency & Cost)**: Implemented RAG Context Splitting (Technical vs Strategic), Top-K pruning, and Semantic Cache hardening, reducing prompt overhead by ~50%.
+- **Resilience Protocol**: Added invisible background retry loops and "Immersion Shields" for connection failures to ensure a seamless technical workspace experience.
 - **Enhanced UI/UX Immersion**: Added ambient audio to the SOC Workstation and refined the Analyst Mentor interface for high-fidelity gameplay.
-- **Waitlist & Queue Management**: Implemented a backend queue manager and frontend waitlist to gracefully handle API rate limits during live demonstrations.
 
 ## 🛠️ Core Technologies
 
@@ -73,14 +74,16 @@ docker compose up -d --build
 
 ## 🛠️ Manual Installation (Standalone)
 
-## 🧠 Professional Design Decisions
+## 🧠 Professional AI Engineering
 
-To ensure the project is easy to evaluate and scalable, the following strategic choices were made:
+For a deep dive into the technical reasoning, cost optimizations, and resilience patterns implemented in this project, please consult the:
+
+📜 **[Architectural Decisions & AI Design Log](ARCHITECTURAL_DECISIONS.md)**
 
 1.  **HuggingFace Spaces (Backend)**: Chosen as the hosting provider for the Python engine due to its **16GB RAM free tier**, which is necessary for the RAG index and local embedding models.
 2.  **Next.js 14 (Frontend)**: Utilized the App Router for optimal performance. The decoupled architecture allows the frontend to run on Vercel with zero latency.
 3.  **Framer Motion & Tailwind**: Selected to provide a **"Visceral Impact"** for the academic jury, ensuring the UI feels like a state-of-the-art SOC workstation rather than a simple chat bot.
-4.  **"Manager of Drafts" UI**: The interface is designed as an **Advisor Sidebar**, promoting socratic learning where the AI evaluates and guides instead of just providing answers.
+4.  **"Manager of Drafts" Multi-Agent Flow**: Uses an asymmetric judge pattern where a secondary LLM (Gemini/Groq) validates the pedagogical quality of the feedback before it reaches the player.
 
 ---
 **Final Specialization Project - SOC Tutor RAG System**

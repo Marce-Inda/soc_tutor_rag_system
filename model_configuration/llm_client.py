@@ -57,6 +57,8 @@ class LLMClient:
                 model=config.model,
                 temperature=config.temperature,
                 max_tokens=config.max_tokens,
+                timeout=30.0,
+                max_retries=0,
                 google_api_key=api_key
             )
         
@@ -69,6 +71,8 @@ class LLMClient:
                 model=config.model,
                 temperature=config.temperature,
                 max_tokens=config.max_tokens,
+                timeout=30.0,
+                max_retries=0,
                 groq_api_key=api_key
             )
     

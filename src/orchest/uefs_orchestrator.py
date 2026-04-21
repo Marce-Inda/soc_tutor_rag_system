@@ -141,36 +141,55 @@ class UEFSOrchestrator:
         
         history = self.memory.get_history_summary(self.session_id)
         
-        # 3. RAG
+        # 3. RAG - Differentiated Retrieval (Performance Hub)
         if contexto.scenario_id:
             self.tools.set_scenario(contexto.scenario_id)
 
-        # Optimization: k=3 + content truncation to stay under Groq 12k TPM
-        raw_rag = self.rag.retrieve_with_context(
+        print(f" [Orchestrator] Retrieving differentiated RAG context...")
+        
+        # Technical RAG (For Analyst) - k=2 to reduce bloat
+        rag_tecnico = self.rag.retrieve_with_context(
             decision=decision.model_dump(),
             contexto=contexto.model_dump(),
-            k=3
+            k=2,
+            knowledge_type="technical"
         )
         
-        # 4. Truncate and rebuild context string
-        docs = raw_rag.get('documentos_recuperados', [])
-        context_parts = []
-        for i, d in enumerate(docs):
-            content = d.get('text', '')
-            if len(content) > 1500:
-                content = content[:1500] + "... [TRUNCATED]"
-            
-            prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
-            doc_id = d.get('id', 'no-id')[:8]
-            context_parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {content}")
-            
-        contexto_rag_str = "\n\n".join(context_parts)
+        # Strategic RAG (For Governance/Explainer) - k=2
+        rag_estrategico = self.rag.retrieve_with_context(
+            decision=decision.model_dump(),
+            contexto=contexto.model_dump(),
+            k=2,
+            knowledge_type="strategic"
+        )
+        
+        # Assemble filtered contexts
+        def format_context(docs):
+            parts = []
+            for i, d in enumerate(docs):
+                content = d.get('text', '')
+                if len(content) > 1200: # Slightly more aggressive truncation
+                    content = content[:1200] + "... [TRUNCATED]"
+                
+                prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
+                doc_id = d.get('id', 'no-id')[:8]
+                parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {content}")
+            return "\n\n".join(parts)
+
+        contexto_tecnico_str = format_context(rag_tecnico.get('documentos_recuperados', []))
+        contexto_estrategico_str = format_context(rag_estrategico.get('documentos_recuperados', []))
+        
+        # Combined for Explainer/Validator
+        contexto_full_str = f"--- TECHNICAL CONTEXT ---\n{contexto_tecnico_str}\n\n--- STRATEGIC/LEGAL CONTEXT ---\n{contexto_estrategico_str}"
         
         # 4. ANALYST DUO (Technical + Governance)
         print(f" [Orchestrator] Running parallel evaluations...")
-        evaluacion_analista = self.analyst_agent.evaluar(decision, contexto)
+        # Analyst only gets technical context
+        evaluacion_analista = self.analyst_agent.evaluar(decision, contexto, contexto_rag=contexto_tecnico_str)
         self.current_session_cost += self.llm.last_usage["cost"]
-        evaluacion_gobernanza = self.governance_agent.evaluar(decision, contexto)
+        
+        # Governance only gets strategic/legal context
+        evaluacion_gobernanza = self.governance_agent.evaluar(decision, contexto, contexto_rag=contexto_estrategico_str)
         self.current_session_cost += self.llm.last_usage["cost"]
         
         # 5. GENERACIÓN Y VALIDACIÓN (Manager of Drafts Loop)
@@ -182,12 +201,12 @@ class UEFSOrchestrator:
         while current_retry <= max_retries:
             print(f" [Orchestrator] Generating pedagogical feedback (Draft {current_retry + 1})...")
             
-            # El Explainer usa inglés internamente
+            # El Explainer usa contexto completo para narrar el choque asimétrico
             feedback_explicador = self.explainer_agent.generar(
                 evaluacion_analista=evaluacion_analista,
                 evaluacion_gobernanza=evaluacion_gobernanza,
                 player_profile=player_profile,
-                contexto_rag=contexto_rag_str
+                contexto_rag=contexto_full_str
             )
             self.current_session_cost += self.llm.last_usage["cost"]
             
@@ -197,7 +216,7 @@ class UEFSOrchestrator:
                     evaluacion_analista=evaluacion_analista,
                     feedback_explicador=feedback_explicador,
                     player_profile=player_profile,
-                    contexto_rag=contexto_rag_str
+                    contexto_rag=contexto_full_str
                 )
                 self.current_session_cost += self.llm.last_usage["cost"]
 
@@ -228,7 +247,7 @@ class UEFSOrchestrator:
             evaluacion=final_text,
             explicacion=feedback_explicador.explanation,
             mejor_practica=feedback_explicador.best_practice,
-            fuentes_citadas=raw_rag["sources"] + feedback_explicador.cited_sources,
+            fuentes_citadas=rag_tecnico.get("sources", []) + rag_estrategico.get("sources", []) + feedback_explicador.cited_sources,
             evaluacion_tecnica=evaluacion_analista,
             evaluacion_gobernanza=evaluacion_gobernanza,
             evaluacion_6d=validacion.evaluacion_6d,

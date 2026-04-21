@@ -114,7 +114,9 @@ class SOCtools:
                         
                     return "Acción MCP no reconocida. Intentar con analyze_logs o network_scan."
         try:
-            return asyncio.run(_run())
+            return asyncio.run(asyncio.wait_for(_run(), timeout=15.0))
+        except asyncio.TimeoutError:
+            return "Error: Tiempo de espera agotado al conectar con el Servidor MCP de Telemetría. El sistema está bajo alta carga."
         except Exception as e:
             return f"Error conectando al Servidor MCP de Telemetría: {str(e)}"
 
@@ -145,7 +147,9 @@ class SOCtools:
                         
                     return "Acción de EDR no reconocida. Intentar con isolate_host o block_ip."
         try:
-            return asyncio.run(_run())
+            return asyncio.run(asyncio.wait_for(_run(), timeout=15.0))
+        except asyncio.TimeoutError:
+            return "Error: Tiempo de espera agotado al conectar con el Servidor EDR. La acción de contención podría estar en proceso pero el enlace falló."
         except Exception as e:
             return f"Error conectando al Servidor EDR por MCP: {str(e)}"
 

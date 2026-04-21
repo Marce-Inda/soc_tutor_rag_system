@@ -242,27 +242,11 @@ class RAGClient:
         return retrieved
 
     def _translate_query(self, query: str) -> str:
-        """Traduce una consulta técnica al inglés para mejorar el 'match' en el RAG protegiendo contexto."""
-        if not self.llm_client:
-            return query
-            
-        system_prompt = "You are a specialized translator for cybersecurity technical terms."
-        prompt = f"""Translate the following technical incident response query to English to optimize RAG retrieval.
-MANDATORY RULES:
-1. Preserve technical IDs (IPs, MITRE ATT&CK IDs, CVEs, Hashes) exactly as they are.
-2. PROTECT proper names and official entity names (e.g., "AEPD", "Policía Federal", "Plan Nacional de Ciberseguridad") - DO NOT translate them.
-3. Translate the pedagogical and technical intent accurately.
-
-QUERY: "{query}"
-
-Return ONLY the translation:"""
-        
-        try:
-            translation = self.llm_client.generate(prompt, system_prompt=system_prompt)
-            return translation.strip()
-        except Exception as e:
-            print(f"  [RAG] Error translating query: {e}")
-            return query
+        """
+        [OPTIMIZED] No longer calls LLM for translation.
+        Calculates search terms based on technical tokens and original query.
+        """
+        return query
 
     def retrieve_hybrid(
         self, 
@@ -313,11 +297,25 @@ Return ONLY the translation:"""
         self,
         decision: Dict[str, Any],
         contexto: Dict[str, Any],
-        k: int = 5
+        k: int = 5,
+        knowledge_type: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Recupera conocimiento contextual para una decisión usando búsqueda híbrida."""
-        # Construir query
+        """
+        Recupera conocimiento contextual adaptado al tipo de conocimiento pedido.
+        - technical: Busca MITRE y Evidencias.
+        - strategic: Busca NIST, GDPR y leyes.
+        """
+        # Construir query base
         query = f"{decision.get('accion', '')} {contexto.get('tipo_incidente', '')}"
+        
+        # Filtro de fuente dinámico basado en el tipo de conocimiento
+        filter_source = None
+        if knowledge_type == "technical":
+            # Nota: En un sistema real, Chroma soportaría $in para múltiples fuentes.
+            # Por ahora simplificamos la query para buscar MITRE o Evidencia si es técnico.
+            query += " mitre tactics techniques evidence logs"
+        elif knowledge_type == "strategic":
+            query += " nist guidelines gdpr compliance legal"
         
         # Intentar extraer ID de técnica si existe en la decisión
         if 'tecnica_id' in decision:

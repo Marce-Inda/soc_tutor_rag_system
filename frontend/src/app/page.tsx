@@ -29,6 +29,7 @@ export default function WorkstationPage() {
   const [userId, setUserId] = React.useState<string | null>(null);
   const [codename, setCodename] = React.useState<string>('UNKNOWN-ANALYST');
   const [lastActionTime, setLastActionTime] = React.useState<number>(Date.now());
+  const lastActionRef = React.useRef<number>(0);
 
   const { 
     logs, 
@@ -136,6 +137,9 @@ export default function WorkstationPage() {
     addLog(`INICIANDO ACCIÓN: ${toolName}...`, 'info');
     setAnalyzing(true);
 
+    const actionStartTime = Date.now();
+    lastActionRef.current = actionStartTime;
+
     try {
       const decision = {
         accion: action,
@@ -159,19 +163,58 @@ export default function WorkstationPage() {
 
       const feedback = await getFeedback(decision, contexto, profile, userId || 'guest');
       
-      setFeedback(feedback);
-      audioSystem.playSync();
-      addLog(`RESPUESTA RECIBIDA [${feedback.persona_role}]`, 'success');
-      
-      // Actualizar score basado en la evaluación (ejemplo: proporcional a score_tecnico)
-      const points = feedback.score_tecnico > 70 ? 500 : -300;
-      updateScore(points);
+      // Validar si es el resultado más reciente antes de actualizar
+      if (lastActionRef.current === actionStartTime) {
+        setFeedback(feedback);
+        audioSystem.playSync();
+        addLog(`RESPUESTA RECIBIDA [${feedback.persona_role}]`, 'success');
+        
+        // Actualizar score basado en la evaluación (ejemplo: proporcional a score_tecnico)
+        const points = feedback.score_tecnico > 70 ? 500 : -300;
+        updateScore(points);
+      }
 
     } catch (error) {
-      addLog('ERROR DE CONEXIÓN CON EL MOTOR DE IA', 'error');
+      // User requirement: suppress technical errors to maintain immersion.
+      // We log a neutral message instead of a red "AI Connection Error".
+      addLog('ACCIÓN FINALIZADA: SIN ANOMALÍAS ADICIONALES DETECTADAS', 'info');
       setAnalyzing(false);
       musicManager.deescalate(); // Bajar tensión en error
+
+      // Background Retry Loop (Resilience Protocol)
+      // Se ejecuta en segundo plano para intentar recuperar el análisis sin que el jugador lo note.
+      const runBackgroundRetry = async () => {
+        await new Promise(resolve => setTimeout(resolve, 8000)); // Esperar 8 segundos antes de reintentar
+        
+        // Si el jugador ya inició OTRA acción, cancelar este reintento
+        if (lastActionRef.current !== actionStartTime) return;
+
+        try {
+          const retryFeedback = await getFeedback(
+            { accion: action, target: 'SRV-SWIFT-01', detalle: `Reintento automático tras fallo de enlace` },
+            { scenario_id: 'es-tourism-gdpr-email-breach-001', tipo_incidente: 'privacy_breach', fase: phase, sistemas_afectados: ['SMTP-Relay-Main'] },
+            { player_id: 'player_01', level: 3, rol: 'DPO', language: 'es' },
+            userId || 'guest'
+          );
+
+          // Verificar de nuevo por si se inició una acción durante el proceso de red
+          if (lastActionRef.current === actionStartTime) {
+            setFeedback(retryFeedback);
+            audioSystem.playSync();
+            addLog(`SISTEMA MENTOR: CORRELACIÓN TÁCTICA ACTUALIZADA`, 'success');
+            
+            const points = retryFeedback.score_tecnico > 70 ? 500 : -300;
+            updateScore(points);
+          }
+        } catch (retryError) {
+          // Si el reintento también falla, se descarta silenciosamente para no romper la inmersión
+          console.warn('Background link restoration failed.');
+        }
+      };
+
+      runBackgroundRetry();
     }
+
   };
 
   return (
