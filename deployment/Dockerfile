@@ -25,12 +25,20 @@ COPY deployment/app/ ./app/
 # Create indices directory if not exists
 RUN mkdir -p /app/data/indices
 
+# Security: Crear usuario no-root (Principio de Mínimos Permisos)
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser && \
+    chown -R appuser:appgroup /app
+
 # Expose port
 EXPOSE 8000
 
 # Environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+
+# Security: Ejecutar como usuario no privilegiado
+USER appuser
 
 # Run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

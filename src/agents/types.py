@@ -12,29 +12,29 @@ from datetime import datetime
 
 class Decision(BaseModel):
     """Represents a technical decision made by the player in the simulator."""
-    accion: str = Field(..., description="Action performed (e.g., 'block_ip', 'isolate_host')")
-    target: str = Field(..., description="IP, hostname, or system affected by the decision")
+    accion: str = Field(..., description="Action performed (e.g., 'block_ip', 'isolate_host')", max_length=200)
+    target: str = Field(..., description="IP, hostname, or system affected by the decision", max_length=200)
     timestamp: Optional[datetime] = Field(default_factory=datetime.now)
-    detalle: Optional[str] = Field(None, description="Additional contextual details")
+    detalle: Optional[str] = Field(None, description="Additional contextual details", max_length=1000)
 
 
 class ContextoEscenario(BaseModel):
     """Context of the game scenario."""
-    tipo_incidente: str = Field(..., description="Type: phishing, ransomware, APT, etc.")
-    fase: str = Field(..., description="Phase: detection, containment, eradication, recovery")
+    tipo_incidente: str = Field(..., description="Type: phishing, ransomware, APT, etc.", max_length=100)
+    fase: str = Field(..., description="Phase: detection, containment, eradication, recovery", max_length=50)
     sistemas_afectados: List[str] = Field(default_factory=list)
-    score: int = Field(0, description="Previous score of the decision")
-    scenario_id: Optional[str] = None
-    dificultad: Optional[str] = None
+    score: int = Field(0, description="Previous score of the decision", ge=0, le=100)
+    scenario_id: Optional[str] = Field(None, max_length=100)
+    dificultad: Optional[str] = Field(None, max_length=50)
 
 
 class PlayerProfile(BaseModel):
     """Profile of the player."""
-    player_id: str
-    level: int = Field(..., description="Player level: 1 (junior) to 6 (expert)")
-    rol: str = Field(default="analyst", description="analyst or ciso")
-    language: str = Field(default="es", description="Delivery language: es, pt, en")
-    dilema_index_session: int = Field(0, description="Dilemma index in current session")
+    player_id: str = Field(..., max_length=64)
+    level: int = Field(..., description="Player level: 1 (junior) to 6 (expert)", ge=1, le=6)
+    rol: str = Field(default="analyst", description="analyst or ciso", max_length=20)
+    language: str = Field(default="es", description="Delivery language: es, pt, en", max_length=5)
+    dilema_index_session: int = Field(0, description="Dilemma index in current session", ge=0)
 
 
 class InputFeedbackRequest(BaseModel):

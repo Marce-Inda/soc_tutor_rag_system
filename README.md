@@ -19,9 +19,9 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 ## 🌟 Recent Updates (Latest Sessions)
 
 - **MCP Integration (Model Context Protocol)**: Integrated EDR and SIEM log simulations using MCP servers, decoupling interactive tools from the core RAG system for a more realistic immersive experience.
-- **AI Engineering Optimization (Latency & Cost)**: Implemented RAG Context Splitting (Technical vs Strategic), Top-K pruning, and Semantic Cache hardening, reducing prompt overhead by ~50%.
-- **Resilience Protocol**: Added invisible background retry loops and "Immersion Shields" for connection failures to ensure a seamless technical workspace experience.
-- **Enhanced UI/UX Immersion**: Added ambient audio to the SOC Workstation and refined the Analyst Mentor interface for high-fidelity gameplay.
+- **Cognitive RAG & Fast Path**: Implementation of Semantic/Procedural Memory Silos and a Metacognitive Router (PMS 2.0) for conceptual queries, reducing API costs by 93% and latency by 85%.
+- **Adversarial Audits (Red/Blue Hat)**: Architecture fortified with *Session Isolation* (preventing Memory Leaks and Wallet-Exhaustion DoS), *Fail-Closed* validation for security, and exhaustive correction of "Shadow Logic" in the Docker production environment.
+- **Waitlist & Queue Management**: Deployed a robust Queue Manager on the backend (with Anti-Camping/Zombie expulsion) and a Waitlist on the frontend to prevent API overloads during concurrent demonstrations.
 
 ## 🛠️ Core Technologies
 

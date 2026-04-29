@@ -72,9 +72,10 @@ Return ONLY a JSON following this schema:
             response = self.llm.generate_json(prompt)
             if not response.get("is_safe", True):
                 return False, f"Security Alert (L2): {response.get('reason', 'Malicious intent detected')}"
-        except Exception:
-            # En caso de error de la API, fallamos hacia la seguridad
-            pass
+        except Exception as e:
+            # En caso de error de la API, FALLAMOS CERRADO (Fail-Closed)
+            # Retornamos un código específico para que el orquestador sepa que fue un error técnico y no un ataque.
+            return False, "L2_API_ERROR"
             
         return True, ""
 

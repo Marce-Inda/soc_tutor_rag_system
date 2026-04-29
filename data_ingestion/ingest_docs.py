@@ -69,7 +69,7 @@ class DocumentProcessor:
                 
                 if name:
                     chunks.append({
-                        'id': hashlib.md5(name.encode()).hexdigest(),
+                        'id': hashlib.sha256(f"{mitre_id}:{name}".encode()).hexdigest(),
                         'text': f"Técnica MITRE {mitre_id}: {name}. {description}",
                         'source': 'MITRE ATT&CK',
                         'type': 'technique',
@@ -95,7 +95,7 @@ class DocumentProcessor:
             if len(section) < 50:
                 continue
                 
-            chunk_id = hashlib.md5(section[:100].encode()).hexdigest()
+            chunk_id = hashlib.sha256(section[:200].encode()).hexdigest()
             
             chunks.append({
                 'id': chunk_id,
@@ -112,7 +112,7 @@ class DocumentProcessor:
         all_chunks = []
         
         # 1. Procesar nuevas fuentes Globales (Estructura mejorada)
-        global_categories = ["frameworks", "forensics", "compliance", "techniques"]
+        global_categories = ["frameworks", "forensics", "compliance", "techniques", "cisa", "nist", "owasp"]
         for cat in global_categories:
             cat_dir = DOCS_DIR / cat
             if cat_dir.exists():
@@ -192,6 +192,33 @@ def create_chroma_index(chunks: List[Dict]):
     print(f"✓ Índice Chroma creado con {len(chunks)} documentos")
 
 
+def generate_integrity_manifest():
+    """Genera un manifiesto SHA-256 de todos los archivos fuente para verificación post-ingesta."""
+    manifest = {}
+    
+    # Recorrer todos los archivos en data/docs y data/sample_scenarios
+    for search_dir in [DOCS_DIR, BASE_DIR / "sample_scenarios"]:
+        if not search_dir.exists():
+            continue
+        for filepath in search_dir.rglob("*"):
+            if filepath.is_file():
+                with open(filepath, "rb") as f:
+                    file_hash = hashlib.sha256(f.read()).hexdigest()
+                rel_path = str(filepath.relative_to(BASE_DIR))
+                manifest[rel_path] = {
+                    "sha256": file_hash,
+                    "size_bytes": filepath.stat().st_size
+                }
+    
+    manifest_path = INDICES_DIR / "integrity_manifest.json"
+    INDICES_DIR.mkdir(parents=True, exist_ok=True)
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2, sort_keys=True)
+    
+    print(f"✓ Manifiesto de integridad generado: {len(manifest)} archivos → {manifest_path}")
+    return manifest
+
+
 def main():
     print("=" * 60)
     print("INGESTIÓN DE DOCUMENTOS PARA RAG")
@@ -204,6 +231,9 @@ def main():
     
     # Crear índice
     create_chroma_index(chunks)
+    
+    # Generar manifiesto de integridad de archivos fuente
+    generate_integrity_manifest()
     
     print("\n✓ Ingestión completada")
 

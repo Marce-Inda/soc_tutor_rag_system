@@ -3,6 +3,7 @@ FastAPI Application - SOC Tutor RAG System
 API para servir el sistema de feedback.
 """
 
+import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -30,13 +31,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# CORS - Security: Orígenes restringidos (Principio de Mínimos Permisos)
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",           # Frontend dev local
+    "http://soc-tutor-frontend:3000",  # Frontend Docker interno
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Modelos de request/response
@@ -83,7 +89,7 @@ def get_orchestrator():
         # Importar aquí para evitar errores si no están instalados
         try:
             from model_configuration.llm_client import LLMClient
-            from tool_integration.rag_client import RAGClient
+            from src.rag.rag_client import RAGClient
             from src.orchest.uefs_orchestrator import UEFSOrchestrator
             
             _llm_client = LLMClient()
@@ -146,6 +152,10 @@ def heartbeat(user_id: str):
 def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
     """Genera feedback para una decisión del jugador."""
     
+    # Security: Validar formato de user_id (solo alfanumérico, guiones, max 64)
+    if not re.match(r'^[a-zA-Z0-9_-]{1,64}$', user_id):
+        raise HTTPException(status_code=400, detail="Identificador de usuario inválido.")
+    
     # Validar que el usuario esté activo en la cola
     status = queue_manager.get_user_status(user_id)
     if status.status != "ACTIVE":
@@ -161,8 +171,14 @@ def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
         feedback = orchestrator.generar_feedback(
             decision=request.decision,
             contexto=request.contexto,
-            player_profile=request.player_profile
+            player_profile=request.player_profile,
+            session_id=user_id
         )
+        
+        # Expulsión forzada de jugadores zombies (Red Hat)
+        if "API Budget exceeded" in feedback.evaluacion or "Session turn limit" in feedback.evaluacion:
+            queue_manager.expel_user(user_id)
+            
         
         # Mapear respuesta
         gov_eval = (

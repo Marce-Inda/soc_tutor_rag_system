@@ -152,7 +152,7 @@ class SemanticCache:
             return
             
         fingerprint = self._generate_fingerprint(decision, context, player_profile)
-        entry_id = hashlib.md5(fingerprint.encode()).hexdigest()
+        entry_id = hashlib.sha256(fingerprint.encode()).hexdigest()
         
         # Generar embedding manualmente
         embedding = self._model.encode([fingerprint]).tolist()

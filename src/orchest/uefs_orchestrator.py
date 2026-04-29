@@ -1,5 +1,9 @@
 """
-Main Orchestrator - SOC Tutor UEFS.
+Main Orchestrator - SOC Tuto
+        # Inicializar tracking de costos para esta sesión si no existe
+        if session_id not in self.session_costs:
+            self.session_costs[session_id] = 0.0
+r UEFS.
 Agent coordinator using the Manager of Drafts pattern and bilingual reasoning.
 """
 
@@ -40,7 +44,6 @@ class UEFSOrchestrator:
         llm_client,
         rag_client,
         enable_validation: bool = True,
-        session_id: str = "sesion-default",
         validator_llm_client = None
     ):
         self.llm = llm_client
@@ -50,8 +53,7 @@ class UEFSOrchestrator:
             self.rag.llm_client = llm_client
             
         self.enable_validation = enable_validation
-        self.session_id = session_id
-        
+                
         self.tools = SOCtools(rag_client)
         self.memory = SessionMemory()
         self.guard = GuardAgent(llm_client)
@@ -79,7 +81,7 @@ class UEFSOrchestrator:
         # Security Thresholds
         self.MAX_TURNS_PER_SESSION = 15
         self.MAX_COST_PER_SESSION = 0.05
-        self.current_session_cost = 0.0
+        self.session_costs = {}
 
     def health_check(self) -> Dict[str, Any]:
         """Returns the health status of the orchestrator and its components."""
@@ -88,7 +90,7 @@ class UEFSOrchestrator:
             "llm_provider": self.llm.get_provider(),
             "rag_documents": self.rag.count_documents(),
             "validation_enabled": self.enable_validation,
-            "session_id": self.session_id
+            "session_isolation": "enabled"
         }
 
     
@@ -96,7 +98,8 @@ class UEFSOrchestrator:
         self,
         decision: Decision,
         contexto: ContextoEscenario,
-        player_profile: PlayerProfile
+        player_profile: PlayerProfile,
+        session_id: str = "sesion-default"
     ) -> FeedbackFinal:
         """
         Flujo Maestro con loop de corrección (Manager of Drafts).
@@ -104,7 +107,7 @@ class UEFSOrchestrator:
         
         tracer.start_trace("evaluacion_integral_maestra", {
             "accion": decision.accion,
-            "session_id": self.session_id
+            "session_isolation": "enabled"
         })
         
         # 1. CACHÉ SEMÁNTICO
@@ -122,24 +125,77 @@ class UEFSOrchestrator:
         # 2. GUARD & MEMORY (Security L1/L2)
         try:
             # Check turn limits
-            turns = self.memory.get_session_turn_count(self.session_id)
+            turns = self.memory.get_session_turn_count(session_id)
             if turns >= self.MAX_TURNS_PER_SESSION:
                  return self._get_safe_block_response("Session turn limit reached. Please start a new simulation.")
 
             # Check Cost limits
-            if self.current_session_cost >= self.MAX_COST_PER_SESSION:
+            if self.session_costs[session_id] >= self.MAX_COST_PER_SESSION:
                  return self._get_safe_block_response("API Budget exceeded for this session. Please contact support.")
 
             is_safe, error_msg = self.guard.validate_input(decision)
             if not is_safe:
                 tracer.end_trace({"error": error_msg}, status="blocked")
+                if error_msg == "L2_API_ERROR":
+                    return self._get_api_error_response()
                 return self._get_safe_block_response("Action could not be processed due to security policies.")
         except Exception as e:
             tracer.add_step("guard_error", {"error": str(e)})
-            return self._get_safe_block_response("A technical security error occurred.")
+            return self._get_api_error_response()
 
         
-        history = self.memory.get_history_summary(self.session_id)
+        # Recuperar Memoria Episódica
+        history = self.memory.get_history_summary(session_id)
+        
+        # 2.5 PMS 2.0: ENRUTAMIENTO METACOGNITIVO (Fast Path vs Deep Reasoning)
+        # Si es una pregunta teórica pura o saludo, la derivamos por un Fast Path para ahorrar cómputo
+        # Aquí implementamos un triage heurístico simplificado
+        accion_lower = decision.accion.lower()
+        is_theoretical = decision.target.lower() in ["none", "", "tutor", "teoria"] and (
+            any(kw in accion_lower for kw in ["que es", "explicame", "como funciona", "diferencia entre", "hola"])
+        )
+        
+        if is_theoretical:
+            print(" [PMS 2.0] Triage: Theoretical question detected. Routing to Fast Path (System-1).")
+            tracer.add_step("PMS_2.0_Routing", {"route": "Fast Path", "reason": "Theoretical input"})
+            
+            # Recuperar solo contexto RAG estratégico/teórico rápido
+            rag_rapido = self.rag.retrieve_hybrid(query=decision.accion, k=2, translate=True)
+            contexto_str = "\n".join([d['text'] for d in rag_rapido])
+            
+            # Generar respuesta rápida con modelo barato
+            try:
+                prompt = f"Como tutor de ciberseguridad, responde brevemente a esto: '{decision.accion}'. Usa este contexto si ayuda: {contexto_str}"
+                respuesta_rapida = self.llm.generate(prompt)
+            except Exception as e:
+                tracer.add_step("fast_path_error", {"error": str(e)})
+                return self._get_api_error_response()
+            
+            res = FeedbackFinal(
+                evaluacion=respuesta_rapida,
+                explicacion="Respuesta rápida generada vía Fast Path (PMS 2.0).",
+                mejor_practica="Sigue preguntando dudas teóricas.",
+                fuentes_citadas=[d['source'] for d in rag_rapido],
+                evaluacion_tecnica=EvaluacionTecnica(analysis="Fast Path", explanation="", best_practice="", sources=[], technical_score=100),
+                evaluacion_gobernanza=EvaluacionGobernanza(compliant=True, risks=[], recommendations=[], frameworks=[], strategic_score=100, ethical_score=100),
+                validacion=ValidacionCalidad(approved=True, inconsistencies=[], quality_score="Fast Path", numeric_score=100),
+                costo_estimado=self.llm.last_usage.get("cost", 0.0001),
+                persona_role="Tutor"
+            )
+            
+            # 6.5 OUTPUT SECURITY CHECK (L3) para Fast Path
+            if not self.guard.validate_output(res.evaluacion):
+                 return self._get_safe_block_response("Integrity check failed for the generated response.")
+                 
+            # Guardar en memoria para mantener el Timeline coherente
+            self.memory.save_step(session_id, {
+                "decision": decision.model_dump(),
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            return res
+        
+        print(" [PMS 2.0] Triage: Tactical action detected. Routing to Deep Reasoning (System-2).")
         
         # 3. RAG - Differentiated Retrieval (Performance Hub)
         if contexto.scenario_id:
@@ -172,7 +228,7 @@ class UEFSOrchestrator:
                     content = content[:1200] + "... [TRUNCATED]"
                 
                 prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
-                doc_id = d.get('id', 'no-id')[:8]
+                doc_id = d.get('id', 'no-id')[:16]
                 parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {content}")
             return "\n\n".join(parts)
 
@@ -184,13 +240,13 @@ class UEFSOrchestrator:
         
         # 4. ANALYST DUO (Technical + Governance)
         print(f" [Orchestrator] Running parallel evaluations...")
-        # Analyst only gets technical context
-        evaluacion_analista = self.analyst_agent.evaluar(decision, contexto, contexto_rag=contexto_tecnico_str)
-        self.current_session_cost += self.llm.last_usage["cost"]
+        # Analyst only gets technical context and episodic memory
+        evaluacion_analista = self.analyst_agent.evaluar(decision, contexto, contexto_rag=contexto_tecnico_str, memoria_episodica=history)
+        self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
         
         # Governance only gets strategic/legal context
         evaluacion_gobernanza = self.governance_agent.evaluar(decision, contexto, contexto_rag=contexto_estrategico_str)
-        self.current_session_cost += self.llm.last_usage["cost"]
+        self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
         
         # 5. GENERACIÓN Y VALIDACIÓN (Manager of Drafts Loop)
         max_retries = 1
@@ -208,7 +264,7 @@ class UEFSOrchestrator:
                 player_profile=player_profile,
                 contexto_rag=contexto_full_str
             )
-            self.current_session_cost += self.llm.last_usage["cost"]
+            self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
             
             # El Validador traduce y pule (solo si está habilitado)
             if self.enable_validation:
@@ -218,7 +274,7 @@ class UEFSOrchestrator:
                     player_profile=player_profile,
                     contexto_rag=contexto_full_str
                 )
-                self.current_session_cost += self.llm.last_usage["cost"]
+                self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
 
                 if validacion.approved or validacion.numeric_score >= 70:
                     print(f" [Orchestrator] Draft approved with score {validacion.numeric_score}")
@@ -252,7 +308,7 @@ class UEFSOrchestrator:
             evaluacion_gobernanza=evaluacion_gobernanza,
             evaluacion_6d=validacion.evaluacion_6d,
             validacion=validacion,
-            costo_estimado=self.current_session_cost,
+            costo_estimado=self.session_costs[session_id],
             persona_role=validacion.persona_role or "Senior Analyst"
         )
 
@@ -263,7 +319,7 @@ class UEFSOrchestrator:
 
         
         # 7. MEMORY & CACHE
-        self.memory.save_step(self.session_id, {
+        self.memory.save_step(session_id, {
             "decision": decision.model_dump(),
             "timestamp": datetime.now().isoformat()
         })
@@ -295,5 +351,26 @@ class UEFSOrchestrator:
             evaluacion_gobernanza=EvaluacionGobernanza(compliant=False, risks=["Security Block"], recommendations=[], frameworks=[], strategic_score=0, ethical_score=0),
             validacion=ValidacionCalidad(approved=False, inconsistencies=["Security Violation"], quality_score="High Risk", numeric_score=0),
             costo_estimado=0.0001,
+            persona_role="System Security"
+        )
+
+    def _get_api_error_response(self) -> FeedbackFinal:
+        """Genera una respuesta inmersiva cuando hay un error de conexión con los servicios de IA."""
+        from src.agents.types import EvaluacionTecnica, EvaluacionGobernanza, ValidacionCalidad
+        return FeedbackFinal(
+            evaluacion="[SISTEMA AUTOMATIZADO DE CONTINGENCIA] Conexión con el Comando Central temporalmente degradada.",
+            explicacion="Se ha detectado una anomalía en las comunicaciones con los servidores de análisis profundo (Interrupción de API). Para proteger la integridad de las operaciones, los comandos complejos han sido pausados.",
+            mejor_practica="Por favor, espera unos segundos e intenta ejecutar la acción táctica nuevamente.",
+            fuentes_citadas=[],
+            evaluacion_tecnica=EvaluacionTecnica(
+                analysis="Conexión interrumpida con el análisis heurístico.",
+                explanation="Fallo de conexión L2.",
+                best_practice="Reintentar conexión.",
+                sources=[],
+                technical_score=0
+            ),
+            evaluacion_gobernanza=EvaluacionGobernanza(compliant=True, risks=["Conexión Degradada"], recommendations=[], frameworks=[], strategic_score=0, ethical_score=0),
+            validacion=ValidacionCalidad(approved=False, inconsistencies=["Error de conexión"], quality_score="Degradado", numeric_score=0),
+            costo_estimado=0.0,
             persona_role="System Security"
         )

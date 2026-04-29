@@ -89,7 +89,7 @@ class RAGClient:
         if not ids:
             import hashlib
             ids = [
-                hashlib.md5(d['text'].encode()).hexdigest() 
+                hashlib.sha256(d['text'].encode()).hexdigest() 
                 for d in documents
             ]
         

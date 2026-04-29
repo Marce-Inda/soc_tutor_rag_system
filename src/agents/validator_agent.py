@@ -41,16 +41,23 @@ class ValidatorAgent:
     ) -> ValidacionCalidad:
         """Validates the generated feedback with integrity checks."""
         
-        # 0. INTEGRITY CHECK: Cross-reference hashes (Soft Integrity Mode)
+        # 0. INTEGRITY CHECK: Cross-reference hashes (Strict Integrity Mode)
         import re
-        valid_hashes = re.findall(r"Hash: ([a-f0-9\-]+)", contexto_rag)
+        valid_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
         integrity_warnings = []
+        mismatches = 0
         
         for h in evaluacion_analista.source_integrity_hashes:
             if h not in valid_hashes:
-                msg = f"Soft integrity warning: Cited hash {h} not found in retrieved context. Verifying technical similarity via LLM..."
-                print(f"  [Validator] {msg}")
+                msg = f"Integrity violation: Cited hash {h[:16]}... not found in retrieved context."
+                print(f"  [Validator] ⚠️ {msg}")
                 integrity_warnings.append(msg)
+                mismatches += 1
+        
+        # Penalización estricta: si >50% de los hashes citados no están en el contexto RAG,
+        # el feedback pierde credibilidad y se marca como inconsistente.
+        total_hashes = len(evaluacion_analista.source_integrity_hashes)
+        integrity_compromised = total_hashes > 0 and (mismatches / total_hashes) > 0.5
 
         # 1. Validation with LLM (Dynamic and language-aware)
         prompt = self._build_prompt(
@@ -68,14 +75,21 @@ class ValidatorAgent:
             approved = result.get("approved", True)
             inconsistencies = result.get("inconsistencies", [])
             quality_score = result.get("quality_score", "Validation completed")
+            numeric_score = result.get("numeric_score", 100)
 
-            
+            # Aplicar penalización de integridad si hay compromiso
+            if integrity_compromised:
+                inconsistencies = integrity_warnings + inconsistencies
+                numeric_score = max(0, numeric_score - 20)
+                quality_score = f"{quality_score} [INTEGRITY PENALTY: -{mismatches} hash mismatches]"
+                print(f"  [Validator] 🔴 Integrity penalty applied: {mismatches}/{total_hashes} hashes unverified. Score -20.")
+
             return ValidacionCalidad(
                 approved=approved,
                 inconsistencies=inconsistencies,
                 correction=result.get("correction", result.get("correccion")),
                 quality_score=quality_score,
-                numeric_score=result.get("numeric_score", 100),
+                numeric_score=numeric_score,
                 evaluacion_6d=Score6D(**result.get("evaluacion_6d", {})) if result.get("evaluacion_6d") else None,
                 persona_role=result.get("persona_role")
             )

@@ -86,9 +86,11 @@ class SOCtools:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
+        import sys
+
         async def _run():
-            # Conexión local tipo stdio al servidor simulado
-            server_params = StdioServerParameters(command=".venv/bin/python", args=["src/mcp_servers/telemetry_server.py"])
+            # Conexión local tipo stdio al servidor simulado usando el binario actual
+            server_params = StdioServerParameters(command=sys.executable, args=["src/mcp_servers/telemetry_server.py"])
             
             async with stdio_client(server_params) as (read, write):
                 async with ClientSession(read, write) as session:
@@ -130,8 +132,10 @@ class SOCtools:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
+        import sys
+
         async def _run():
-            server_params = StdioServerParameters(command=".venv/bin/python", args=["src/mcp_servers/edr_server.py"])
+            server_params = StdioServerParameters(command=sys.executable, args=["src/mcp_servers/edr_server.py"])
             
             async with stdio_client(server_params) as (read, write):
                 async with ClientSession(read, write) as session:

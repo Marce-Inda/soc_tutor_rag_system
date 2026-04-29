@@ -97,7 +97,7 @@ class RAGClient:
         if not ids:
             import hashlib
             ids = [
-                hashlib.md5(d['text'].encode()).hexdigest() 
+                hashlib.sha256(d['text'].encode()).hexdigest() 
                 for d in documents
             ]
         
@@ -324,14 +324,31 @@ class RAGClient:
         # Recuperar usando modo Híbrido con traducción automática
         docs = self.retrieve_hybrid(query, k=k, translate=True)
         
-        # Formatear contexto para los agents
-        context_parts = []
+        # Formatear contexto en Silos (RAG Cognitivo Avanzado / OpenMemory)
+        semantic_parts = []
+        procedural_parts = []
+        
         for i, d in enumerate(docs):
             prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
-            doc_id = d.get('id', 'no-id')[:8]
-            context_parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {d['text']}")
+            doc_id = d.get('id', 'no-id')[:16]
+            source_lower = str(d.get('source', '')).lower()
             
-        contexto_rag = "\n\n".join(context_parts)
+            # Clasificador de Silos
+            if any(kw in source_lower for kw in ['playbook', 'procedimiento', 'pasos', 'response', 'containment']):
+                silo = procedural_parts
+            else:
+                silo = semantic_parts
+                
+            silo.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {d['text']}")
+            
+        # Unir silos
+        context_parts = []
+        if semantic_parts:
+            context_parts.append("### SECTOR SEMÁNTICO (Conocimiento Teórico y Normativo)\n" + "\n\n".join(semantic_parts))
+        if procedural_parts:
+            context_parts.append("### SECTOR PROCEDURAL (Playbooks y Guías de Acción)\n" + "\n\n".join(procedural_parts))
+            
+        contexto_rag = "\n\n---\n\n".join(context_parts)
         fuentes = list(set([d['source'] for d in docs]))
         
         return {

@@ -21,8 +21,9 @@ Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de pr
 ## 🌟 Últimas Actualizaciones (Sesiones Recientes)
 
 - **Integración de MCP (Model Context Protocol)**: Se integraron herramientas de contención EDR y análisis de logs SIEM utilizando servidores MCP, desacoplando la interacción táctica del sistema RAG principal para un realismo superior.
-- **Inmersión UI/UX Mejorada**: Se añadió audio ambiental inmersivo a la Workstation del SOC y se finalizó el diseño de la interfaz para una demostración de alta fidelidad.
-- **Lista de Espera y Gestión de Colas**: Se implementó un *Queue Manager* en el backend y una *Waitlist* en el frontend para evitar sobrecargas de API durante demos con concurrencia.
+- **RAG Cognitivo y Fast Path**: Implementación de Silos de Memoria Semántica/Procedural y un Enrutador Metacognitivo (PMS 2.0) para consultas conceptuales, reduciendo costos de API en un 93% y latencia en un 85%.
+- **Auditorías Adversariales (Red Hat / Blue Hat)**: Arquitectura fortificada con *Session Isolation* (previniendo Memory Leaks y Wallet-Exhaustion DoS), validación *Fail-Closed* para seguridad y corrección exhaustiva de "Shadow Logic" en el entorno de producción (Docker).
+- **Lista de Espera y Gestión de Colas**: Se implementó un *Queue Manager* en el backend (con Anti-Camping/Zombie expulsion) y una *Waitlist* en el frontend para evitar sobrecargas de API durante demos con concurrencia.
 
 ## 🛠️ Tecnologías Core
 

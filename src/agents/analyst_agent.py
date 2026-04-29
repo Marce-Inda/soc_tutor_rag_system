@@ -37,7 +37,8 @@ class AnalystAgent:
     def evaluar(
         self, 
         decision: Decision, 
-        contexto: ContextoEscenario
+        contexto: ContextoEscenario,
+        memoria_episodica: str = ""
     ) -> EvaluacionTecnica:
         """Executes technical evaluation using ReAct in English."""
         
@@ -63,7 +64,8 @@ class AnalystAgent:
             target=decision.target,
             tipo_incidente=contexto.tipo_incidente,
             fase=contexto.fase,
-            contexto_rag=contexto_rag
+            contexto_rag=contexto_rag,
+            memoria_episodica=memoria_episodica if memoria_episodica else "No previous history in this session."
         )
         
         # 3. Reasoning Loop (Simplified ReAct)
@@ -116,6 +118,9 @@ class AnalystAgent:
         
         tracer.add_step("Analyst_Reasoning_Chain", {"chain": reasoning_chain})
 
+        # Extraer hashes REALES del contexto RAG (NO del LLM — previene alucinación de fuentes)
+        real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
+
         return EvaluacionTecnica(
             analysis=result_json.get("analysis", "Technical analysis completed"),
             explanation=result_json.get("explanation", "No detailed explanation provided"),
@@ -126,17 +131,19 @@ class AnalystAgent:
             technical_score=result_json.get("technical_score", 70),
             resilience_score=result_json.get("resilience_score", result_json.get("technical_score", 70)),
             forensic_notes=result_json.get("forensic_notes"),
-            source_integrity_hashes=result_json.get("source_integrity_hashes", [])
+            source_integrity_hashes=real_hashes
         )
 
 
 
 
-    def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str) -> EvaluacionTecnica:
+    def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str, memoria_episodica: str = "") -> EvaluacionTecnica:
         """Simple fallback without tools, using English prompts."""
+        contexto_dict = contexto.model_dump()
+        contexto_dict['memoria_episodica'] = memoria_episodica
         prompt = build_prompt_analista(
             decision=decision.model_dump(),
-            contexto=contexto.model_dump(),
+            contexto=contexto_dict,
             contexto_rag=contexto_rag
         )
         result = self.llm.generate_json(prompt)
