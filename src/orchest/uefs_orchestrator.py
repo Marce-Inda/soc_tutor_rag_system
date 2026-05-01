@@ -27,6 +27,7 @@ from ..agents.tools import SOCtools
 from ..utils.memory import SessionMemory
 from ..utils.observability import tracer
 from ..utils.semantic_cache import get_cache_client
+from ..utils.translator import Translator
 
 class UEFSOrchestrator:
     """
@@ -71,8 +72,8 @@ class UEFSOrchestrator:
             
         self.validator_agent = ValidatorAgent(judge_client, rag_client)
 
-        
         self.cache = get_cache_client(llm_client=llm_client)
+        self.translator = Translator(llm_client=llm_client)
         
         # Security Thresholds
         self.MAX_TURNS_PER_SESSION = 15
@@ -110,9 +111,26 @@ class UEFSOrchestrator:
         if session_id not in self.session_costs:
             self.session_costs[session_id] = 0.0
         
-        # 1. CACHÉ SEMÁNTICO
+        # --- ENGLISH-FIRST GATEWAY (AI Engineering Optimization) ---
+        # Traducimos la entrada a inglés inmediatamente para que todo el razonamiento interno 
+        # (Analista, Gobernanza, Explicador) sea más barato y preciso.
+        original_decision = decision.model_dump()
+        
+        if player_profile.language != "en":
+            print(f" [Orchest] English-First Gateway: Translating input from '{player_profile.language}' to 'en'...")
+            decision_en = decision.model_copy()
+            decision_en.accion = self.translator.translate_to_english(decision.accion)
+            if decision.detalle:
+                decision_en.detalle = self.translator.translate_to_english(decision.detalle)
+            
+            # Usamos la versión en inglés para el resto del pipeline interno
+            internal_decision = decision_en
+        else:
+            internal_decision = decision
+
+        # 1. CACHÉ SEMÁNTICO (Usamos la versión en inglés para maximizar hits cross-language)
         cached_res = self.cache.lookup(
-            decision=decision.model_dump(),
+            decision=internal_decision.model_dump(),
             context=contexto.model_dump(),
             player_profile=player_profile.model_dump()
         )
@@ -160,12 +178,12 @@ class UEFSOrchestrator:
             tracer.add_step("PMS_2.0_Routing", {"route": "Fast Path", "reason": "Theoretical input"})
             
             # Recuperar solo contexto RAG estratégico/teórico rápido
-            rag_rapido = self.rag.retrieve_hybrid(query=decision.accion, k=2, translate=True)
+            rag_rapido = self.rag.retrieve_hybrid(query=internal_decision.accion, k=2, translate=True)
             contexto_str = "\n".join([d['text'] for d in rag_rapido])
             
             # Generar respuesta rápida con modelo barato
             try:
-                prompt = f"Como tutor de ciberseguridad, responde brevemente a esto: '{decision.accion}'. Usa este contexto si ayuda: {contexto_str}"
+                prompt = f"Como tutor de ciberseguridad, responde brevemente a esto: '{internal_decision.accion}'. Usa este contexto si ayuda: {contexto_str}"
                 respuesta_rapida = self.llm.generate(prompt)
             except Exception as e:
                 tracer.add_step("fast_path_error", {"error": str(e)})
@@ -189,7 +207,7 @@ class UEFSOrchestrator:
                  
             # Guardar en memoria para mantener el Timeline coherente
             self.memory.save_step(session_id, {
-                "decision": decision.model_dump(),
+                "decision": internal_decision.model_dump(),
                 "timestamp": datetime.now().isoformat()
             })
             
@@ -205,7 +223,7 @@ class UEFSOrchestrator:
         
         # Technical RAG (For Analyst) - k=2 to reduce bloat
         rag_tecnico = self.rag.retrieve_with_context(
-            decision=decision.model_dump(),
+            decision=internal_decision.model_dump(),
             contexto=contexto.model_dump(),
             k=2,
             knowledge_type="technical"
@@ -213,7 +231,7 @@ class UEFSOrchestrator:
         
         # Strategic RAG (For Governance/Explainer) - k=2
         rag_estrategico = self.rag.retrieve_with_context(
-            decision=decision.model_dump(),
+            decision=internal_decision.model_dump(),
             contexto=contexto.model_dump(),
             k=2,
             knowledge_type="strategic"
@@ -241,11 +259,11 @@ class UEFSOrchestrator:
         # 4. ANALYST DUO (Technical + Governance)
         print(f" [Orchestrator] Running parallel evaluations...")
         # Analyst only gets technical context and episodic memory
-        evaluacion_analista = self.analyst_agent.evaluar(decision, contexto, contexto_rag=contexto_tecnico_str, memoria_episodica=history)
+        evaluacion_analista = self.analyst_agent.evaluar(internal_decision, contexto, contexto_rag=contexto_tecnico_str, memoria_episodica=history)
         self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
         
         # Governance only gets strategic/legal context
-        evaluacion_gobernanza = self.governance_agent.evaluar(decision, contexto, contexto_rag=contexto_estrategico_str)
+        evaluacion_gobernanza = self.governance_agent.evaluar(internal_decision, contexto, contexto_rag=contexto_estrategico_str)
         self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
         
         # 5. GENERACIÓN Y VALIDACIÓN (Manager of Drafts Loop)
@@ -320,12 +338,12 @@ class UEFSOrchestrator:
         
         # 7. MEMORY & CACHE
         self.memory.save_step(session_id, {
-            "decision": decision.model_dump(),
+            "decision": internal_decision.model_dump(),
             "timestamp": datetime.now().isoformat()
         })
         
         self.cache.store(
-            decision=decision.model_dump(),
+            decision=internal_decision.model_dump(),
             context=contexto.model_dump(),
             player_profile=player_profile.model_dump(),
             feedback=res
