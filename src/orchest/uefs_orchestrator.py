@@ -1,9 +1,5 @@
 """
-Main Orchestrator - SOC Tuto
-        # Inicializar tracking de costos para esta sesión si no existe
-        if session_id not in self.session_costs:
-            self.session_costs[session_id] = 0.0
-r UEFS.
+Main Orchestrator - SOC Tutor UEFS.
 Agent coordinator using the Manager of Drafts pattern and bilingual reasoning.
 """
 
@@ -109,6 +105,10 @@ class UEFSOrchestrator:
             "accion": decision.accion,
             "session_isolation": "enabled"
         })
+        
+        # Inicializar tracking de costos para esta sesión si no existe
+        if session_id not in self.session_costs:
+            self.session_costs[session_id] = 0.0
         
         # 1. CACHÉ SEMÁNTICO
         cached_res = self.cache.lookup(

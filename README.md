@@ -25,7 +25,7 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 
 ## 🛠️ Core Technologies
 
--   **Models**: Google `gemini-2.0-flash` (via a unified LLMClient with support for Groq as high-speed backbone).
+-   **Models**: Google `gemini-2.5-flash` (primary), Groq `llama-3.3-70b` (fallback), DeepSeek V4 `deepseek-chat` (emergency) — via a unified LLMClient with 3-layer resilience cascade.
 -   **Vector DB**: ChromaDB (local and embedded).
 -   **Embeddings**: `all-MiniLM-L6-v2` (100% local execution).
 -   **Orchestration**: Deterministic sequential flow (ReAct Analyst -> Explainer -> Validator).
@@ -62,7 +62,7 @@ The entire ecosystem (Frontend + Backend) can be deployed with a single command.
 cd soc-tutor-rag-system
 
 # 2. Configure environment variables
-# Ensure your .env file has GEMINI_API_KEY or GROQ_API_KEY
+# Ensure your .env file has GEMINI_API_KEY, GROQ_API_KEY, and optionally DEEPSEEK_API_KEY
 cp .env.example .env 
 
 # 3. Launch the full stack
@@ -83,7 +83,7 @@ For a deep dive into the technical reasoning, cost optimizations, and resilience
 1.  **HuggingFace Spaces (Backend)**: Chosen as the hosting provider for the Python engine due to its **16GB RAM free tier**, which is necessary for the RAG index and local embedding models.
 2.  **Next.js 14 (Frontend)**: Utilized the App Router for optimal performance. The decoupled architecture allows the frontend to run on Vercel with zero latency.
 3.  **Framer Motion & Tailwind**: Selected to provide a **"Visceral Impact"** for the academic jury, ensuring the UI feels like a state-of-the-art SOC workstation rather than a simple chat bot.
-4.  **"Manager of Drafts" Multi-Agent Flow**: Uses an asymmetric judge pattern where a secondary LLM (Gemini/Groq) validates the pedagogical quality of the feedback before it reaches the player.
+4.  **"Manager of Drafts" Multi-Agent Flow**: Uses an asymmetric judge pattern where a secondary LLM (Gemini/Groq/DeepSeek) validates the pedagogical quality of the feedback before it reaches the player.
 
 ---
 **Final Specialization Project - SOC Tutor RAG System**

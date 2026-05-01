@@ -233,7 +233,7 @@ El sistema utiliza **5 agentes especializados** coordinados por nuestro orquesta
 - **Patrón**: **LLM Judge** + Verificación de Integridad Determinista.
 - **¿Por qué un Juez separado?**
     - **Anti-alucinación**: Sin un Validator independiente, el Analista podría generar evaluaciones que suenan convincentes pero son técnicamente incorrectas. El Validator cross-referencia el feedback contra el contexto RAG original.
-    - **Asimetría de modelos**: Si el Analista usa Gemini, el Validator usa Groq/Llama (o viceversa). Esto evita **sesgos de arquitectura** — donde un mismo modelo valida su propio output y confirma sus propios errores.
+    - **Asimetría de modelos**: Si el Analista usa Gemini, el Validator usa Groq/Llama o DeepSeek (o viceversa). Esto evita **sesgos de arquitectura** — donde un mismo modelo valida su propio output y confirma sus propios errores.
     - **Alternativa descartada — Self-Consistency (SC)**: SC genera N respuestas con el mismo modelo y vota por mayoría. Es más costoso (N llamadas al mismo LLM) y no elimina sesgos de modelo. La asimetría cross-model es más robusta.
     - **Alternativa descartada — No tener Validator**: Reduce costos pero elimina la última línea de defensa contra feedback incorrecto. En un sistema educativo, entregar información errónea tiene un costo pedagógico inaceptable.
 - **Integridad determinista**: Antes de la validación LLM, el Validator ejecuta un cross-reference de hashes SHA-256 (Sección 7) que no depende del LLM y penaliza inconsistencias con -20 puntos.
@@ -262,7 +262,7 @@ Un sistema multiagente con loops de reintento es inherentemente vulnerable a buc
 |:---|:---|:---|:---|
 | **ReAct max_iterations** | 2 ciclos | `analyst_agent.py:71` | El Analista no puede iterar indefinidamente buscando herramientas. Tras 2 ciclos Thought→Action→Observation, emite evaluación con lo que tiene. |
 | **Guard input length** | 2000 chars | `guard_agent.py:43` | Previene Token DoS: un input gigante no llega nunca al LLM. |
-| **LLM Timeout** | 15s por llamada | `llm_client.py:72,85,144,151` | Si la API de Gemini/Groq no responde en 15s, se corta. Sin esto, un timeout del proveedor bloquearía el pipeline indefinidamente. |
+| **LLM Timeout** | 15-20s por llamada | `llm_client.py:72,85,108,132,139,151` | Si la API de Gemini/Groq/DeepSeek no responde en el tiempo límite, se corta. Sin esto, un timeout del proveedor bloquearía el pipeline indefinidamente. |
 | **MCP Timeout** | 15s por servidor | `tools.py:117,150` | Si un servidor MCP (EDR/Telemetry) cuelga, no bloquea al Analista. Retorna error descriptivo → graceful degradation. |
 
 #### Capa 2 — Orquestador (Pipeline)
@@ -277,7 +277,7 @@ Un sistema multiagente con loops de reintento es inherentemente vulnerable a buc
 
 | Mecanismo | Límite | Archivo | Qué previene |
 |:---|:---|:---|:---|
-| **LLM Retries (Tenacity)** | 3 intentos + exponential backoff | `llm_client.py:98` | Si la API devuelve 429 (rate limit) o error de red, reintenta 3 veces con jitter exponencial (1s → 3s → 10s). Tras 3 fallos, activa fallback a proveedor alternativo. |
+| **LLM Retries (Tenacity)** | 3 intentos + exponential backoff | `llm_client.py:156` | Si la API devuelve 429 (rate limit) o error de red, reintenta 3 veces con jitter exponencial (1s → 3s → 10s). Tras 3 fallos, activa cascada de resiliencia de 3 capas: Gemini ↔ Groq → DeepSeek. |
 | **Queue Heartbeat Timeout** | 45s sin heartbeat | `queue_manager.py:18,48-65` | Usuarios desconectados se eliminan automáticamente. Sin esto, slots "fantasma" bloquearían a usuarios reales. |
 
 #### Análisis de Peor Caso (Worst-Case Cost)
@@ -370,14 +370,15 @@ El sistema implementa **4 capas de validación** antes de que cualquier input to
 - **Decisión de diseño L0 (Pydantic)**: Se agregan restricciones `max_length=200` en campos de acción, `max_length=1000` en detalle, y rangos numéricos (`ge=1, le=6` en nivel de jugador). Esto crea una **primera barrera determinista** que rechaza payloads oversized antes de que lleguen al GuardAgent. Es más eficiente que depender exclusivamente del check de 2000 caracteres del Guard, porque actúa a nivel de campo individual.
 - **Decisión de diseño `user_id`**: El parámetro `user_id` del endpoint `/feedback` se valida con regex alfanumérico (`^[a-zA-Z0-9_-]{1,64}$`). Sin esta validación, un atacante podría inyectar caracteres especiales en el identificador de sesión, potencialmente corrompiendo el sistema de colas o los logs de trazabilidad.
 
-### 7.4 — Filesystem Read-Only y Aislamiento de Escritura
-- **Problema**: Los contenedores Docker tenían filesystem read-write completo, y el volumen de datos se montaba con permisos de escritura desde el contenedor hacia el host.
-- **Solución**:
-    - `read_only: true` en ambos contenedores → el filesystem completo es inmutable.
-    - `tmpfs` en `/tmp`, `/app/data/indices` y `/app/data/sessions` → solo estos directorios específicos pueden escribirse, y su contenido se pierde al reiniciar (volátil).
-    - Volumen de datos montado como `:ro` (read-only) → el contenedor puede leer los escenarios MITRE/NIST pero no puede modificar el dataset original.
-    - `security_opt: no-new-privileges` → impide que cualquier proceso dentro del contenedor escale privilegios mediante `setuid`, `setgid` o exploits del kernel.
-- **Rationale de IA**: En un sistema RAG, los vectores de ataque más peligrosos son aquellos que pueden **envenenar la base de conocimiento**. Si un atacante logra escribir en el directorio de datos, podría inyectar documentos maliciosos que el RAG luego recuperaría como fuentes legítimas, contaminando todas las evaluaciones futuras. El filesystem read-only neutraliza este vector (complementado por el Manifiesto de Integridad de la Sección 6.5).
+### 7.4 — Filesystem Read-Only y Aislamiento de Escritura (Desacoplamiento RAG)
+- **Problema**: Inicialmente, la API intentaba abrir la base de datos de conocimiento (ChromaDB basada en SQLite) directamente en el sistema de archivos local. Sin embargo, al aplicar el patrón de seguridad `read_only: true` para hacer inmutable el contenedor, SQLite colapsaba al no poder crear archivos temporales de bloqueo. Los intentos de mitigarlo con montajes en RAM (`tmpfs`) borraban el acceso a los índices pre-calculados, forzando un dilema entre seguridad inmutable o funcionalidad del RAG.
+- **Solución (Desacoplamiento Server-Client)**:
+    - **Microservicio Dedicado**: Se separó la base vectorial en su propio contenedor nativo (`soc-tutor-chromadb`).
+    - **Conexión HTTP**: El `RAGClient` de la API se reconfiguró para usar `HttpClient` (puerto 8000) en lugar de lectura/escritura en disco duro local.
+    - **Inmutabilidad Restaurada**: Al aislar la base de datos, el contenedor de la API recuperó su política estricta de `read_only: true`, y el volumen de datos volvió a montarse en modo lectura (`./data:/app/data:ro`).
+    - `tmpfs` en `/tmp`, `/app/data/sessions` y `/app/logs` → solo estos logs temporales de trazabilidad son escribibles en RAM, perdiéndose al reiniciar.
+    - `security_opt: no-new-privileges` → impide que cualquier proceso dentro del contenedor escale privilegios.
+- **Rationale de IA**: En un sistema RAG, los vectores de ataque más peligrosos son aquellos que pueden **envenenar la base de conocimiento**. Si un atacante lograra comprometer el orquestador de IA mediante una inyección severa (RCE), se encontrará en un entorno sellado. No puede modificar los archivos base porque el disco es `read_only`, y la manipulación arbitraria de los índices de ChromaDB es imposible ya que la conexión es puramente HTTP a un microservicio aislado. Esto neutraliza el vector más crítico de "Data Poisoning".
 
 ## 8. Evolución a RAG Cognitivo Avanzado: Memoria Multi-sectorial y Enrutamiento Metacognitivo
 
@@ -497,7 +498,7 @@ El proceso de paso a producción (Deploy) abandona la aproximación monolítica 
 - **Capa de Razonamiento (Backend)**: El API de FastAPI y la orquestación Multi-Agente residen en un contenedor de Docker desplegado en **Hugging Face Spaces**. Esta plataforma provee la RAM necesaria (16GB en su capa gratuita) para sostener en memoria la Base de Datos Vectorial (ChromaDB), los Modelos de Embeddings locales y las colas de concurrencia.
 
 ### 14.2 Gestión de Secretos y Configuración
-El código fuente en repositorios públicos (GitHub) se mantiene completamente "sanitizado". Credenciales críticas como `GEMINI_API_KEY` o `GROQ_API_KEY` nunca forman parte del control de versiones. Se inyectan dinámicamente en el entorno de ejecución del contenedor Docker a través de variables de entorno seguras (`.env` localmente o Secrets Management en Hugging Face), garantizando que el sistema AI pueda autenticarse sin exponer las billeteras del desarrollador a ataques automatizados de la web.
+El código fuente en repositorios públicos (GitHub) se mantiene completamente "sanitizado". Credenciales críticas como `GEMINI_API_KEY`, `GROQ_API_KEY` o `DEEPSEEK_API_KEY` nunca forman parte del control de versiones. Se inyectan dinámicamente en el entorno de ejecución del contenedor Docker a través de variables de entorno seguras (`.env` localmente o Secrets Management en Hugging Face), garantizando que el sistema AI pueda autenticarse sin exponer las billeteras del desarrollador a ataques automatizados de la web.
 
 Esta topología permite que el sistema cumpla simultáneamente con requisitos corporativos de escalabilidad web y con las estrictas barreras de seguridad (DevSecOps) necesarias para poner un modelo de lenguaje frente a usuarios reales.
 
@@ -508,8 +509,8 @@ Esta topología permite que el sistema cumpla simultáneamente con requisitos co
 | Categoría | Técnica Utilizada | Objetivo Principal |
 | :--- | :--- | :--- |
 | **Latencia** | Timeouts Estrictos (45s) | Prevenir colgado de workers de API. |
-| **Resiliencia** | Background Retries | Mantener inmersión en fallos de red. |
-| **Costo** | Context Splitting / Cache | Reducción de gasto en API Gemini y Groq. |
+| **Resiliencia** | Cascada de 3 capas (Gemini ↔ Groq → DeepSeek) + Background Retries | Mantener inmersión en fallos de red con triple redundancia. |
+| **Costo** | Context Splitting / Cache / DeepSeek V4 Flash ($0.14/1M) | Reducción de gasto en APIs con provider más económico como última capa. |
 | **Precisión** | MCP + RAG Facets | Eliminar alucinaciones tácticas. |
 | **MCP (Arquitectura)** | Dual-Server CQRS (EDR + Telemetry) | Separar observación de acción (como un SOC real). |
 | **MCP (Transporte)** | STDIO con timeout 15s + Graceful Degradation | Latencia mínima (~1ms) sin exponer puertos de red. |

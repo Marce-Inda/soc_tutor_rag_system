@@ -67,6 +67,12 @@ class UEFS_Tracer:
         # Personalizamos dinámicamente un nombre distinto para cada factura de reporte técnico apelando a las variables temporales presentes para no tapar los viejos.
         filename = f"reporte_tecnico_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
+        # [RECOMENDACIÓN PARA PRODUCCIÓN (Cloud-Native/Kubernetes)]
+        # Para eliminar deuda técnica en un entorno de producción a gran escala, NO escribas en archivos locales.
+        # En su lugar, imprime en la salida estándar (stdout) para que el daemon de Docker/Kubernetes lo capture:
+        # print(json.dumps(self.current_trace))
+        # Y elimina o comenta el bloque `with open(...)` que está debajo.
+        
         # Empuja esta escritura sólida bajo un formato indexado a JSON adentro de la carpeta definida en la inicialización
         with open(self.log_dir / filename, 'w') as f:
             json.dump(self.current_trace, f, indent=2)

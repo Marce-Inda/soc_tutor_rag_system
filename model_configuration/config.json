@@ -1,12 +1,13 @@
 {
   "provider": "gemini",
   "fallback_provider": "groq",
+  "emergency_provider": "deepseek",
   "timeout_seconds": 30,
   "retry_attempts": 3,
   "cache_enabled": true,
   "models": {
     "gemini": {
-      "model": "gemini-1.5-flash",
+      "model": "gemini-2.5-flash",
       "temperature": 0.3,
       "max_tokens": 512,
       "top_p": 0.8
@@ -14,6 +15,12 @@
     "groq": {
       "model": "llama-3.3-70b-versatile",
       "temperature": 0.3,
+      "max_tokens": 512,
+      "top_p": 0.8
+    },
+    "deepseek": {
+      "model": "deepseek-chat",
+      "temperature": 0.2,
       "max_tokens": 512,
       "top_p": 0.8
     }

@@ -58,10 +58,15 @@ class RAGClient:
         if not CHROMA_AVAILABLE:
             raise RuntimeError("Chroma no disponible")
         
-        os.makedirs(self.persist_directory, exist_ok=True)
-        self._client = chromadb.PersistentClient(
-            path=self.persist_directory
-        )
+        chroma_host = os.environ.get("CHROMA_HOST")
+        if chroma_host:
+            print(f"  [RAG] Conectando a ChromaDB Server en {chroma_host}:8000")
+            self._client = chromadb.HttpClient(host=chroma_host, port=8000)
+        else:
+            os.makedirs(self.persist_directory, exist_ok=True)
+            self._client = chromadb.PersistentClient(
+                path=self.persist_directory
+            )
         
         # Obtener o crear colección
         try:

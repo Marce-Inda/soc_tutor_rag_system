@@ -3,19 +3,27 @@ Token Counter Utility - SOC Tutor.
 Handles token counting and cost estimation for different LLM providers.
 """
 
-import tiktoken
+try:
+    import tiktoken
+    TIKTOKEN_AVAILABLE = True
+except ImportError:
+    TIKTOKEN_AVAILABLE = False
 from typing import Dict, Any
 
-# Precios por 1M de tokens (Precios representativos abril 2026)
+# Precios por 1M de tokens (Precios representativos mayo 2026)
 # Estos valores deben actualizarse según el mercado.
 PRICING = {
     "gemini": {
-        "input": 0.15,  # USD per 1M tokens
+        "input": 0.15,  # USD per 1M tokens (Gemini 2.5 Flash)
         "output": 0.60
     },
     "groq": {
         "input": 0.50, # Llama 3 70B
         "output": 0.80
+    },
+    "deepseek": {
+        "input": 0.14,  # DeepSeek V4 Flash — el más barato del mercado
+        "output": 0.28
     },
     "ollama": {
         "input": 0.0,
@@ -32,6 +40,8 @@ class TokenCounter:
         Counts tokens using tiktoken with a Circuit Breaker fallback.
         """
         try:
+            if not TIKTOKEN_AVAILABLE:
+                raise ImportError("tiktoken not installed")
             # Intentamos usar el encoding de OpenAI
             encoding = tiktoken.get_encoding("cl100k_base")
             return len(encoding.encode(text))

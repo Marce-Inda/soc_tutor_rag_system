@@ -191,10 +191,10 @@ def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
             explicacion=feedback.explicacion,
             mejor_practica=feedback.mejor_practica,
             fuentes_citadas=feedback.fuentes_citadas,
-            score_tecnico=feedback.evaluacion_tecnica.score_tecnico if feedback.evaluacion_tecnica else 0,
+            score_tecnico=feedback.evaluacion_tecnica.technical_score if feedback.evaluacion_tecnica else 0,
             persona_role=feedback.validacion.persona_role if feedback.validacion and hasattr(feedback.validacion, 'persona_role') and feedback.validacion.persona_role else "SISTEMA MENTOR",
             evaluacion_gobernanza=gov_eval,
-            aprobado=feedback.validacion.aprobado if feedback.validacion else True,
+            aprobado=feedback.validacion.approved if feedback.validacion else True,
             costo_estimado=feedback.costo_estimado
         )
         

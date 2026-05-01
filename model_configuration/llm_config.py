@@ -1,6 +1,6 @@
 """
 Configuración de modelos LLM para el proyecto.
-Soporta: Gemini (Google), Groq (alternativa)
+Soporta: Gemini (Google), Groq (alternativa), DeepSeek (respaldo)
 """
 
 import os
@@ -19,7 +19,7 @@ class LLMConfig(BaseModel):
 
 class GeminiConfig(LLMConfig):
     """Configuración para Google Gemini."""
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-2.5-flash"
     temperature: float = 0.3  # Bajo para reducir alucinaciones
     max_tokens: int = 512
     top_p: float = 0.8
@@ -41,10 +41,23 @@ class GroqConfig(LLMConfig):
         return "groq"
 
 
+class DeepSeekConfig(LLMConfig):
+    """Configuración para DeepSeek V4 (compatible con API de OpenAI)."""
+    model: str = "deepseek-chat"  # V4 Flash — el más económico ($0.14/1M input)
+    temperature: float = 0.2  # Un poco más bajo para compensar menor calidad en español
+    max_tokens: int = 512
+    top_p: float = 0.8
+    
+    @property
+    def provider(self) -> str:
+        return "deepseek"
+
+
 class ModelSettings(BaseModel):
     """Configuración global de modelos."""
-    provider: str = "gemini"  # "gemini" o "groq"
+    provider: str = "gemini"  # "gemini", "groq" o "deepseek"
     fallback_provider: str = "groq"
+    emergency_provider: str = "deepseek"  # Capa 3 de resiliencia
     timeout_seconds: int = 30
     retry_attempts: int = 3
     cache_enabled: bool = True
@@ -53,6 +66,7 @@ class ModelSettings(BaseModel):
 # Instancias por defecto
 DEFAULT_GEMINI = GeminiConfig()
 DEFAULT_GROQ = GroqConfig()
+DEFAULT_DEEPSEEK = DeepSeekConfig()
 DEFAULT_SETTINGS = ModelSettings()
 
 
@@ -62,6 +76,8 @@ def get_active_config(provider: Optional[str] = None) -> LLMConfig:
     
     if provider == "groq":
         return DEFAULT_GROQ
+    elif provider == "deepseek":
+        return DEFAULT_DEEPSEEK
     return DEFAULT_GEMINI
 
 
@@ -70,4 +86,5 @@ def get_env_vars() -> dict:
     return {
         "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY", ""),
         "GROQ_API_KEY": os.getenv("GROQ_API_KEY", ""),
+        "DEEPSEEK_API_KEY": os.getenv("DEEPSEEK_API_KEY", ""),
     }

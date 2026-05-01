@@ -27,7 +27,7 @@ Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de pr
 
 ## 🛠️ Tecnologías Core
 
--   **Modelos**: Google `gemini-2.0-flash` (vía LLMClient unificado con soporte para Groq y Ollama).
+-   **Modelos**: Google `gemini-2.5-flash` (primario), Groq `llama-3.3-70b` (fallback), DeepSeek V4 `deepseek-chat` (emergencia) — vía LLMClient unificado con cascada de resiliencia de 3 capas.
 -   **Vector DB**: ChromaDB (local y embebido).
 -   **Embeddings**: `all-MiniLM-L6-v2` (ejecución 100% local).
 -   **Orquestación**: Flujo secuencial determinista (Security Guard -> Memory -> RAG -> Analyst -> Explainer -> Validator).
@@ -63,7 +63,7 @@ Todo el ecosistema (Frontend + Backend) puede desplegarse con un solo comando. E
 cd soc-tutor-rag-system
 
 # 2. Configurar variables de entorno
-# Asegúrate de que el archivo .env tenga GEMINI_API_KEY o GROQ_API_KEY
+# Asegúrate de que el archivo .env tenga GEMINI_API_KEY, GROQ_API_KEY, y opcionalmente DEEPSEEK_API_KEY
 cp .env.example .env 
 
 # 3. Levantar todo el stack
@@ -77,7 +77,7 @@ docker compose up -d --build
 
 ## 🧠 Decisiones de Diseño "Cloud-Lite"
 
-Para garantizar que el proyecto sea evaluable sin fricciones y escalable, se eliminaron dependencias de nubes propietarias pesadas, permitiendo que el sistema corra con una latencia mínima y costo cero bajo la capa gratuita de Gemini 2.0. El diseño "Standalone" permite validar el motor de feedback de forma autónoma con datos sintéticos de alta fidelidad.
+Para garantizar que el proyecto sea evaluable sin fricciones y escalable, se eliminaron dependencias de nubes propietarias pesadas, permitiendo que el sistema corra con una latencia mínima y costo cero bajo las capas gratuitas de Gemini 2.5 Flash y Groq, con DeepSeek V4 como red de seguridad de emergencia. El diseño "Standalone" permite validar el motor de feedback de forma autónoma con datos sintéticos de alta fidelidad.
 
 ---
 **Proyecto Final de Especialización - SOC Tutor RAG System**

@@ -36,6 +36,7 @@ EXPOSE 8000
 # Environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV HOME=/tmp
 
 # Security: Ejecutar como usuario no privilegiado
 USER appuser

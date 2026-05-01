@@ -51,8 +51,12 @@ class SemanticCache:
             return
             
         if not self._client:
-            os.makedirs(self.persist_dir, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=self.persist_dir)
+            chroma_host = os.environ.get("CHROMA_HOST")
+            if chroma_host:
+                self._client = chromadb.HttpClient(host=chroma_host, port=8000)
+            else:
+                os.makedirs(self.persist_dir, exist_ok=True)
+                self._client = chromadb.PersistentClient(path=self.persist_dir)
             self._collection = self._client.get_or_create_collection(
                 name=self.collection_name,
                 metadata={"description": "Caché semántica de respuestas del SOC Tutor"}

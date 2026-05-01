@@ -10,6 +10,8 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - CHROMA_HOST=chromadb
       - LOG_LEVEL=INFO
       - PYTHONHASHSEED=0
     volumes:
@@ -20,8 +22,8 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp
-      - /app/data/indices
-      - /app/data/sessions
+      - /app/data/sessions:uid=1001,gid=1001
+      - /app/logs:uid=1001,gid=1001
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -29,6 +31,17 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - soc-tutor-net
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: soc-tutor-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./data/indices:/data
+    restart: unless-stopped
     networks:
       - soc-tutor-net
 

@@ -49,7 +49,7 @@ export default function WaitlistPage() {
     };
   }, [router]);
 
-  if (!status) {
+  if (!status && !error) {
     return (
       <div className="h-screen bg-black flex items-center justify-center font-mono">
         <div className="flex flex-col items-center gap-4 text-amber-500">
@@ -59,6 +59,28 @@ export default function WaitlistPage() {
       </div>
     );
   }
+
+  if (error && !status) {
+    return (
+      <div className="h-screen bg-black flex items-center justify-center font-mono relative">
+        <div className="absolute inset-0 z-50 bg-red-950/90 backdrop-blur-md flex items-center justify-center p-10">
+          <div className="max-w-sm border-2 border-red-500 p-6 text-red-500 flex flex-col items-center gap-4 text-center">
+            <AlertCircle size={48} />
+            <h2 className="text-xl font-black uppercase">Critical Communication Error</h2>
+            <p className="text-xs font-bold leading-relaxed">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-6 py-2 bg-red-500 text-black font-black text-xs uppercase hover:bg-white transition-colors"
+            >
+              Retry Link
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!status) return null;
 
   return (
     <div className="h-screen bg-black text-amber-500 font-mono overflow-hidden relative flex flex-col items-center justify-center p-6 select-none">

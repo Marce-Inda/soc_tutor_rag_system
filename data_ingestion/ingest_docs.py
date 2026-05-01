@@ -163,10 +163,14 @@ def create_chroma_index(chunks: List[Dict]):
         print(f"Guardado en: {output_file}")
         return
     
-    # Inicializar Chroma
-    INDICES_DIR.mkdir(parents=True, exist_ok=True)
-    
-    client = chromadb.PersistentClient(path=str(INDICES_DIR))
+    chroma_host = os.environ.get("CHROMA_HOST")
+    if chroma_host:
+        print(f"Conectando a ChromaDB Server en {chroma_host}:8000")
+        client = chromadb.HttpClient(host=chroma_host, port=8000)
+    else:
+        # Inicializar Chroma local
+        INDICES_DIR.mkdir(parents=True, exist_ok=True)
+        client = chromadb.PersistentClient(path=str(INDICES_DIR))
     
     # Crear u obtener colección
     collection = client.get_or_create_collection(

@@ -2,7 +2,7 @@
 Cliente LLM (Large Language Model) unificado.
 Este archivo actúa como un "traductor universal" o enchufe. 
 Nos permite conectar nuestro juego con diferentes cerebros artificiales 
-(como Google Gemini, Groq, o Ollama local) usando el mismo código, 
+(como Google Gemini, Groq, DeepSeek, o Ollama local) usando el mismo código, 
 sin importar qué IA estemos usando por detrás.
 """
 
@@ -66,7 +66,7 @@ class LLMClient:
                 raise ValueError("La llave maestra (GEMINI_API_KEY) no fue encontrada. No podemos conectarnos a Google.")
             
             self._client = ChatGoogleGenerativeAI(
-                model=self.model or "gemini-2.0-flash",
+                model=self.model or "gemini-2.5-flash",
                 temperature=self.temperature,
                 google_api_key=api_key,
                 timeout=15.0 # Timeout global de seguridad
@@ -85,6 +85,29 @@ class LLMClient:
                 timeout=15.0 # Timeout global de seguridad
             )
             
+        # Conexión con DeepSeek V4 (compatible con API de OpenAI)
+        # DeepSeek usa el mismo formato que OpenAI, por lo que reutilizamos langchain-openai
+        # como adaptador. Solo necesitas configurar DEEPSEEK_API_KEY en tu .env
+        elif self.provider == "deepseek":
+            try:
+                from langchain_openai import ChatOpenAI
+            except ImportError:
+                raise RuntimeError(
+                    "Para usar DeepSeek necesitas instalar langchain-openai: "
+                    "pip install langchain-openai"
+                )
+            api_key = os.getenv("DEEPSEEK_API_KEY")
+            if not api_key:
+                raise ValueError("La llave maestra (DEEPSEEK_API_KEY) no fue encontrada. No podemos conectarnos a DeepSeek.")
+            
+            self._client = ChatOpenAI(
+                model=self.model or "deepseek-chat",  # DeepSeek V4 Flash (el más económico)
+                temperature=self.temperature,
+                api_key=api_key,
+                base_url="https://api.deepseek.com/v1",
+                timeout=20.0  # DeepSeek puede tener mayor latencia desde Latinoamérica
+            )
+
         # Conexión con IA local que corre en nuestra computadora (Ollama)
         elif self.provider == "ollama":
             self._client = ChatOllama(
@@ -95,6 +118,41 @@ class LLMClient:
         else:
             raise ValueError(f"No conozco al proveedor de IA: {self.provider}")
     
+    def _create_fallback_client(self, provider: str, model: str):
+        """
+        Fábrica interna para crear clientes de respaldo (fallback).
+        Centraliza la lógica de creación para evitar duplicación de código
+        cuando la cascada de resiliencia necesita inicializar un provider alternativo.
+        """
+        if provider == "groq":
+            return ChatGroq(
+                model=model,
+                temperature=self.temperature,
+                groq_api_key=os.getenv("GROQ_API_KEY"),
+                timeout=15.0
+            )
+        elif provider == "gemini":
+            return ChatGoogleGenerativeAI(
+                model=model,
+                temperature=self.temperature,
+                google_api_key=os.getenv("GEMINI_API_KEY"),
+                timeout=15.0
+            )
+        elif provider == "deepseek":
+            try:
+                from langchain_openai import ChatOpenAI
+            except ImportError:
+                raise RuntimeError("langchain-openai requerido para fallback DeepSeek: pip install langchain-openai")
+            return ChatOpenAI(
+                model=model,
+                temperature=self.temperature,
+                api_key=os.getenv("DEEPSEEK_API_KEY"),
+                base_url="https://api.deepseek.com/v1",
+                timeout=20.0
+            )
+        else:
+            raise ValueError(f"No se puede crear fallback para provider desconocido: {provider}")
+
     @retry(wait=wait_exponential_jitter(initial=1, max=10), stop=stop_after_attempt(3))
     def _generate_with_retry(self, messages: list) -> str:
         """Función interna envuelta en Tenacity para intentar reconexiones si hay fallo (Rate Limit, Network Error)."""
@@ -121,40 +179,52 @@ class LLMClient:
         try:
             response_text = self._generate_with_retry(messages)
             current_provider = self.provider
-        except Exception as e:
-            # REDUNDANZA BIDIRECCIONAL: Si falla el principal, intentamos con el alternativo
+        except Exception as primary_error:
+            # CASCADA DE RESILIENCIA (3 capas):
+            # Capa 1: Provider primario (ya falló arriba)
+            # Capa 2: Fallback bidireccional Gemini ↔ Groq
+            # Capa 3: DeepSeek como red de seguridad final
+            
+            # Determinar fallback de Capa 2
             if self.provider == "gemini" and os.getenv("GROQ_API_KEY"):
                 fallback_provider = "groq"
                 fallback_model = "llama-3.3-70b-versatile"
             elif self.provider == "groq" and os.getenv("GEMINI_API_KEY"):
                 fallback_provider = "gemini"
-                fallback_model = "gemini-2.0-flash"
+                fallback_model = "gemini-2.5-flash"
+            elif self.provider != "deepseek" and os.getenv("DEEPSEEK_API_KEY"):
+                # Si no tenemos ni Gemini ni Groq alternativos, saltar directo a DeepSeek
+                fallback_provider = "deepseek"
+                fallback_model = "deepseek-chat"
             else:
                 fallback_provider = None
 
             if fallback_provider:
-                print(f"  [LLMClient] Primary provider ({self.provider}) failed: {e}. Falling back to {fallback_provider}...")
-                # Inicializar backup si no existe o si cambió
-                if not self._backup_client:
-                    if fallback_provider == "groq":
-                        self._backup_client = ChatGroq(
-                            model=fallback_model,
-                            temperature=self.temperature,
-                            groq_api_key=os.getenv("GROQ_API_KEY"),
-                            timeout=15.0
-                        )
+                print(f"  [LLMClient] Primary provider ({self.provider}) failed: {primary_error}. Falling back to {fallback_provider}...")
+                try:
+                    # Inicializar backup si no existe
+                    if not self._backup_client or getattr(self, '_backup_provider', None) != fallback_provider:
+                        self._backup_client = self._create_fallback_client(fallback_provider, fallback_model)
+                        self._backup_provider = fallback_provider
+                    response = self._backup_client.invoke(messages)
+                    response_text = response.content
+                    current_provider = fallback_provider
+                except Exception as secondary_error:
+                    # CAPA 3: Si el fallback secundario también falló, intentar DeepSeek como última red de seguridad
+                    if fallback_provider != "deepseek" and os.getenv("DEEPSEEK_API_KEY"):
+                        print(f"  [LLMClient] Secondary fallback ({fallback_provider}) also failed: {secondary_error}. Last resort: DeepSeek...")
+                        try:
+                            deepseek_client = self._create_fallback_client("deepseek", "deepseek-chat")
+                            response = deepseek_client.invoke(messages)
+                            response_text = response.content
+                            current_provider = "deepseek"
+                        except Exception as tertiary_error:
+                            print(f"  [LLMClient] All 3 providers failed. Last error: {tertiary_error}")
+                            raise primary_error
                     else:
-                        self._backup_client = ChatGoogleGenerativeAI(
-                            model=fallback_model,
-                            temperature=self.temperature,
-                            google_api_key=os.getenv("GEMINI_API_KEY"),
-                            timeout=15.0
-                        )
-                response = self._backup_client.invoke(messages)
-                response_text = response.content
-                current_provider = fallback_provider
+                        raise primary_error
             else:
-                raise e
+                raise primary_error
 
         # Track Tokens
         input_text = " ".join([msg[1] for msg in messages])

@@ -17,6 +17,7 @@ export interface Decision {
 }
 
 export interface Contexto {
+  scenario_id?: string;
   tipo_incidente: string;
   fase: string;
   sistemas_afectados: string[];
