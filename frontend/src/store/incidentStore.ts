@@ -13,6 +13,24 @@ export interface EvaluacionGobernanza {
   recommendations: string[];
   frameworks: string[];
   strategic_score: number;
+  ethical_score: number;
+}
+
+export interface Score6D {
+  technical: number;
+  strategic: number;
+  ethical: number;
+  communicative: number;
+  resilience: number;
+  learning: number;
+}
+
+export interface ValidacionCalidad {
+  approved: boolean;
+  inconsistencies: string[];
+  quality_score: string;
+  numeric_score: number;
+  persona_role?: string;
 }
 
 export interface MentorFeedback {
@@ -20,9 +38,11 @@ export interface MentorFeedback {
   explicacion: string;
   mejor_practica: string;
   fuentes_citadas: string[];
-  score_tecnico: number;
+  technical_score: number;
   persona_role: string;
   evaluacion_gobernanza?: EvaluacionGobernanza;
+  evaluacion_6d?: Score6D;
+  validacion?: ValidacionCalidad;
 }
 
 export interface IncidentState {

@@ -17,11 +17,11 @@ from .token_counter import TokenCounter
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_groq import ChatGroq
-    from langchain_community.chat_models import ChatOllama
+    from langchain_ollama import ChatOllama
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
-    print("LangChain no instalado. Instalar: pip install langchain-google-genai langchain-groq langchain-community")
+    print("LangChain no instalado. Instalar: pip install langchain-google-genai langchain-groq langchain-ollama")
 
 try:
     from tenacity import retry, wait_exponential_jitter, stop_after_attempt, RetryError
@@ -66,7 +66,7 @@ class LLMClient:
                 raise ValueError("La llave maestra (GEMINI_API_KEY) no fue encontrada. No podemos conectarnos a Google.")
             
             self._client = ChatGoogleGenerativeAI(
-                model=self.model or "gemini-2.5-flash",
+                model=self.model or "gemini-1.5-flash",
                 temperature=self.temperature,
                 google_api_key=api_key,
                 timeout=15.0 # Timeout global de seguridad
@@ -154,30 +154,26 @@ class LLMClient:
             raise ValueError(f"No se puede crear fallback para provider desconocido: {provider}")
 
     @retry(wait=wait_exponential_jitter(initial=1, max=10), stop=stop_after_attempt(3))
-    def _generate_with_retry(self, messages: list) -> str:
-        """Función interna envuelta en Tenacity para intentar reconexiones si hay fallo (Rate Limit, Network Error)."""
-        response = self._client.invoke(messages)
+    async def _generate_with_retry(self, messages: list) -> str:
+        """Función interna envuelta en Tenacity para intentar reconexiones asíncronas."""
+        response = await self._client.ainvoke(messages)
         return response.content
 
-    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    async def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Toma una pregunta (prompt) del usuario y una instrucción base (system_prompt) 
-        para pedirle asíncronamente a la Inteligencia Artificial una respuesta en formato de texto normal.
+        para pedirle asíncronamente a la Inteligencia Artificial una respuesta.
         """
         if not self._client:
             self._init_client()
         
         messages = []
         if system_prompt:
-            messages.append(("system", system_prompt)) # Contexto oculto que le da la personalidad al bot
-        messages.append(("human", prompt))             # Lo que escribió el usuario/jugador
+            messages.append(("system", system_prompt)) # Contexto oculto
+        messages.append(("human", prompt))             # Lo que escribió el usuario
         
-        # Hacemos la consulta por internet a la IA y obtenemos la respuesta (.invoke)
-        # Usamos el contenedor con retry para soportar backoff si ocurre un error 429
-        # Hacemos la consulta por internet a la IA y obtenemos la respuesta (.invoke)
-        # Usamos el contenedor con retry para soportar backoff si ocurre un error 429
         try:
-            response_text = self._generate_with_retry(messages)
+            response_text = await self._generate_with_retry(messages)
             current_provider = self.provider
         except Exception as primary_error:
             # CASCADA DE RESILIENCIA (3 capas):
@@ -202,20 +198,18 @@ class LLMClient:
             if fallback_provider:
                 print(f"  [LLMClient] Primary provider ({self.provider}) failed: {primary_error}. Falling back to {fallback_provider}...")
                 try:
-                    # Inicializar backup si no existe
                     if not self._backup_client or getattr(self, '_backup_provider', None) != fallback_provider:
                         self._backup_client = self._create_fallback_client(fallback_provider, fallback_model)
                         self._backup_provider = fallback_provider
-                    response = self._backup_client.invoke(messages)
+                    response = await self._backup_client.ainvoke(messages)
                     response_text = response.content
                     current_provider = fallback_provider
                 except Exception as secondary_error:
-                    # CAPA 3: Si el fallback secundario también falló, intentar DeepSeek como última red de seguridad
                     if fallback_provider != "deepseek" and os.getenv("DEEPSEEK_API_KEY"):
                         print(f"  [LLMClient] Secondary fallback ({fallback_provider}) also failed: {secondary_error}. Last resort: DeepSeek...")
                         try:
                             deepseek_client = self._create_fallback_client("deepseek", "deepseek-chat")
-                            response = deepseek_client.invoke(messages)
+                            response = await deepseek_client.ainvoke(messages)
                             response_text = response.content
                             current_provider = "deepseek"
                         except Exception as tertiary_error:
@@ -241,16 +235,14 @@ class LLMClient:
         
         return response_text
     
-    def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+    async def generate_json(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
         """
-        A veces en vez de texto normal para lectura humana, nuestro código necesita 
-        que la IA le devuelva "Datos de Sistema" estructurados. Esta función fuerza 
-        a la IA a responder sí o sí en formato máquina (JSON) para que otros códigos lo entiendan fácil.
+        Fuerza a la IA a responder en formato máquina (JSON) de forma asíncrona.
         """
         json_prompt = f"{prompt}\n\nResponde solo y exclúsivamente con formato JSON válido."
         
         try:
-            response = self.generate(json_prompt, system_prompt)
+            response = await self.generate(json_prompt, system_prompt)
         except Exception as e:
             # GRACEFUL DEGRADATION (Fallback Determinista)
             # Si pasaron todos los reintentos (ej. no hay internet), devolvemos este JSON universal súper-resiliente.
@@ -264,9 +256,9 @@ class LLMClient:
                 "fuentes": ["Fallback System"],
                 "explicacion": "Parece que nuestra red se ha interrumpido brevemente. En este punto de la simulación, siempre recomendamos basarse en manuales oficiales NIST y no entrar en pánico. Seguimos adelante con el incidente.",
                 "mejor_practica": "Revisar logs oficiales cuando se recupere la conexión.",
-                "aprobado": True,
+                "aprobado": False,
                 "inconsistencias": [],
-                "nota": "Aprobado por Fallback de Emergencia"
+                "nota": "Rechazado por Fallback de Emergencia (Fail-Closed)"
             }
         
         try:

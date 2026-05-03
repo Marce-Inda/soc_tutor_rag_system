@@ -32,7 +32,7 @@ class ValidatorAgent:
         self.llm = llm_client
         self.rag = rag_client
     
-    def validar(
+    async def validar(
         self,
         evaluacion_analista: EvaluacionTecnica,
         feedback_explicador: FeedbackPedagogico,
@@ -68,7 +68,7 @@ class ValidatorAgent:
         )
         
         try:
-            result = self.llm.generate_json(
+            result = await self.llm.generate_json(
                 prompt=prompt
             )
             
@@ -99,12 +99,12 @@ class ValidatorAgent:
             
         except Exception as e:
             print(f"  [Validator] Error: {e}")
-            # Fallback: Accept with warning if LLM fails
+            # Fallback: Fail-Closed policy
             return ValidacionCalidad(
-                approved=True,
-                inconsistencies=["LLM Validation failed - manually audit required"],
-                quality_score="Accepted by default after error",
-                numeric_score=50
+                approved=False,
+                inconsistencies=["LLM Validation failed - system paused for safety"],
+                quality_score="Blocked due to technical validation failure",
+                numeric_score=0
             )
 
 

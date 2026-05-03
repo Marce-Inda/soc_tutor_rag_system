@@ -9,6 +9,7 @@ Agent coordinator using the Manager of Drafts pattern and bilingual reasoning.
 
 from typing import Optional, Dict, Any
 import time
+import asyncio
 from datetime import datetime
 
 from ..agents.types import (
@@ -28,6 +29,8 @@ from ..utils.memory import SessionMemory
 from ..utils.observability import tracer
 from ..utils.semantic_cache import get_cache_client
 from ..utils.translator import Translator
+MAX_COST_PER_SESSION = 0.05 # USD
+MAX_TURNS_PER_SESSION = 15
 
 class UEFSOrchestrator:
     """
@@ -90,203 +93,105 @@ class UEFSOrchestrator:
             "session_isolation": "enabled"
         }
 
-    
-    def generar_feedback(
+    async def generar_feedback(
         self,
         decision: Decision,
         contexto: ContextoEscenario,
-        player_profile: PlayerProfile,
-        session_id: str = "sesion-default"
+        player_profile: PlayerProfile
     ) -> FeedbackFinal:
         """
-        Flujo Maestro con loop de corrección (Manager of Drafts).
+        Flujo Maestro Asíncrono con loop de corrección (Manager of Drafts).
         """
+        
+        session_id = player_profile.player_id
         
         tracer.start_trace("evaluacion_integral_maestra", {
             "accion": decision.accion,
-            "session_isolation": "enabled"
+            "session_isolation": "enabled",
+            "session_id": session_id
         })
         
-        # Inicializar tracking de costos para esta sesión si no existe
         if session_id not in self.session_costs:
             self.session_costs[session_id] = 0.0
+            
+        # CHECK BUDGET (Wallet-Exhaustion Protection)
+        if self.session_costs[session_id] >= MAX_COST_PER_SESSION:
+            print(f" [Orchest] 🛑 Budget exceeded for session {session_id}!")
+            return self._get_safe_block_response("Budget limit reached for this session. Contact support.")
         
-        # --- ENGLISH-FIRST GATEWAY (AI Engineering Optimization) ---
-        # Traducimos la entrada a inglés inmediatamente para que todo el razonamiento interno 
-        # (Analista, Gobernanza, Explicador) sea más barato y preciso.
-        original_decision = decision.model_dump()
-        
+        # 0. English-First Gateway
         if player_profile.language != "en":
             print(f" [Orchest] English-First Gateway: Translating input from '{player_profile.language}' to 'en'...")
-            decision_en = decision.model_copy()
-            decision_en.accion = self.translator.translate_to_english(decision.accion)
+            decision.accion = await self.translator.translate_to_english(decision.accion)
             if decision.detalle:
-                decision_en.detalle = self.translator.translate_to_english(decision.detalle)
-            
-            # Usamos la versión en inglés para el resto del pipeline interno
-            internal_decision = decision_en
-        else:
-            internal_decision = decision
+                decision.detalle = await self.translator.translate_to_english(decision.detalle)
 
-        # 1. CACHÉ SEMÁNTICO (Usamos la versión en inglés para maximizar hits cross-language)
-        cached_res = self.cache.lookup(
-            decision=internal_decision.model_dump(),
+        # 1. CACHÉ SEMÁNTICO
+        cached_res = await self.cache.lookup(
+            decision=decision.model_dump(),
             context=contexto.model_dump(),
             player_profile=player_profile.model_dump()
         )
         if cached_res:
+             print(f" [Orchest] ⚡ Semantic Cache HIT!")
              tracer.add_step("HIT_EN_CACHE_SEMANTICO", {"msg": "Result found in semantic cache"})
              res = FeedbackFinal(**cached_res)
              tracer.end_trace({"Proceso": "Caché"}, status="cache_hit")
              return res
 
-        # 2. GUARD & MEMORY (Security L1/L2)
+        # 2. GUARD & MEMORY
+        is_safe, error_msg = await self.guard.validate_input(decision)
+        if not is_safe:
+            tracer.end_trace({"error": error_msg}, status="blocked")
+            return self._get_safe_block_response(f"Action could not be processed: {error_msg}")
+
+        # 3. RAG - Context Bundle
+        print(f" [Orchestrator] Retrieving RAG context bundle...")
         try:
-            # Check turn limits
-            turns = self.memory.get_session_turn_count(session_id)
-            if turns >= self.MAX_TURNS_PER_SESSION:
-                 return self._get_safe_block_response("Session turn limit reached. Please start a new simulation.")
-
-            # Check Cost limits
-            if self.session_costs[session_id] >= self.MAX_COST_PER_SESSION:
-                 return self._get_safe_block_response("API Budget exceeded for this session. Please contact support.")
-
-            is_safe, error_msg = self.guard.validate_input(decision)
-            if not is_safe:
-                tracer.end_trace({"error": error_msg}, status="blocked")
-                if error_msg == "L2_API_ERROR":
-                    return self._get_api_error_response()
-                return self._get_safe_block_response("Action could not be processed due to security policies.")
+            contexto_bundle = await self._retrieve_context_bundle(decision, contexto)
+            contexto_full_str = contexto_bundle.get("full_text", str(contexto_bundle))
         except Exception as e:
-            tracer.add_step("guard_error", {"error": str(e)})
-            return self._get_api_error_response()
-
+            print(f" [Orchestrator] ⚠️ Error en RAG: {str(e)}. Continuando con contexto vacío.")
+            contexto_bundle = {"sources": [], "documentos_recuperados": []}
+            contexto_full_str = ""
         
-        # Recuperar Memoria Episódica
+        # 4. ANALYST DUO (Parallel)
         history = self.memory.get_history_summary(session_id)
         
-        # 2.5 PMS 2.0: ENRUTAMIENTO METACOGNITIVO (Fast Path vs Deep Reasoning)
-        # Si es una pregunta teórica pura o saludo, la derivamos por un Fast Path para ahorrar cómputo
-        # Aquí implementamos un triage heurístico simplificado
-        accion_lower = decision.accion.lower()
-        is_theoretical = decision.target.lower() in ["none", "", "tutor", "teoria"] and (
-            any(kw in accion_lower for kw in ["que es", "explicame", "como funciona", "diferencia entre", "hola"])
-        )
+        print(f" [Orchestrator] Running Analyst and Governance in parallel...")
+        analista_task = asyncio.create_task(self.analyst_agent.evaluar(decision, contexto, contexto_rag=contexto_full_str, memoria_episodica=history))
+        gobernanza_task = asyncio.create_task(self.governance_agent.evaluar(decision, contexto, contexto_rag=contexto_full_str))
         
-        if is_theoretical:
-            print(" [PMS 2.0] Triage: Theoretical question detected. Routing to Fast Path (System-1).")
-            tracer.add_step("PMS_2.0_Routing", {"route": "Fast Path", "reason": "Theoretical input"})
-            
-            # Recuperar solo contexto RAG estratégico/teórico rápido
-            rag_rapido = self.rag.retrieve_hybrid(query=internal_decision.accion, k=2, translate=True)
-            contexto_str = "\n".join([d['text'] for d in rag_rapido])
-            
-            # Generar respuesta rápida con modelo barato
-            try:
-                prompt = f"Como tutor de ciberseguridad, responde brevemente a esto: '{internal_decision.accion}'. Usa este contexto si ayuda: {contexto_str}"
-                respuesta_rapida = self.llm.generate(prompt)
-            except Exception as e:
-                tracer.add_step("fast_path_error", {"error": str(e)})
-                return self._get_api_error_response()
-            
-            res = FeedbackFinal(
-                evaluacion=respuesta_rapida,
-                explicacion="Respuesta rápida generada vía Fast Path (PMS 2.0).",
-                mejor_practica="Sigue preguntando dudas teóricas.",
-                fuentes_citadas=[d['source'] for d in rag_rapido],
-                evaluacion_tecnica=EvaluacionTecnica(analysis="Fast Path", explanation="", best_practice="", sources=[], technical_score=100),
-                evaluacion_gobernanza=EvaluacionGobernanza(compliant=True, risks=[], recommendations=[], frameworks=[], strategic_score=100, ethical_score=100),
-                validacion=ValidacionCalidad(approved=True, inconsistencies=[], quality_score="Fast Path", numeric_score=100),
-                costo_estimado=self.llm.last_usage.get("cost", 0.0001),
-                persona_role="Tutor"
-            )
-            
-            # 6.5 OUTPUT SECURITY CHECK (L3) para Fast Path
-            if not self.guard.validate_output(res.evaluacion):
-                 return self._get_safe_block_response("Integrity check failed for the generated response.")
-                 
-            # Guardar en memoria para mantener el Timeline coherente
-            self.memory.save_step(session_id, {
-                "decision": internal_decision.model_dump(),
-                "timestamp": datetime.now().isoformat()
-            })
-            
-            return res
-        
-        print(" [PMS 2.0] Triage: Tactical action detected. Routing to Deep Reasoning (System-2).")
-        
-        # 3. RAG - Differentiated Retrieval (Performance Hub)
-        if contexto.scenario_id:
-            self.tools.set_scenario(contexto.scenario_id)
+        try:
+            evaluacion_analista, evaluacion_gobernanza = await asyncio.gather(analista_task, gobernanza_task)
+        except Exception as e:
+            print(f" [Orchestrator] ⚠️ Error en agentes: {str(e)}. Usando respuestas de emergencia.")
+            evaluacion_analista = self._get_api_error_response().evaluacion_tecnica
+            evaluacion_gobernanza = self._get_api_error_response().evaluacion_gobernanza
 
-        print(f" [Orchestrator] Retrieving differentiated RAG context...")
-        
-        # Technical RAG (For Analyst) - k=2 to reduce bloat
-        rag_tecnico = self.rag.retrieve_with_context(
-            decision=internal_decision.model_dump(),
-            contexto=contexto.model_dump(),
-            k=2,
-            knowledge_type="technical"
-        )
-        
-        # Strategic RAG (For Governance/Explainer) - k=2
-        rag_estrategico = self.rag.retrieve_with_context(
-            decision=internal_decision.model_dump(),
-            contexto=contexto.model_dump(),
-            k=2,
-            knowledge_type="strategic"
-        )
-        
-        # Assemble filtered contexts
-        def format_context(docs):
-            parts = []
-            for i, d in enumerate(docs):
-                content = d.get('text', '')
-                if len(content) > 1200: # Slightly more aggressive truncation
-                    content = content[:1200] + "... [TRUNCATED]"
-                
-                prefix = "[MATCH EXACTO]" if d.get('is_exact') else f"[RELEVANCIA {i+1}]"
-                doc_id = d.get('id', 'no-id')[:16]
-                parts.append(f"{prefix} (Source: {d['source']} | Hash: {doc_id}): {content}")
-            return "\n\n".join(parts)
-
-        contexto_tecnico_str = format_context(rag_tecnico.get('documentos_recuperados', []))
-        contexto_estrategico_str = format_context(rag_estrategico.get('documentos_recuperados', []))
-        
-        # Combined for Explainer/Validator
-        contexto_full_str = f"--- TECHNICAL CONTEXT ---\n{contexto_tecnico_str}\n\n--- STRATEGIC/LEGAL CONTEXT ---\n{contexto_estrategico_str}"
-        
-        # 4. ANALYST DUO (Technical + Governance)
-        print(f" [Orchestrator] Running parallel evaluations...")
-        # Analyst only gets technical context and episodic memory
-        evaluacion_analista = self.analyst_agent.evaluar(internal_decision, contexto, contexto_rag=contexto_tecnico_str, memoria_episodica=history)
-        self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
-        
-        # Governance only gets strategic/legal context
-        evaluacion_gobernanza = self.governance_agent.evaluar(internal_decision, contexto, contexto_rag=contexto_estrategico_str)
         self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
         
         # 5. GENERACIÓN Y VALIDACIÓN (Manager of Drafts Loop)
         max_retries = 1
         current_retry = 0
-        feedback_explicador = None
         validacion = None
         
         while current_retry <= max_retries:
             print(f" [Orchestrator] Generating pedagogical feedback (Draft {current_retry + 1})...")
+            prev_errs = validacion.inconsistencies if validacion else None
             
-            # El Explainer usa contexto completo para narrar el choque asimétrico
-            feedback_explicador = self.explainer_agent.generar(
+            feedback_explicador = await self.explainer_agent.generar(
                 evaluacion_analista=evaluacion_analista,
                 evaluacion_gobernanza=evaluacion_gobernanza,
                 player_profile=player_profile,
-                contexto_rag=contexto_full_str
+                contexto_rag=contexto_full_str,
+                prev_inconsistencies=prev_errs
             )
             self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
             
-            # El Validador traduce y pule (solo si está habilitado)
             if self.enable_validation:
-                validacion = self.validator_agent.validar(
+                print(f" [Orchestrator] Validating draft consistency...")
+                validacion = await self.validator_agent.validar(
                     evaluacion_analista=evaluacion_analista,
                     feedback_explicador=feedback_explicador,
                     player_profile=player_profile,
@@ -294,34 +199,27 @@ class UEFSOrchestrator:
                 )
                 self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
 
-                if validacion.approved or validacion.numeric_score >= 70:
-                    print(f" [Orchestrator] Draft approved with score {validacion.numeric_score}")
+                if validacion.approved:
+                    print(f" [Orchestrator] Draft approved.")
                     break
                 
-                print(f" [Orchestrator] Draft rejected (Score: {validacion.numeric_score}). Retrying...")
                 current_retry += 1
+                print(f" [Orchestrator] ⚠️ Draft rejected. Retrying...")
                 tracer.add_step(f"retry_draft_{current_retry}", {"inconsistencies": validacion.inconsistencies})
             else:
-                # Si la validación está desactivada, el primer draft es el final
                 print(" [Orchestrator] Skipping validation as requested.")
-                # Creamos un objeto validacion vacío o básico para que no rompa el ensamblaje final
                 from src.agents.types import ValidacionCalidad
-                validacion = ValidacionCalidad(
-                    approved=True, 
-                    correction=feedback_explicador.analysis, # Usamos el texto del explainer como "corrección"
-                    numeric_score=100
-                )
+                validacion = ValidacionCalidad(approved=True, numeric_score=100)
                 break
 
         # 6. ENSAMBLAJE FINAL
-        # Usamos la corrección del validador si existe, sino el feedback original
         final_text = validacion.correction if validacion.correction else feedback_explicador.analysis
         
         res = FeedbackFinal(
             evaluacion=final_text,
             explicacion=feedback_explicador.explanation,
             mejor_practica=feedback_explicador.best_practice,
-            fuentes_citadas=rag_tecnico.get("sources", []) + rag_estrategico.get("sources", []) + feedback_explicador.cited_sources,
+            fuentes_citadas=contexto_bundle.get("sources", []),
             evaluacion_tecnica=evaluacion_analista,
             evaluacion_gobernanza=evaluacion_gobernanza,
             evaluacion_6d=validacion.evaluacion_6d,
@@ -334,20 +232,47 @@ class UEFSOrchestrator:
         if not self.guard.validate_output(res.evaluacion):
              return self._get_safe_block_response("Integrity check failed for the generated response.")
 
+        # 8. English-First Delivery: Translate back to user language if necessary
+        if player_profile.language != "en":
+            print(f" [Orchest] English-First Delivery: Translating result back to '{player_profile.language}'...")
+            res.evaluacion = await self.translator.translate_to_user_language(res.evaluacion, player_profile.language)
+            res.explicacion = await self.translator.translate_to_user_language(res.explicacion, player_profile.language)
+            res.mejor_practica = await self.translator.translate_to_user_language(res.mejor_practica, player_profile.language)
+            
+            # Deep Translation for technical report
+            await self._translate_deep(res, player_profile.language)
 
-        
-        # 7. MEMORY & CACHE
+    async def _translate_deep(self, res: FeedbackFinal, lang: str):
+        """Translates nested fields in technical and governance reports."""
+        # Translate EvaluacionTecnica
+        if res.evaluacion_tecnica:
+            t = res.evaluacion_tecnica
+            t.analysis = await self.translator.translate_to_user_language(t.analysis, lang)
+            t.explanation = await self.translator.translate_to_user_language(t.explanation, lang)
+            t.best_practice = await self.translator.translate_to_user_language(t.best_practice, lang)
+            t.strengths = await self.translator.translate_batch(t.strengths, lang)
+            t.weaknesses = await self.translator.translate_batch(t.weaknesses, lang)
+            
+        # Translate EvaluacionGobernanza
+        if res.evaluacion_gobernanza:
+            g = res.evaluacion_gobernanza
+            g.risks = await self.translator.translate_batch(g.risks, lang)
+            g.recommendations = await self.translator.translate_batch(g.recommendations, lang)
+            # Framework names are usually kept in original but we can translate descriptions if they had any
+
+        # 9. PERSISTENCIA EN CACHÉ & MEMORIA
         self.memory.save_step(session_id, {
-            "decision": internal_decision.model_dump(),
+            "decision": decision.model_dump(),
             "timestamp": datetime.now().isoformat()
         })
         
-        self.cache.store(
-            decision=internal_decision.model_dump(),
-            context=contexto.model_dump(),
-            player_profile=player_profile.model_dump(),
-            feedback=res
-        )
+        if self.cache and validacion.approved:
+            await self.cache.store(
+                decision=decision.model_dump(),
+                context=contexto.model_dump(),
+                player_profile=player_profile.model_dump(),
+                feedback=res
+            )
         
         tracer.end_trace({"status": "success"})
         return res
@@ -392,3 +317,15 @@ class UEFSOrchestrator:
             costo_estimado=0.0,
             persona_role="System Security"
         )
+
+    async def _retrieve_context_bundle(self, decision: Decision, contexto: ContextoEscenario) -> Dict[str, Any]:
+        """
+        Recupera el contexto de forma asíncrona.
+        """
+        # Note: RAGClient is still sync, but we wrap it
+        res = self.rag.retrieve_with_context(
+            decision=decision.model_dump(),
+            contexto=contexto.model_dump(),
+            k=2
+        )
+        return res

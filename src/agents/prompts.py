@@ -211,10 +211,15 @@ def build_prompt_explicador(
     evaluacion_gobernanza: Any,
     player_level: int,
     target_language: str,
-    contexto_rag: str
+    contexto_rag: str,
+    prev_inconsistencies: list = None
 ) -> str:
     """Builds the prompt for the Explainer Agent."""
     
+    correction_block = ""
+    if prev_inconsistencies:
+        correction_block = f"\n[CORRECTION REQUIRED]: The previous draft was REJECTED for the following reasons:\n- " + "\n- ".join(prev_inconsistencies) + "\n Please FIX these issues in your new narrative."
+
     if player_level <= 2:
         reglas = "Friendly Tutor - Beginner: Focus on encouragement and gentle socratic questions."
     elif player_level >= 5:
@@ -241,6 +246,7 @@ TECHNICAL SOURCES (FOR CITATION):
 - References: {_get_val(evaluacion_analista, 'sources', [])}
 
 {prompt}
+{correction_block}
 """
 
 

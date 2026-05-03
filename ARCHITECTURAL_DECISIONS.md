@@ -144,9 +144,9 @@ Sin MCP, el Analista **inventaría** los logs ("el SIEM muestra conexiones sospe
 - **Rationale de IA**: En un sistema multiagente, el token budget se multiplica por N agentes. Context Splitting convierte una complejidad O(N × T) en O(N × T/N) ≈ O(T), donde T es el tamaño total del contexto. El Analista no necesita saber sobre GDPR y el Gobernanza no necesita ver logs de red — cada agente recibe solo lo que su rol requiere.
 
 ### Decisión: Podado de Conocimiento (Top-K & Truncation)
-- **Técnica**: Reducción de recuperación a los 2-3 mejores fragmentos (`k=2/3`) y truncado agresivo a 1200 caracteres por documento.
+- **Técnica**: Reducción de recuperación a los 2 mejores fragmentos (`k=2`) y truncado agresivo a 1200 caracteres por documento.
 - **Rationale**: Maximizar el "Signal-to-Noise Ratio". Inyectar demasiada teoría confunde al Analista y aumenta los costos sin mejorar la evaluación táctica.
-- **Evidencia**: Con `k=5` los modelos generaban respuestas más largas pero con contenido "relleno" de normativas irrelevantes. Con `k=2` las respuestas son más concisas y técnicamente focalizadas.
+- **Evidencia**: Con `k=5` los modelos generaban respuestas más largas pero con contenido "relleno" de normativas irrelevantes. Con `k=2` las respuestas son más concisas, técnicamente focalizadas y el costo se reduce en un ~40%.
 
 ### Decisión: Caché Semántica (Eliminación de Llamadas Redundantes)
 - **Problema**: Decisiones similares de diferentes jugadores generaban evaluaciones prácticamente idénticas, consumiendo tokens y latencia en cada repetición.
@@ -511,6 +511,8 @@ Esta topología permite que el sistema cumpla simultáneamente con requisitos co
 | **Latencia** | Timeouts Estrictos (45s) | Prevenir colgado de workers de API. |
 | **Resiliencia** | Cascada de 3 capas (Gemini ↔ Groq → DeepSeek) + Background Retries | Mantener inmersión en fallos de red con triple redundancia. |
 | **Costo** | Context Splitting / Cache / DeepSeek V4 Flash ($0.14/1M) | Reducción de gasto en APIs con provider más económico como última capa. |
+| **UX Localizada** | Deep Translation Gateway (Recursivo) | Traducción de todos los campos técnicos y de gobernanza para evitar inconsistencias de idioma. |
+| **Sincronización** | Unified Technical Score Field | Estandarización de nombres de campos entre Frontend (Zustand) y Backend (Pydantic). |
 | **Precisión** | MCP + RAG Facets | Eliminar alucinaciones tácticas. |
 | **MCP (Arquitectura)** | Dual-Server CQRS (EDR + Telemetry) | Separar observación de acción (como un SOC real). |
 | **MCP (Transporte)** | STDIO con timeout 15s + Graceful Degradation | Latencia mínima (~1ms) sin exponer puertos de red. |
@@ -530,7 +532,7 @@ Esta topología permite que el sistema cumpla simultáneamente con requisitos co
 - **Solución**: Implementación de un **"English-First Gateway"** en el orquestador (`UEFSOrchestrator`).
     1. **Ingress Translation**: La decisión del jugador se traduce al inglés inmediatamente al entrar al sistema.
     2. **Pure English Pipeline**: Los agentes Analista, Gobernanza y Explicador reciben y procesan datos exclusivamente en inglés.
-    3. **Egress Translation**: El Agente Validador realiza la traducción final al idioma del usuario (Español) como último paso del pipeline.
+    3. **Egress Translation (Deep Gateway)**: Tras la validación, el Orquestador realiza una **traducción profunda** de todo el objeto de respuesta. No solo se traduce el feedback pedagógico, sino también los campos técnicos (análisis, fortalezas, debilidades) y de gobernanza (riesgos, recomendaciones), asegurando una experiencia 100% localizada sin sacrificar el rigor técnico del razonamiento interno en inglés.
 
 ### 15.2 — Justificación de Ingeniería de IA (Why?)
 1. **Densidad de Información**: El inglés es un idioma más denso semánticamente para los LLMs. Al normalizar el input, reducimos la ventana de contexto necesaria en cada uno de los 4 agentes, permitiendo inyectar más conocimiento RAG sin superar los límites de tokens.

@@ -7,7 +7,7 @@ Governance Agent - Specialist in legal compliance and ethics.
 
 from typing import Dict, Any
 from .prompts import build_prompt_gobernanza
-from .types import EvaluacionGobernanza
+from .types import EvaluacionGobernanza, Decision, ContextoEscenario
 from ..utils.observability import tracer
 
 class GovernanceAgent:
@@ -22,35 +22,42 @@ class GovernanceAgent:
         self.llm = llm_client
         self.rag = rag_client
         
-    def evaluar(self, decision: Dict[str, Any], contexto: Dict[str, Any]) -> EvaluacionGobernanza:
+    async def evaluar(
+        self, 
+        decision: Decision, 
+        contexto: ContextoEscenario,
+        contexto_rag: str = ""
+    ) -> EvaluacionGobernanza:
         """
         Performs the governance evaluation based on the decision and RAG context.
         """
         
-        # 1. Recuperar contexto RAG específico para cumplimiento
-        query = f"Compliance and legal risks for {decision.accion} in {contexto.tipo_incidente}"
-        rag_res = self.rag.retrieve(query, k=3)
-        contexto_rag = "\n".join([d['text'] for d in rag_res])
+        # 1. Use provided context or retrieve specifically for compliance
+        if not contexto_rag:
+            print(f"  [Governance] No context provided. Retrieving via RAG...")
+            query = f"Compliance and legal risks for {decision.accion} in {contexto.tipo_incidente}"
+            rag_res = self.rag.retrieve(query, k=3)
+            contexto_rag = "\n".join([d['text'] for d in rag_res])
         
         # 2. Construir prompt
         prompt = build_prompt_gobernanza(decision, contexto, contexto_rag)
         
         # 3. Llamar al LLM
-        response = self.llm.generate_json(prompt)
+        response = await self.llm.generate_json(prompt)
         
         # 4. Parsear resultado
         try:
             res = EvaluacionGobernanza(**response)
         except Exception as e:
             tracer.add_step("error_parsing_gobernanza", {"error": str(e)})
-            # Fallback seguro
+            # Fallback seguro (Fail-Closed)
             res = EvaluacionGobernanza(
-                compliant=True, 
-                risks=["Error parsing legal evaluation"],
-                recommendations=[],
+                compliant=False, 
+                risks=["Error parsing legal evaluation - Fail Closed triggered"],
+                recommendations=["Consulte al departamento legal de forma manual"],
                 frameworks=[],
-                strategic_score=50,
-                ethical_score=50
+                strategic_score=0,
+                ethical_score=0
             )
             
         return res

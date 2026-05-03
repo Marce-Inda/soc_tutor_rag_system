@@ -33,27 +33,28 @@ class AnalystAgent:
         self.llm = llm_client
         self.rag = rag_client
         self.tools = tools # SOCtools instance
-    
-    def evaluar(
+    async def evaluar(
         self, 
         decision: Decision, 
         contexto: ContextoEscenario,
+        contexto_rag: str = "",
         memoria_episodica: str = ""
     ) -> EvaluacionTecnica:
         """Executes technical evaluation using ReAct in English."""
         
-        # 1. Retrieve initial knowledge via RAG (Automatic English translation if needed)
-        rag_result = self.rag.retrieve_with_context(
-            decision=decision.model_dump(),
-            contexto=contexto.model_dump(),
-            k=3
-        )
-        
-        contexto_rag = rag_result["contexto_rag"]
+        # 1. Use provided RAG context or retrieve if missing
+        if not contexto_rag:
+            print(f"  [Analyst] No context provided. Retrieving via RAG...")
+            rag_result = self.rag.retrieve_with_context(
+                decision=decision.model_dump(),
+                contexto=contexto.model_dump(),
+                k=3
+            )
+            contexto_rag = rag_result["contexto_rag"]
         
         # 2. Prepare ReAct
         if not self.tools:
-            return self._simple_eval(decision, contexto, contexto_rag)
+            return await self._simple_eval(decision, contexto, contexto_rag)
 
         tools_list = self.tools.get_tools()
         tools_desc = "\n".join([f"- {t.name}: {t.description}" for t in tools_list])
@@ -76,7 +77,7 @@ class AnalystAgent:
         print(f"  [Analyst] Starting reasoning chain (ReAct in English)...")
         
         for i in range(max_iterations):
-            response = self.llm.generate(current_prompt)
+            response = await self.llm.generate(current_prompt)
             reasoning_chain.append(response)
             
             # Search for Action in English
@@ -93,7 +94,8 @@ class AnalystAgent:
                 obs = "Tool not found"
                 for t in tools_list:
                     if t.name == action_name:
-                        obs = t.invoke(action_input)
+                        # Usar ainvoke para herramientas asíncronas
+                        obs = await t.ainvoke(action_input)
                         break
                 
                 current_prompt += f"\nObservation: {obs}\nThought: "
@@ -114,11 +116,11 @@ class AnalystAgent:
                 except: result_json = {}
         else:
             # Fallback to direct generation if ReAct format failed
-            result_json = self.llm.generate_json(f"Based on this technical reasoning, generate the evaluation JSON: {reasoning_chain[-1]}")
+            result_json = await self.llm.generate_json(f"Based on this technical reasoning, generate the evaluation JSON: {reasoning_chain[-1]}")
         
         tracer.add_step("Analyst_Reasoning_Chain", {"chain": reasoning_chain})
 
-        # Extraer hashes REALES del contexto RAG (NO del LLM — previene alucinación de fuentes)
+        # Extraer hashes REALES del contexto RAG
         real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
 
         return EvaluacionTecnica(
@@ -127,17 +129,14 @@ class AnalystAgent:
             strengths=result_json.get("strengths", []),
             weaknesses=result_json.get("weaknesses", []),
             best_practice=result_json.get("best_practice", "Consult standard manuals"),
-            sources=rag_result["sources"] + result_json.get("sources", []),
+            sources=result_json.get("sources", []),
             technical_score=result_json.get("technical_score", 70),
             resilience_score=result_json.get("resilience_score", result_json.get("technical_score", 70)),
             forensic_notes=result_json.get("forensic_notes"),
             source_integrity_hashes=real_hashes
         )
 
-
-
-
-    def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str, memoria_episodica: str = "") -> EvaluacionTecnica:
+    async def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str, memoria_episodica: str = "") -> EvaluacionTecnica:
         """Simple fallback without tools, using English prompts."""
         contexto_dict = contexto.model_dump()
         contexto_dict['memoria_episodica'] = memoria_episodica
@@ -146,8 +145,11 @@ class AnalystAgent:
             contexto=contexto_dict,
             contexto_rag=contexto_rag
         )
-        result = self.llm.generate_json(prompt)
+        result = await self.llm.generate_json(prompt)
         
+        # Extraer hashes REALES del contexto RAG
+        real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
+
         return EvaluacionTecnica(
             analysis=result.get("analysis", "Direct analysis"),
             explanation=result.get("explanation", "Standard fallback explanation"),
@@ -157,5 +159,6 @@ class AnalystAgent:
             sources=result.get("sources", []),
             technical_score=result.get("technical_score", 50),
             resilience_score=result.get("resilience_score", 50),
-            forensic_notes=result.get("forensic_notes")
+            forensic_notes=result.get("forensic_notes"),
+            source_integrity_hashes=real_hashes
         )

@@ -14,7 +14,7 @@ class Translator:
         # Session cache to avoid redundant translations of common terms or identical inputs
         self._cache: Dict[str, str] = {}
 
-    def translate_to_english(self, text: str) -> str:
+    async def translate_to_english(self, text: str) -> str:
         """
         Translates Spanish/Portuguese input to English for internal processing.
         """
@@ -24,9 +24,6 @@ class Translator:
         if text in self._cache:
             return self._cache[text]
             
-        # Optimization: if text is very short and looks like English, or is a known technical ID, skip
-        # For now, we trust the LLM to handle it efficiently
-        
         system_prompt = (
             "You are a high-speed translation microservice. "
             "Translate the following SOC analyst input to English concisely. "
@@ -34,7 +31,7 @@ class Translator:
         )
         
         try:
-            translation = self.llm.generate(f"Translate to English: {text}", system_prompt=system_prompt)
+            translation = await self.llm.generate(f"Translate to English: {text}", system_prompt=system_prompt)
             result = translation.strip()
             self._cache[text] = result
             return result
@@ -42,10 +39,9 @@ class Translator:
             logger.warning(f"Translation to English failed: {e}")
             return text
 
-    def translate_to_user_language(self, text: str, target_language: str) -> str:
+    async def translate_to_user_language(self, text: str, target_language: str) -> str:
         """
         Translates final English reasoning back to the user's preferred language.
-        Used by the Validator/Orchestrator for final delivery.
         """
         if not text or not target_language or target_language == "en":
             return text
@@ -57,8 +53,35 @@ class Translator:
         )
         
         try:
-            translation = self.llm.generate(text, system_prompt=system_prompt)
+            translation = await self.llm.generate(text, system_prompt=system_prompt)
             return translation.strip()
         except Exception as e:
             logger.error(f"Translation to {target_language} failed: {e}")
             return text
+
+    async def translate_batch(self, texts: list[str], target_language: str) -> list[str]:
+        """
+        Translates a list of strings in a single LLM call to save tokens and time.
+        """
+        if not texts or target_language == "en":
+            return texts
+            
+        # Filter empty strings
+        filtered_texts = [t for t in texts if t and t.strip()]
+        if not filtered_texts:
+            return texts
+
+        system_prompt = (
+            f"You are an expert technical translator. Translate this JSON list of cybersecurity "
+            f"observations to {target_language}. Return ONLY a JSON list of strings."
+        )
+        
+        try:
+            prompt = f"Translate this list: {texts}"
+            result_json = await self.llm.generate_json(prompt, system_prompt=system_prompt)
+            if isinstance(result_json, list):
+                return result_json
+            return texts
+        except Exception as e:
+            logger.error(f"Batch translation to {target_language} failed: {e}")
+            return texts

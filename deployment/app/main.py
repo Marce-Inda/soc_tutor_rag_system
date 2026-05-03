@@ -149,10 +149,10 @@ def heartbeat(user_id: str):
 
 
 @app.post("/feedback", response_model=FeedbackResponse)
-def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
-    """Genera feedback para una decisión del jugador."""
+async def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
+    """Genera feedback para una decisión del jugador de forma asíncrona."""
     
-    # Security: Validar formato de user_id (solo alfanumérico, guiones, max 64)
+    # Security: Validar formato de user_id
     if not re.match(r'^[a-zA-Z0-9_-]{1,64}$', user_id):
         raise HTTPException(status_code=400, detail="Identificador de usuario inválido.")
     
@@ -167,19 +167,18 @@ def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
     try:
         orchestrator = get_orchestrator()
         
-        # Generar feedback
-        feedback = orchestrator.generar_feedback(
+        # Generar feedback asíncronamente
+        feedback = await orchestrator.generar_feedback(
             decision=request.decision,
             contexto=request.contexto,
             player_profile=request.player_profile,
             session_id=user_id
         )
         
-        # Expulsión forzada de jugadores zombies (Red Hat)
+        # Expulsión forzada de jugadores zombies
         if "API Budget exceeded" in feedback.evaluacion or "Session turn limit" in feedback.evaluacion:
             queue_manager.expel_user(user_id)
             
-        
         # Mapear respuesta
         gov_eval = (
             feedback.evaluacion_gobernanza.model_dump() 
@@ -192,7 +191,7 @@ def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
             mejor_practica=feedback.mejor_practica,
             fuentes_citadas=feedback.fuentes_citadas,
             score_tecnico=feedback.evaluacion_tecnica.technical_score if feedback.evaluacion_tecnica else 0,
-            persona_role=feedback.validacion.persona_role if feedback.validacion and hasattr(feedback.validacion, 'persona_role') and feedback.validacion.persona_role else "SISTEMA MENTOR",
+            persona_role=feedback.persona_role if hasattr(feedback, 'persona_role') and feedback.persona_role else "SISTEMA MENTOR",
             evaluacion_gobernanza=gov_eval,
             aprobado=feedback.validacion.approved if feedback.validacion else True,
             costo_estimado=feedback.costo_estimado
@@ -201,6 +200,8 @@ def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:
+        import traceback
+        print(f"Error en feedback endpoint: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 

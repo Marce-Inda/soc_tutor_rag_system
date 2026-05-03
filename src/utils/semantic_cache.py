@@ -96,10 +96,9 @@ class SemanticCache:
             except Exception as e:
                 logger.error(f"Error cargando modelo de embeddings {self.model_name}: {e}")
 
-    def _translate_intent(self, text: str) -> str:
+    async def _translate_intent(self, text: str) -> str:
         """
         Traduce la intención del jugador al inglés para permitir aciertos de caché entre idiomas.
-        Utiliza una caché interna para no llamar al LLM si el texto ya se tradujo antes.
         """
         if not self.llm_client or not text or text.strip() == "":
             return text
@@ -111,7 +110,7 @@ class SemanticCache:
         # Traducción rápida para propósitos de indexación semántica
         system_prompt = "You are a translation microservice. Translate the following SOC analyst action/justification to English concisely."
         try:
-            translation = self.llm_client.generate(f"Translate to English: {text}", system_prompt=system_prompt)
+            translation = await self.llm_client.generate(f"Translate to English: {text}", system_prompt=system_prompt)
             result = translation.strip()
             self._translation_cache[text] = result
             return result
@@ -119,20 +118,20 @@ class SemanticCache:
             logger.warning(f"Error en traducción semántica: {e}")
             return text
 
-    def _generate_fingerprint(
+    async def _generate_fingerprint(
         self, 
         decision: Dict[str, Any], 
         context: Dict[str, Any], 
         player_profile: Dict[str, Any]
     ) -> str:
-        """Crea una representación textual única (fingerprint) normalizada para la búsqueda vectorial."""
+        """Crea una representación textual única (fingerprint) normalizada."""
         scenario = context.get('scenario_id', 'unknown')
         incident = context.get('tipo_incidente', 'unknown')
         fase = context.get('fase', 'unknown')
         
         # Intentamos unificar la acción en inglés para mejorar hits multilingües
         action_raw = decision.get('accion', '')
-        action_en = self._translate_intent(action_raw)
+        action_en = await self._translate_intent(action_raw)
         
         parts = [
             f"SCENARIO: {scenario}",
@@ -152,7 +151,7 @@ class SemanticCache:
         """
         return 2.0 * (1.0 - similarity)
 
-    def lookup(
+    async def lookup(
         self, 
         decision: Dict[str, Any], 
         context: Dict[str, Any], 
@@ -163,7 +162,7 @@ class SemanticCache:
         if not self._collection or not self._model:
             return None
             
-        fingerprint = self._generate_fingerprint(decision, context, player_profile)
+        fingerprint = await self._generate_fingerprint(decision, context, player_profile)
         
         try:
             embedding = self._model.encode([fingerprint]).tolist()
@@ -200,7 +199,7 @@ class SemanticCache:
             logger.error(f"Error durante lookup en caché: {e}")
             return None
 
-    def store(
+    async def store(
         self, 
         decision: Dict[str, Any], 
         context: Dict[str, Any], 
@@ -212,7 +211,7 @@ class SemanticCache:
         if not self._collection or not self._model:
             return
             
-        fingerprint = self._generate_fingerprint(decision, context, player_profile)
+        fingerprint = await self._generate_fingerprint(decision, context, player_profile)
         entry_id = hashlib.sha256(fingerprint.encode()).hexdigest()
         
         try:

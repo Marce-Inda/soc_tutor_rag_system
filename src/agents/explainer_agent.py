@@ -28,12 +28,13 @@ class ExplainerAgent:
         self.llm = llm_client
         self.rag = rag_client
     
-    def generar(
+    async def generar(
         self,
         evaluacion_analista: EvaluacionTecnica,
         evaluacion_gobernanza: EvaluacionGobernanza,
         player_profile: PlayerProfile,
-        contexto_rag: str = ""
+        contexto_rag: str = "",
+        prev_inconsistencies: list = None
     ) -> FeedbackPedagogico:
         """Generates the pedagogical feedback."""
         
@@ -42,13 +43,14 @@ class ExplainerAgent:
             evaluacion_analista,
             evaluacion_gobernanza,
             player_profile,
-            contexto_rag
+            contexto_rag,
+            prev_inconsistencies
         )
         
         # 2. Call the LLM
         try:
             # We use generate_json to get a structured response in the target language
-            result = self.llm.generate_json(
+            result = await self.llm.generate_json(
                 prompt=prompt
             )
         except Exception as e:
@@ -69,7 +71,8 @@ class ExplainerAgent:
         evaluacion_analista: EvaluacionTecnica,
         evaluacion_gobernanza: EvaluacionGobernanza,
         profile: PlayerProfile,
-        contexto_rag: str
+        contexto_rag: str,
+        prev_inconsistencies: list = None
     ) -> str:
         """Builds the prompt using the central prompt infrastructure."""
         from .prompts import build_prompt_explicador
@@ -79,7 +82,8 @@ class ExplainerAgent:
             evaluacion_gobernanza=evaluacion_gobernanza.model_dump(),
             player_level=profile.level,
             target_language=profile.language,
-            contexto_rag=contexto_rag
+            contexto_rag=contexto_rag,
+            prev_inconsistencies=prev_inconsistencies
         )
     
     def _fallback_feedback(self, evaluacion: EvaluacionTecnica, language: str) -> FeedbackPedagogico:

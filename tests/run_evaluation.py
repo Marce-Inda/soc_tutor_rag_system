@@ -35,10 +35,9 @@ from src.agents.guard_agent import GuardAgent
 # MÉTRICA 1: Pipeline Completeness (¿El flujo multiagente completa sin error?)
 # ============================================================================
 
-def eval_pipeline_completeness(orchestrator, test_cases, profiles) -> Dict[str, Any]:
+async def eval_pipeline_completeness(orchestrator, test_cases, profiles) -> Dict[str, Any]:
     """
-    Ejecuta el orquestador completo caso por caso.
-    Mide: tasa de éxito, latencia, y captura los resultados para las demás métricas.
+    Ejecuta el orquestador completo caso por caso asíncronamente.
     """
     print("\n" + "=" * 60)
     print("MÉTRICA 1: PIPELINE COMPLETENESS (End-to-End)")
@@ -62,12 +61,11 @@ def eval_pipeline_completeness(orchestrator, test_cases, profiles) -> Dict[str, 
             scenario_id=case["contexto"].get("scenario_id")
         )
 
-        # Probar con múltiples perfiles para medir adaptación
         for profile in profiles:
             label = f"Lvl{profile.level}-{profile.rol}"
             start = time.perf_counter()
             try:
-                feedback = orchestrator.generar_feedback(decision, contexto, profile)
+                feedback = await orchestrator.generar_feedback(decision, contexto, profile)
                 latency = time.perf_counter() - start
 
                 results.append({
@@ -84,6 +82,8 @@ def eval_pipeline_completeness(orchestrator, test_cases, profiles) -> Dict[str, 
                 print(f"    ✅ [{label}] OK en {latency:.1f}s | Score: {feedback.evaluacion_tecnica.technical_score}")
 
             except Exception as e:
+                import traceback
+                print(f"Error en evaluación: {traceback.format_exc()}")
                 latency = time.perf_counter() - start
                 results.append({
                     "case_id": case_id,
@@ -489,10 +489,10 @@ Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`Eval
 # MAIN
 # ============================================================================
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Evaluación del Sistema Multiagente SOC-Tutor-RAG")
     parser.add_argument("--provider", default="ollama", help="Provider LLM: gemini, groq, ollama")
-    parser.add_argument("--model", default="llama3.2", help="Modelo a usar")
+    parser.add_argument("--model", default=None, help="Modelo a usar (opcional)")
     parser.add_argument("--cases", type=int, help="Número de casos a ejecutar (opcional)")
     parser.add_argument("--dataset", type=str, default="eval_dataset.json", help="Nombre del archivo dataset en folder tests/")
     args = parser.parse_args()
@@ -526,8 +526,8 @@ def main():
     ]
 
     # MÉTRICA 1: Pipeline Completeness (genera los resultados para las demás)
-    pipeline_metrics = eval_pipeline_completeness(
-        UEFSOrchestrator(llm, rag, session_id="eval-session"),
+    pipeline_metrics = await eval_pipeline_completeness(
+        UEFSOrchestrator(llm, rag),
         test_cases,
         profiles
     )
@@ -575,4 +575,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
