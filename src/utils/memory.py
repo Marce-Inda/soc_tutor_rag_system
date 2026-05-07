@@ -63,40 +63,132 @@ class SessionMemory:
                 "session_id": session_id,
                 "created_at": datetime.now().isoformat(),
                 "steps": [], # Vacío
+                "artifact_index": [],
+                "history_summary": "", # New: Summary of old turns
                 "last_updated": datetime.now().isoformat()
             }
             
         with open(path, 'r') as f:
             try:
                 # Si existe exitosamente devolvemos el diario completo traducido a código de lectura inmediata.
-                return json.load(f)
+                data = json.load(f)
+                if "artifact_index" not in data:
+                    data["artifact_index"] = []
+                if "history_summary" not in data:
+                    data["history_summary"] = ""
+                return data
             except BaseException:
                 # Medida defensiva: Si el archivo se corrompió de casualidad; proveemos una copia de relleno vacía por defecto
                 return {
                     "session_id": session_id,
                     "created_at": datetime.now().isoformat(),
                     "steps": [],
+                    "artifact_index": [],
+                    "history_summary": "",
                     "last_updated": datetime.now().isoformat()
                 }
             
+    def update_artifact_index(self, session_id: str, new_artifacts: List[Any]):
+        """Agrega nuevos hallazgos confirmados al índice de artefactos de la sesión."""
+        path = self._get_path(session_id)
+        data = self.load_session(session_id)
+        
+        current_artifacts = data.get("artifact_index", [])
+        # Usamos el campo 'fact' como identificador único para evitar duplicados
+        existing_facts = set()
+        for a in current_artifacts:
+            if isinstance(a, dict):
+                existing_facts.add(a.get("fact"))
+            else:
+                existing_facts.add(a)
+        
+        for art in new_artifacts:
+            fact = art.get("fact") if isinstance(art, dict) else art
+            if fact not in existing_facts:
+                current_artifacts.append(art)
+                existing_facts.add(fact)
+        
+        data["artifact_index"] = current_artifacts
+        data["last_updated"] = datetime.now().isoformat()
+
+        
+        with open(path, 'w') as f:
+            json.dump(data, f, default=str, indent=2)
+
+    def update_history_summary(self, session_id: str, summary: str):
+        """Actualiza el resumen consolidado de la sesión."""
+        path = self._get_path(session_id)
+        data = self.load_session(session_id)
+        
+        data["history_summary"] = summary
+        data["last_updated"] = datetime.now().isoformat()
+        
+        with open(path, 'w') as f:
+            json.dump(data, f, default=str, indent=2)
+
+    def get_last_step_timestamp(self, session_id: str) -> Optional[float]:
+        """Retorna el timestamp de la última acción guardada en segundos."""
+        data = self.load_session(session_id)
+        steps = data.get("steps", [])
+        if not steps:
+            return None
+        
+        last_ts_str = steps[-1].get("timestamp")
+        if not last_ts_str:
+            return None
+            
+        try:
+            dt = datetime.fromisoformat(last_ts_str)
+            return dt.timestamp()
+        except:
+            return None
+
+    def get_artifact_summary(self, session_id: str) -> str:
+        """Retorna un resumen de los artefactos/evidencias confirmadas hasta ahora."""
+        data = self.load_session(session_id)
+        artifacts = data.get("artifact_index", [])
+        if not artifacts:
+            return "No se han consolidado evidencias técnicas oficiales aún."
+            
+        summary = "GROUND TRUTH / ARTIFACT INDEX (Verified Findings):\n"
+        for art in artifacts:
+            # Handle both old string format and new dict format for backward compatibility
+            if isinstance(art, dict):
+                fact = art.get("fact", "N/A")
+                cert = art.get("certainty", 100)
+                src = art.get("source", "tool").upper()
+                summary += f"- [{cert}% {src}] {fact}\n"
+            else:
+                summary += f"- [100% CONFIRMED] {art}\n"
+        return summary
+
     def get_history_summary(self, session_id: str) -> str:
         """
         Herramienta clave (Táctico): Hace un 'Resumen Ejecutivo'.
-        Convierte esa libreta posiblemente larga y detallada en un párrafo super compacto (Toma 1, 2, 3...) 
-        para poder insertarlo limpio en el contexto de un nuevo chat de la IA. Si enviáramos el 
-        archivo json completo sin limpiarlo, podríamos saturar o confundir al modelo lingüístico.
+        Convierte esa libreta posiblemente larga y detallada en un párrafo super compacto.
+        Incluye el Artifact Index para mayor grounding y el history_summary si existe.
         """
         data = self.load_session(session_id)
         steps = data.get("steps", [])
+        history_summary = data.get("history_summary", "")
         
-        if not steps:
-            return "El jugador recién acaba de conectarse. Todavía carece de antecedentes de decisiones tomadas."
+        artifact_sum = self.get_artifact_summary(session_id)
+        
+        if not steps and not history_summary:
+            return f"{artifact_sum}\n\nEl jugador recién acaba de conectarse. Todavía carece de antecedentes de decisiones tomadas."
             
-        summary = "HISTORIAL RESUMIDO DE LAS DECISIONES PREVIAS DEL JUGADOR:\n"
+        summary = f"{artifact_sum}\n\n"
+        
+        if history_summary:
+            summary += f"RESUMEN CONSOLIDADO DE TURNOS ANTERIORES:\n{history_summary}\n\n"
+            summary += "DECISIONES RECIENTES:\n"
+        else:
+            summary += "HISTORIAL DE LAS DECISIONES DEL JUGADOR:\n"
+
         for i, step in enumerate(steps):
             accion = step.get("decision", {}).get("accion", "N/A")
             target = step.get("decision", {}).get("target", "N/A")
-            summary += f"[{i+1}] Acción ejecutada: '{accion}' -> aplicada directamente hacia: '{target}' \n"
+            summary += f"[{i+1}] Acción ejecutada: '{accion}' -> aplicada hacia: '{target}' \n"
             
         return summary
 
@@ -106,3 +198,14 @@ class SessionMemory:
         """
         data = self.load_session(session_id)
         return len(data.get("steps", []))
+
+    def get_history_token_count(self, session_id: str) -> int:
+        """
+        Calcula una estimación del conteo de tokens de la historia completa.
+        Utiliza el TokenCounter oficial del sistema.
+        """
+        from .token_counter import TokenCounter
+        history = self.get_history_summary(session_id)
+        return TokenCounter.count_tokens(history)
+
+

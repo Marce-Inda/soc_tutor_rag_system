@@ -80,7 +80,7 @@ class SOCtools:
         """
         Nueva Herramienta (Fase 1 MCP): Se conecta a un Servidor MCP local para consultar 
         Sistemas externos simulados (Logs en vivo o NDR Scan).
-        action_type puede ser 'analyze_logs' o 'network_scan'.
+        action_type puede ser 'analyze_logs', 'evaluate_selected_log' o 'network_scan'.
         """
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
@@ -96,15 +96,15 @@ class SOCtools:
                     await session.initialize()
                     
                     if action_type == "analyze_logs" or action_type == "read_logs":
-                        # Usar 'Resources' de MCP para leer el archivo de log entero
-                        resource_uri = "siem://incident-001/smtp-logs"
+                        # Usar 'Resources' de MCP para leer el archivo de log entero (Scenario Evidence Bank)
+                        resource_uri = "siem://current-scenario/logs"
                         res = await session.read_resource(resource_uri)
                         return f"[MCP SIEM LOGS] {res.contents[0].text}"
                         
-                    elif action_type == "evaluate_selected_log":
-                        # Leer solo el log específico que el jugador clickeó
-                        res = await session.call_tool("get_specific_log", arguments={"log_id": target})
-                        return f"[MCP SELECTED LOG] {res.content[0].text}"
+                    elif action_type == "evaluate_selected_log" or action_type == "get_evidence":
+                        # Leer solo la evidencia específica por ID
+                        res = await session.call_tool("get_specific_evidence", arguments={"evidence_id": target})
+                        return f"[MCP SELECTED EVIDENCE] {res.content[0].text}"
                         
                     elif action_type == "network_scan" or "scan" in action_type.lower():
                         # Usar 'Tools' de MCP para ejecutar una acción activa
@@ -112,7 +112,7 @@ class SOCtools:
                         res = await session.call_tool("execute_ndr_scan", arguments={"target_ip": target_ip})
                         return f"[MCP NDR SCAN RESULTS] {res.content[0].text}"
                         
-                    return "Acción MCP no reconocida. Intentar con analyze_logs o network_scan."
+                    return "Acción MCP no reconocida. Intentar con analyze_logs, evaluate_selected_log o network_scan."
         except asyncio.TimeoutError:
             return "Error: Tiempo de espera agotado al conectar con el Servidor MCP de Telemetría."
         except Exception as e:
@@ -154,15 +154,42 @@ class SOCtools:
     def get_tools(self):
         """
         Método final clave: Empaqueta y devuelve todas estas funciones al formato requerido 
-        por 'LangChain', que es el gran cerebro lógico que coordina a los agents de IA.
-        Aporta descripciones detalladas de qué hace cada herramienta, para que la Inteligencia Artificial 
-        sepa exactamente en qué momento es útil llamar a una u otra, según la duda que tenga el usuario.
+        por 'LangChain'.
         """
+        from pydantic import BaseModel, Field
+
+        class TelemetrySchema(BaseModel):
+            action_type: str = Field(description="The action to perform: 'analyze_logs', 'evaluate_selected_log', or 'network_scan'")
+            target: str = Field(default="", description="The target for the action (e.g., log_id for evaluate_selected_log, or IP for network_scan)")
+
+        class EDRSchema(BaseModel):
+            action_type: str = Field(description="The action to perform: 'isolate_host' or 'block_ip'")
+            target: str = Field(description="The target for the action (hostname or IP)")
+
+        # Wrapper síncrono para evitar errores si algo intenta llamar síncronamente
+        def sync_telemetry(*args, **kwargs):
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            return loop.run_until_complete(self.consultar_telemetria_mcp(*args, **kwargs))
+
+        def sync_edr(*args, **kwargs):
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            return loop.run_until_complete(self.ejecutar_accion_edr_mcp(*args, **kwargs))
+
         return [
             StructuredTool.from_function(
                 func=self.buscar_en_nist,
                 name="search_nist",
-                description="Useful for searching best practices and official guidelines in the NIST 800-61 database. Ideal for incident response phases. Requires a search string."
+                description="Useful for searching best practices and official guidelines in the NIST 800-61 database. Requires a search string."
             ),
             StructuredTool.from_function(
                 func=self.buscar_en_mitre,
@@ -170,13 +197,17 @@ class SOCtools:
                 description="Useful for consulting attacker techniques, tactics, and IOCCs in the MITRE ATT&CK database. Requires a search string."
             ),
             StructuredTool.from_function(
-                func=self.consultar_telemetria_mcp,
+                func=sync_telemetry,
+                coroutine=self.consultar_telemetria_mcp,
                 name="telemetry_mcp_client",
-                description="Crucial tool! Use this to intercept live telemetry using external systems (MCP). Pass 'action_type'='analyze_logs' to read raw SMTP logs from the SIEM. Pass 'action_type'='evaluate_selected_log' and 'target'=<log_id> to evaluate a specific log selected by the user. Pass 'action_type'='network_scan' and 'target' to execute a live port scan on the NDR."
+                description="Crucial tool! Use this to intercept live telemetry using external systems (MCP). Pass action_type and target.",
+                args_schema=TelemetrySchema
             ),
             StructuredTool.from_function(
-                func=self.ejecutar_accion_edr_mcp,
+                func=sync_edr,
+                coroutine=self.ejecutar_accion_edr_mcp,
                 name="edr_mcp_client",
-                description="Crucial tool! Use this to execute containment actions on the simulated EDR (Endpoint Detection and Response) and Firewall using MCP. Pass 'action_type'='isolate_host' and 'target'=<hostname> to disconnect a machine. Pass 'action_type'='block_ip' and 'target'=<ip> to block traffic. You MUST use this to verify if containment worked."
+                description="Crucial tool! Use this to execute containment actions on the simulated EDR and Firewall using MCP. Pass action_type and target.",
+                args_schema=EDRSchema
             )
         ]

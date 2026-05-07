@@ -84,14 +84,20 @@ class ValidatorAgent:
                 quality_score = f"{quality_score} [INTEGRITY PENALTY: -{mismatches} hash mismatches]"
                 print(f"  [Validator] 🔴 Integrity penalty applied: {mismatches}/{total_hashes} hashes unverified. Score -20.")
 
+            # Sanitize outputs
+            def ensure_string(val: Any) -> str:
+                if isinstance(val, (dict, list)):
+                    return str(val)
+                return str(val) if val is not None else ""
+
             return ValidacionCalidad(
                 approved=approved,
                 inconsistencies=inconsistencies,
-                correction=result.get("correction", result.get("correccion")),
-                quality_score=quality_score,
+                correction=ensure_string(result.get("correction", result.get("correccion"))),
+                quality_score=ensure_string(quality_score),
                 numeric_score=numeric_score,
                 evaluacion_6d=Score6D(**result.get("evaluacion_6d", {})) if result.get("evaluacion_6d") else None,
-                persona_role=result.get("persona_role")
+                persona_role=ensure_string(result.get("persona_role"))
             )
 
 

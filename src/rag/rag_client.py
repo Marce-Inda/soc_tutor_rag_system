@@ -31,6 +31,17 @@ except ImportError:
     print("sentence-transformers no disponible. Instalar: pip install sentence-transformers")
 
 
+# ## PLAYBOOKS DE EMERGENCIA (Offline Fallback)
+# Estos playbooks se utilizan si la base de datos vectorial (ChromaDB) no está disponible.
+EMERGENCY_PLAYBOOKS = {
+    "malware": "Standard Containment: Isolate infected host immediately. Perform full scan. Block malicious IPs/Domains in EDR/Firewall.",
+    "phishing": "Phishing Response: Reset user credentials. Identify and delete malicious emails. Check logs for unauthorized access/forwarding.",
+    "denial_of_service": "DoS Mitigation: Identify source IPs. Apply rate limiting. Enable DDoS protection service (Cloudflare/AWS Shield).",
+    "unauthorized_access": "Breach Response: Revoke all active sessions. Review audit logs. Isolate compromised assets. Change administrative passwords.",
+    "default": "Incident Handling: Follow NIST 800-61 Rev 2. Identify, Contain, Eradicate, and Recover. Log all findings for forensic analysis."
+}
+
+
 class RAGClient:
     """Cliente de Retrieval Augmented Generation."""
     
@@ -261,42 +272,62 @@ class RAGClient:
         filter_scenario_id: Optional[str] = None,
         translate: bool = False
     ) -> List[Dict[str, Any]]:
-        """Realiza una búsqueda híbrida (Exacta + Semántica)."""
+        """Realiza una búsqueda híbrida (Exacta + Semántica) con fallback resiliente."""
         
-        search_query = query
-        if translate:
-            search_query = self._translate_query(query)
-            if search_query != query:
-                print(f"  [RAG] Translated query: '{query}' -> '{search_query}'")
+        try:
+            search_query = query
+            if translate:
+                search_query = self._translate_query(query)
+                if search_query != query:
+                    print(f"  [RAG] Translated query: '{query}' -> '{search_query}'")
 
-        # 1. Búsqueda Exacta (Prioritaria para IDs técnicos)
-        exact_results = self.retrieve_exact(search_query, k=3, filter_source=filter_source)
-        
-        # 2. Búsqueda Semántica
-        semantic_results = self.retrieve(
-            search_query, 
-            k=k, 
-            filter_source=filter_source, 
-            filter_scenario_id=filter_scenario_id
-        )
-        
-        # 3. Fusión y De-duplicación
-        seen_texts = set()
-        hybrid_results = []
-        
-        # Primero agregamos los exactos (prioridad)
-        for res in exact_results:
-            hybrid_results.append(res)
-            seen_texts.add(res['text'])
+            # 1. Búsqueda Exacta (Prioritaria para IDs técnicos)
+            exact_results = self.retrieve_exact(search_query, k=3, filter_source=filter_source)
             
-        # Agregamos los semánticos si no están ya
-        for res in semantic_results:
-            if res['text'] not in seen_texts:
-                res['is_exact'] = False
+            # 2. Búsqueda Semántica
+            semantic_results = self.retrieve(
+                search_query, 
+                k=k, 
+                filter_source=filter_source, 
+                filter_scenario_id=filter_scenario_id
+            )
+            
+            # 3. Fusión y De-duplicación
+            seen_texts = set()
+            hybrid_results = []
+            
+            # Primero agregamos los exactos (prioridad)
+            for res in exact_results:
                 hybrid_results.append(res)
                 seen_texts.add(res['text'])
                 
-        return hybrid_results[:k]
+            # Agregamos los semánticos si no están ya
+            for res in semantic_results:
+                if res['text'] not in seen_texts:
+                    res['is_exact'] = False
+                    hybrid_results.append(res)
+                    seen_texts.add(res['text'])
+                    
+            return hybrid_results[:k]
+            
+        except Exception as e:
+            print(f"  [RAG] ⚠️ Retrieval failed (falling back to emergency playbooks): {e}")
+            # Fallback dinámico basado en palabras clave en la query
+            query_lower = query.lower()
+            pb_type = "default"
+            for key in EMERGENCY_PLAYBOOKS.keys():
+                if key in query_lower:
+                    pb_type = key
+                    break
+            
+            return [{
+                'id': 'emergency-pb-001',
+                'text': f"[EMERGENCY FALLBACK] {EMERGENCY_PLAYBOOKS[pb_type]}",
+                'source': 'OFFLINE_PLAYBOOK',
+                'type': 'procedural',
+                'distance': 0.0,
+                'is_exact': True
+            }]
     
     def retrieve_with_context(
         self,

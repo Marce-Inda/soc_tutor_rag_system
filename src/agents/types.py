@@ -6,6 +6,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 
+class VerifiedArtifact(BaseModel):
+    """A technical fact or finding with a specific certainty level."""
+    fact: str = Field(..., description="The technical finding or fact")
+    certainty: int = Field(..., description="Confidence level (0-100)", ge=0, le=100)
+    source: str = Field(..., description="Source of the fact: 'tool', 'inference', or 'rag'")
+    timestamp: Optional[datetime] = Field(default_factory=datetime.now)
+
 
 # ## MODELOS DE ENTRADA
 # Estos modelos definen la estructura de los datos que recibe el sistema desde el juego.
@@ -70,6 +77,8 @@ class EvaluacionTecnica(BaseModel):
     technical_score: int = Field(..., description="Calculated technical score (0-100)")
     resilience_score: int = Field(default=0, description="Resilience and preservation score (ISO 27037)")
     forensic_notes: Optional[str] = Field(None, description="Forensic compliance notes")
+    technical_data: Optional[List[Dict[str, Any]]] = Field(default_factory=list, description="Structured logs or evidence retrieved from MCP tools")
+    verified_artifacts: List[VerifiedArtifact] = Field(default_factory=list, description="Verified artifacts with certainty levels for the Ground Truth Index")
     source_integrity_hashes: List[str] = Field(default_factory=list, description="Unique hashes of RAG sources used")
 
 

@@ -13,6 +13,7 @@
       "scenario_id": "uy-gov-password-spray"
     },
     "expected_concepts": ["contención", "firewall", "IOC", "bloqueo"],
+    "expected_tools": ["telemetry_mcp_client", "edr_mcp_client"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 70,
     "decision_quality": "buena"
@@ -31,6 +32,7 @@
       "scenario_id": "uy-fintech-ransomware-payments"
     },
     "expected_concepts": ["aislar", "impacto", "crítico", "ransomware"],
+    "expected_tools": ["telemetry_mcp_client"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 30,
     "decision_quality": "mala"
@@ -49,6 +51,7 @@
       "scenario_id": "co-healthtech-malware-endpoint"
     },
     "expected_concepts": ["cadena de custodia", "preservación", "evidencia", "forense"],
+    "expected_tools": ["search_nist", "telemetry_mcp_client"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 80,
     "decision_quality": "buena"
@@ -67,6 +70,7 @@
       "scenario_id": "mx-banking-apt-advanced"
     },
     "expected_concepts": ["segmentación", "lateral", "contención", "APT"],
+    "expected_tools": ["telemetry_mcp_client", "edr_mcp_client"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 85,
     "decision_quality": "buena"
@@ -85,6 +89,7 @@
       "scenario_id": "pa-logistics-saas-data-leak"
     },
     "expected_concepts": ["notificación", "datos", "regulación", "breach"],
+    "expected_tools": ["search_nist"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 75,
     "decision_quality": "buena"
@@ -103,6 +108,7 @@
       "scenario_id": "ar-fintech-idor"
     },
     "expected_concepts": ["preservar", "evidencia", "error", "logs"],
+    "expected_tools": ["telemetry_mcp_client"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 15,
     "decision_quality": "mala"
@@ -121,6 +127,7 @@
       "scenario_id": "ar-fintech-mfabypass"
     },
     "expected_concepts": ["MFA", "credenciales", "autenticación", "erradicación"],
+    "expected_tools": ["search_mitre", "edr_mcp_client"],
     "expected_rag_sources": ["game_evidence"],
     "min_score": 70,
     "decision_quality": "buena"

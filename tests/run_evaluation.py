@@ -265,6 +265,107 @@ def eval_faithfulness(pipeline_results: list) -> Dict[str, Any]:
 
 
 # ============================================================================
+# MÉTRICA 2b: Semantic Coverage (Keyword Match)
+# ============================================================================
+
+def eval_semantic_coverage(pipeline_results: list) -> Dict[str, Any]:
+    """
+    Verifica que la respuesta contenga los conceptos técnicos esperados (expected_concepts).
+    Nivel 2 de la checklist profesional.
+    """
+    print("\n" + "=" * 60)
+    print("MÉTRICA 2b: SEMANTIC COVERAGE (Keyword Match)")
+    print("=" * 60)
+
+    total_matches = 0
+    total_expected = 0
+    case_coverage = []
+
+    for r in pipeline_results:
+        if not r["success"]:
+            continue
+        expected = r.get("expected_concepts", [])
+        if not expected:
+            continue
+        
+        # Combinar análisis y explicación para buscar keywords
+        full_text = (r["feedback"].evaluacion_tecnica.analysis + " " + 
+                     r["feedback"].evaluacion_tecnica.explanation).lower()
+        
+        found = [kw for kw in expected if kw.lower() in full_text]
+        score = len(found) / len(expected) if expected else 0
+        
+        total_matches += len(found)
+        total_expected += len(expected)
+        case_coverage.append(score)
+        
+        status = "✅" if score >= 0.7 else "⚠️" if score >= 0.4 else "❌"
+        print(f"  {status} [{r['case_id']}] Found {len(found)}/{len(expected)}: {found}")
+
+    avg_coverage = sum(case_coverage) / len(case_coverage) if case_coverage else 0
+    metrics = {
+        "avg_semantic_coverage": round(avg_coverage, 3),
+        "total_keywords_found": total_matches,
+        "total_keywords_expected": total_expected
+    }
+    print(f"\n  📊 Semantic Coverage: {avg_coverage:.0%}")
+    return metrics
+
+
+# ============================================================================
+# MÉTRICA 3b: Tool Consistency (Tool Match)
+# ============================================================================
+
+def eval_tool_consistency(pipeline_results: list) -> Dict[str, Any]:
+    """
+    Verifica que el agente haya invocado las herramientas esperadas (expected_tools).
+    Nivel 3 de la checklist profesional.
+    """
+    print("\n" + "=" * 60)
+    print("MÉTRICA 3b: TOOL CONSISTENCY (Tool Match)")
+    print("=" * 60)
+
+    total_matches = 0
+    total_expected = 0
+    case_match = []
+
+    for r in pipeline_results:
+        if not r["success"]:
+            continue
+        expected = r.get("expected_tools", [])
+        if not expected:
+            continue
+        
+        # Extraer herramientas usadas de technical_data
+        tech_data = r["feedback"].evaluacion_tecnica.technical_data or []
+        analysis = r["feedback"].evaluacion_tecnica.analysis.lower()
+        
+        found = []
+        for tool in expected:
+            if tool in ["telemetry_mcp_client", "edr_mcp_client"] and tech_data:
+                found.append(tool)
+            elif tool.lower() in analysis:
+                found.append(tool)
+        
+        score = len(found) / len(expected) if expected else 0
+        total_matches += len(found)
+        total_expected += len(expected)
+        case_match.append(score)
+        
+        status = "✅" if score >= 0.5 else "❌"
+        print(f"  {status} [{r['case_id']}] Tools matched {len(found)}/{len(expected)}: {found}")
+
+    avg_match = sum(case_match) / len(case_match) if case_match else 0
+    metrics = {
+        "avg_tool_match": round(avg_match, 3),
+        "total_tools_matched": total_matches,
+        "total_tools_expected": total_expected
+    }
+    print(f"\n  📊 Tool Consistency Match: {avg_match:.0%}")
+    return metrics
+
+
+# ============================================================================
 # MÉTRICA 5: Pedagogical Adaptation (¿Cambia el tono según nivel?)
 # ============================================================================
 
@@ -396,9 +497,9 @@ def generate_report(all_metrics: Dict[str, Any], output_path: str):
 | # | Métrica | Valor | Estado |
 |---|---------|-------|--------|
 | 1 | Pipeline Completeness | {m['pipeline']['success_rate']:.0%} | {sem(m['pipeline']['success_rate'])} |
-| 2 | Structural Validity (Analista) | {m['structure'].get('evaluacion_tecnica_valid', 0):.0%} | {sem(m['structure'].get('evaluacion_tecnica_valid', 0))} |
-| 2 | Structural Validity (Explicador) | {m['structure'].get('feedback_pedagogico_valid', 0):.0%} | {sem(m['structure'].get('feedback_pedagogico_valid', 0))} |
-| 2 | Structural Validity (Validador) | {m['structure'].get('validacion_calidad_valid', 0):.0%} | {sem(m['structure'].get('validacion_calidad_valid', 0))} |
+| 2 | Structural Validity | {m['structure'].get('evaluacion_tecnica_valid', 0):.0%} | {sem(m['structure'].get('evaluacion_tecnica_valid', 0))} |
+| 2 | Semantic Coverage (Keywords) | {m['semantic'].get('avg_semantic_coverage', 0):.0%} | {sem(m['semantic'].get('avg_semantic_coverage', 0), good=0.7)} |
+| 3 | Tool Consistency (Tool Match) | {m['tools'].get('avg_tool_match', 0):.0%} | {sem(m['tools'].get('avg_tool_match', 0), good=0.5)} |
 | 3 | Score Discrimination | Gap: {m['discrimination']['score_gap']} pts | {sem(1 if m['discrimination']['discriminates'] else 0)} |
 | 4 | Faithfulness (cita fuentes) | {m['faithfulness']['faithfulness_rate']:.0%} | {sem(m['faithfulness']['faithfulness_rate'])} |
 | 5 | Pedagogical Adaptation | {m['adaptation']['adaptation_rate']:.0%} | {sem(m['adaptation']['adaptation_rate'], good=0.5, warn=0.2)} |
@@ -407,31 +508,31 @@ def generate_report(all_metrics: Dict[str, Any], output_path: str):
 
 ---
 
-## 1. Pipeline Completeness
-
-Ejecuta el flujo completo del orquestador: `Guard → Memory → RAG → Analista (ReAct) → Explicador → Validador → FeedbackFinal`.
-
-- **Success Rate:** {m['pipeline']['success_rate']:.0%} ({m['pipeline']['successful_runs']}/{m['pipeline']['total_runs']})
-- **Latencia promedio:** {m['pipeline']['avg_latency_sec']}s por ejecución
-
----
-
-## 2. Structural Validity
+## 1. Nivel de Contratos (Estructura)
 
 Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`EvaluacionTecnica`, `FeedbackPedagogico`, `ValidacionCalidad`).
 
-| Modelo Pydantic | Compliance |
-|----------------|------------|
-| EvaluacionTecnica (Analista) | {m['structure'].get('evaluacion_tecnica_valid', 0):.0%} |
-| FeedbackPedagogico (Explicador) | {m['structure'].get('feedback_pedagogico_valid', 0):.0%} |
-| ValidacionCalidad (Validador) | {m['structure'].get('validacion_calidad_valid', 0):.0%} |
-| FeedbackFinal (Orquestador) | {m['structure'].get('feedback_final_valid', 0):.0%} |
+- **Structural Validity (Overall):** {m['structure'].get('feedback_final_valid', 0):.0%}
+- **Compliance Pydantic:** {m['structure'].get('evaluacion_tecnica_valid', 0):.0%} (Analista), {m['structure'].get('feedback_pedagogico_valid', 0):.0%} (Explicador)
 
 ---
 
-## 3. Score Discrimination
+## 2. Nivel Golden Tests (Sustancia Semántica)
 
-¿El Analista diferencia buenas de malas decisiones?
+¿La respuesta del agente contiene los términos técnicos obligatorios?
+
+- **Semantic Coverage:** {m['semantic'].get('avg_semantic_coverage', 0):.0%}
+- **Keywords encontradas:** {m['semantic'].get('total_keywords_found')}/{m['semantic'].get('total_keywords_expected')}
+
+---
+
+## 3. Nivel de Trazas (Lógica y Comportamiento)
+
+¿El agente utilizó las herramientas correctas y discrimina la calidad?
+
+- **Tool Consistency Match:** {m['tools'].get('avg_tool_match', 0):.0%}
+- **Score Discrimination Gap:** {m['discrimination']['score_gap']} puntos
+- **¿Discrimina buenas/malas?** {'✅ Sí' if m['discrimination']['discriminates'] else '❌ No'}
 
 | Tipo | Score Promedio | Scores Individuales |
 |------|---------------|---------------------|
@@ -525,9 +626,13 @@ async def main():
         PlayerProfile(player_id="eval-senior", level=5, rol="ciso"),
     ]
 
+    # Inicializar orquestador y desactivar caché para evaluación
+    orchestrator = UEFSOrchestrator(llm, rag)
+    orchestrator.cache = None 
+
     # MÉTRICA 1: Pipeline Completeness (genera los resultados para las demás)
     pipeline_metrics = await eval_pipeline_completeness(
-        UEFSOrchestrator(llm, rag),
+        orchestrator,
         test_cases,
         profiles
     )
@@ -535,6 +640,8 @@ async def main():
 
     # MÉTRICAS 2-6: Sobre los resultados exitosos
     structure_metrics = eval_structural_validity(successful_results)
+    semantic_metrics = eval_semantic_coverage(successful_results)
+    tool_metrics = eval_tool_consistency(successful_results)
     discrimination_metrics = eval_score_discrimination(successful_results)
     faithfulness_metrics = eval_faithfulness(successful_results)
     adaptation_metrics = eval_pedagogical_adaptation(successful_results)
@@ -548,6 +655,8 @@ async def main():
         "num_profiles": len(profiles),
         "pipeline": pipeline_metrics,
         "structure": structure_metrics,
+        "semantic": semantic_metrics,
+        "tools": tool_metrics,
         "discrimination": discrimination_metrics,
         "faithfulness": faithfulness_metrics,
         "adaptation": adaptation_metrics,

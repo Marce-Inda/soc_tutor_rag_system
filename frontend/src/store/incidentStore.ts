@@ -54,6 +54,7 @@ export interface IncidentState {
   isAnalyzing: boolean;
   isCompleted: boolean;
   showTechnicalReport: boolean;
+  thinkingSteps: string[];
   
   // Actions
   addLog: (message: string, type?: LogEntry['type']) => void;
@@ -63,6 +64,8 @@ export interface IncidentState {
   setPhase: (phase: string) => void;
   completeIncident: () => void;
   toggleTechnicalReport: (status?: boolean) => void;
+  addThinkingStep: (step: string) => void;
+  clearThinkingSteps: () => void;
   resetIncident: () => void;
 }
 
@@ -78,6 +81,7 @@ export const useIncidentStore = create<IncidentState>((set) => ({
   isAnalyzing: false,
   isCompleted: false,
   showTechnicalReport: false,
+  thinkingSteps: [],
 
   addLog: (message, type = 'info') => set((state) => ({
     logs: [
@@ -104,6 +108,12 @@ export const useIncidentStore = create<IncidentState>((set) => ({
   toggleTechnicalReport: (status) => set((state) => ({ 
     showTechnicalReport: status !== undefined ? status : !state.showTechnicalReport 
   })),
+
+  addThinkingStep: (step) => set((state) => ({
+    thinkingSteps: [...state.thinkingSteps, step]
+  })),
+
+  clearThinkingSteps: () => set({ thinkingSteps: [] }),
 
   resetIncident: () => set({
     score: 8500,

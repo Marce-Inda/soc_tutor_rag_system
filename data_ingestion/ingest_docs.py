@@ -186,8 +186,8 @@ def create_chroma_index(chunks: List[Dict]):
         # Fallback: Chroma tiene embeddings por defecto
         embeddings = None
     
-    # Agregar documentos
-    collection.add(
+    # Agregar documentos (usar upsert para evitar errores de duplicados)
+    collection.upsert(
         ids=[c['id'] for c in chunks],
         documents=[c['text'] for c in chunks],
         metadatas=[{'source': c['source'], 'type': c.get('type', 'unknown')} for c in chunks]
@@ -231,10 +231,17 @@ def main():
     processor = DocumentProcessor()
     chunks = processor.process_all()
     
-    print(f"\nTotal chunks: {len(chunks)}")
+    # Deduplicar chunks por ID antes de indexar
+    unique_chunks = {}
+    for c in chunks:
+        unique_chunks[c['id']] = c
+    
+    final_chunks = list(unique_chunks.values())
+    print(f"\nTotal chunks (original): {len(chunks)}")
+    print(f"Total chunks (unique): {len(final_chunks)}")
     
     # Crear índice
-    create_chroma_index(chunks)
+    create_chroma_index(final_chunks)
     
     # Generar manifiesto de integridad de archivos fuente
     generate_integrity_manifest()

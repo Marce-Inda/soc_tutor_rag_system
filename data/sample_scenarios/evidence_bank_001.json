@@ -1,0 +1,72 @@
+{
+  "scenario_id": "es-tourism-gdpr-email-breach-001",
+  "disclaimer": "SINTÉTICO: Todos los datos en este banco son ficticios y cumplen con los RFC 2606 (Dominios) y RFC 5737 (IPs de prueba).",
+  "evidence": [
+    {
+      "id": "EV_LOG_001",
+      "type": "SecurityEvent",
+      "tool": "LOG_ANALYZER",
+      "query_kql": "SecurityEvent | where EventID == 4624 | where IpAddress == '198.51.100.15'",
+      "data": {
+        "Timestamp": "2026-05-03 14:02:15",
+        "EventID": "4624",
+        "Account": "m.garcia@global-travel.test",
+        "IpAddress": "198.51.100.15",
+        "Location": "Unknown (TEST-NET-2)",
+        "LogonType": "3 (Network)",
+        "Status": "Success"
+      },
+      "is_malicious": true,
+      "description": "Inicio de sesión exitoso desde una IP de prueba reservada, simulando un origen externo no autorizado."
+    },
+    {
+      "id": "EV_LOG_002",
+      "type": "OfficeActivity",
+      "tool": "LOG_ANALYZER",
+      "query_kql": "OfficeActivity | where UserId == 'm.garcia@global-travel.test' | where Operation == 'FileDownloaded'",
+      "data": {
+        "Timestamp": "2026-05-03 14:15:22",
+        "UserId": "m.garcia@global-travel.test",
+        "Operation": "FileDownloaded",
+        "FileName": "CLIENTES_EUROPA_2026_GDPR.xlsx",
+        "ClientIP": "198.51.100.15",
+        "UserAgent": "Python-urllib/3.10"
+      },
+      "is_malicious": true,
+      "description": "Descarga masiva de datos sensibles simulada usando un User-Agent no estándar."
+    },
+    {
+      "id": "EV_LOG_003",
+      "type": "SecurityEvent",
+      "tool": "LOG_ANALYZER",
+      "query_kql": "SecurityEvent | where EventID == 4625 | where Account == 'admin.test'",
+      "data": {
+        "Timestamp": "2026-05-03 13:45:10",
+        "EventID": "4625",
+        "Account": "admin.test@global-travel.test",
+        "IpAddress": "10.0.0.50",
+        "Location": "Internal Network",
+        "LogonType": "2 (Interactive)",
+        "Status": "Failed (Wrong Password)"
+      },
+      "is_malicious": false,
+      "description": "FALSO POSITIVO SIMULADO: Error de login interno para entrenamiento de discriminación."
+    },
+    {
+      "id": "EV_SCAN_001",
+      "type": "NetworkScan",
+      "tool": "NETSCAN",
+      "query_kql": "NetworkFlow | where SourceIp == '198.51.100.15' | summarize count() by DestIp",
+      "data": {
+        "Target": "10.0.5.0/24",
+        "Results": [
+          { "IP": "10.0.5.12", "Port": "445", "Status": "Connected", "Traffic": "2.4 MB" },
+          { "IP": "10.0.5.15", "Port": "22", "Status": "Attempt", "Traffic": "0.1 MB" }
+        ],
+        "Anomalies": "Movimiento lateral simulado hacia segmento de servidores."
+      },
+      "is_malicious": true,
+      "description": "Escaneo de red sintético para validación de alcance."
+    }
+  ]
+}

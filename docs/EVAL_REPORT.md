@@ -1,8 +1,8 @@
 # 📊 Evaluación del Sistema Multiagente — SOC-Tutor-RAG
 
-> **Generado:** 2026-05-03 15:05:53
+> **Generado:** 2026-05-06 23:34:59
 > **Provider LLM:** gemini / None
-> **Dataset:** `tests/eval_dataset.json` (1 casos × 2 perfiles = 2 ejecuciones)
+> **Dataset:** `tests/eval_dataset.json` (2 casos × 2 perfiles = 4 ejecuciones)
 
 ---
 
@@ -10,50 +10,50 @@
 
 | # | Métrica | Valor | Estado |
 |---|---------|-------|--------|
-| 1 | Pipeline Completeness | 0% | 🔴 |
-| 2 | Structural Validity (Analista) | 0% | 🔴 |
-| 2 | Structural Validity (Explicador) | 0% | 🔴 |
-| 2 | Structural Validity (Validador) | 0% | 🔴 |
-| 3 | Score Discrimination | Gap: 0 pts | 🔴 |
-| 4 | Faithfulness (cita fuentes) | 0% | 🔴 |
+| 1 | Pipeline Completeness | 100% | 🟢 |
+| 2 | Structural Validity | 100% | 🟢 |
+| 2 | Semantic Coverage (Keywords) | 0% | 🔴 |
+| 3 | Tool Consistency (Tool Match) | 0% | 🔴 |
+| 3 | Score Discrimination | Gap: 0.0 pts | 🔴 |
+| 4 | Faithfulness (cita fuentes) | 100% | 🟢 |
 | 5 | Pedagogical Adaptation | 0% | 🔴 |
 | 6 | Validator Approval Rate | 0% | 🔴 |
-|   | **Latencia promedio** | **118.47s** | 🔴 |
+|   | **Latencia promedio** | **74.66s** | 🔴 |
 
 ---
 
-## 1. Pipeline Completeness
-
-Ejecuta el flujo completo del orquestador: `Guard → Memory → RAG → Analista (ReAct) → Explicador → Validador → FeedbackFinal`.
-
-- **Success Rate:** 0% (0/2)
-- **Latencia promedio:** 118.47s por ejecución
-
----
-
-## 2. Structural Validity
+## 1. Nivel de Contratos (Estructura)
 
 Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`EvaluacionTecnica`, `FeedbackPedagogico`, `ValidacionCalidad`).
 
-| Modelo Pydantic | Compliance |
-|----------------|------------|
-| EvaluacionTecnica (Analista) | 0% |
-| FeedbackPedagogico (Explicador) | 0% |
-| ValidacionCalidad (Validador) | 0% |
-| FeedbackFinal (Orquestador) | 0% |
+- **Structural Validity (Overall):** 100%
+- **Compliance Pydantic:** 100% (Analista), 100% (Explicador)
 
 ---
 
-## 3. Score Discrimination
+## 2. Nivel Golden Tests (Sustancia Semántica)
 
-¿El Analista diferencia buenas de malas decisiones?
+¿La respuesta del agente contiene los términos técnicos obligatorios?
+
+- **Semantic Coverage:** 0%
+- **Keywords encontradas:** 0/16
+
+---
+
+## 3. Nivel de Trazas (Lógica y Comportamiento)
+
+¿El agente utilizó las herramientas correctas y discrimina la calidad?
+
+- **Tool Consistency Match:** 0%
+- **Score Discrimination Gap:** 0.0 puntos
+- **¿Discrimina buenas/malas?** ❌ No
 
 | Tipo | Score Promedio | Scores Individuales |
 |------|---------------|---------------------|
-| Decisiones Buenas | 0 | [] |
-| Decisiones Malas | 0 | [] |
+| Decisiones Buenas | 0.0 | [0, 0] |
+| Decisiones Malas | 0.0 | [0, 0] |
 
-- **Gap:** 0 puntos
+- **Gap:** 0.0 puntos
 - **¿Discrimina?** ❌ No
 
 ---
@@ -62,8 +62,8 @@ Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`Eval
 
 ¿El feedback final cita fuentes de la base de conocimiento?
 
-- **Tasa de citación:** 0%
-- **Fuentes promedio por respuesta:** 0
+- **Tasa de citación:** 100%
+- **Fuentes promedio por respuesta:** 1.0
 
 ---
 
@@ -71,7 +71,7 @@ Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`Eval
 
 ¿El Explicador adapta el lenguaje al nivel del jugador (Junior vs Senior)?
 
-- **Tasa de adaptación:** 0% (0/0 casos)
+- **Tasa de adaptación:** 0% (0/2 casos)
 
 ---
 
@@ -82,8 +82,8 @@ Verifica que cada agente produce outputs conformes a sus modelos Pydantic (`Eval
 | Estado | Cantidad |
 |--------|----------|
 | Aprobados | 0 |
-| Rechazados | 0 |
-| Con inconsistencias | 0 |
+| Rechazados | 4 |
+| Con inconsistencias | 4 |
 
 ---
 

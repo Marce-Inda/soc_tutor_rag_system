@@ -13,6 +13,7 @@ export default function WaitlistPage() {
   const [status, setStatus] = useState<QueueStatus | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagnosis, setDiagnosis] = useState<string[]>([]);
 
   useEffect(() => {
     // Inicializar o recuperar UserID
@@ -43,16 +44,41 @@ export default function WaitlistPage() {
     checkStatus();
     musicManager.start(); // Iniciar ambiente (Submerged_Systems) por defecto
     const interval = setInterval(checkStatus, 5000);
+    // Simulación de Diagnóstico de Sistema
+    const diagnosisLogs = [
+      "CHECKING NEURAL LINK...",
+      "VERIFYING VECTOR DATABASE INTEGRITY...",
+      "SYNCING WITH MAGI-01 BALTHAZAR...",
+      "ALLOCATING MEMORY SLOTS...",
+      "CALIBRATING REAC-T CYCLE...",
+      "STABILIZING COGNITIVE OVERLAY...",
+      "VALIDATING ZERO-TRUST PROTOCOLS...",
+      "UPDATING PEDAGOGICAL HARNESS...",
+      "ENCRYPTING SESSION FRAGMENTS...",
+      "INITIALIZING RAG RETRIEVAL MESH...",
+      "ESTABLISHING SECURE TUNNEL TO CORE...",
+      "CALCULATING SYNC PARAMETERS..."
+    ];
+
+    let diagIdx = 0;
+    const diagInterval = setInterval(() => {
+      setDiagnosis(prev => [...prev.slice(-7), diagnosisLogs[diagIdx % diagnosisLogs.length]]);
+      diagIdx++;
+    }, 1800);
+
     return () => {
       clearInterval(interval);
+      clearInterval(diagInterval);
       musicManager.stopAll();
     };
   }, [router]);
 
   if (!status && !error) {
     return (
-      <div className="h-screen bg-black flex items-center justify-center font-mono">
-        <div className="flex flex-col items-center gap-4 text-amber-500">
+      <div className="h-screen bg-black flex items-center justify-center font-mono relative">
+        <div className="crt-overlay" />
+        <div className="scanline" />
+        <div className="flex flex-col items-center gap-4 text-amber-500 z-10">
           <Loader2 className="animate-spin" size={48} />
           <span className="text-[10px] tracking-[0.5em] font-black uppercase">Enlazando con sistema NERV...</span>
         </div>
@@ -63,6 +89,7 @@ export default function WaitlistPage() {
   if (error && !status) {
     return (
       <div className="h-screen bg-black flex items-center justify-center font-mono relative">
+        <div className="crt-overlay" />
         <div className="absolute inset-0 z-50 bg-red-950/90 backdrop-blur-md flex items-center justify-center p-10">
           <div className="max-w-sm border-2 border-red-500 p-6 text-red-500 flex flex-col items-center gap-4 text-center">
             <AlertCircle size={48} />
@@ -84,11 +111,13 @@ export default function WaitlistPage() {
 
   return (
     <div className="h-screen bg-black text-amber-500 font-mono overflow-hidden relative flex flex-col items-center justify-center p-6 select-none">
+      <div className="crt-overlay" />
+      <div className="scanline" />
       
       {/* DECORATIVE BACKGROUND (KANJI & LINES) */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-10 left-10 text-[100px] font-black">警告</div>
-        <div className="absolute bottom-10 right-10 text-[100px] font-black">作戦</div>
+        <div className="absolute top-10 left-10 text-[100px] font-black">ALERTA</div>
+        <div className="absolute bottom-10 right-10 text-[100px] font-black">MISIÓN</div>
         <div className="grid grid-cols-12 h-full w-full">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="border-r border-amber-500/20 h-full" />
@@ -99,8 +128,8 @@ export default function WaitlistPage() {
       {/* TOP DECORATION: ALERT BANNER */}
       <div className="absolute top-0 w-full bg-amber-500 text-black py-1 overflow-hidden flex whitespace-nowrap z-50">
         {Array.from({ length: 10 }).map((_, i) => (
-          <span key={i} className="text-[10px] font-black mx-10 tracking-[0.3em]">
-            SYSTEM OVERLOAD // CONCURRENCY LIMIT REACHED // ACCESS RESTRICTED // 警告: システム飽和
+          <span key={i} className="text-[10px] font-black mx-10 tracking-[0.3em] animate-pulse">
+            SYSTEM OVERLOAD // CONCURRENCY LIMIT REACHED // ACCESS RESTRICTED // ALERTA: SISTEMA SATURADO
           </span>
         ))}
       </div>
@@ -111,7 +140,7 @@ export default function WaitlistPage() {
         className="max-w-xl w-full relative z-10"
       >
         {/* MAIN HUD CONTAINER */}
-        <div className="border-[4px] border-amber-500 p-8 relative bg-black shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+        <div className="border-[4px] border-amber-500 p-8 relative bg-black/90 shadow-[0_0_50px_rgba(245,158,11,0.2)]">
           
           {/* CORNER ACCENTS */}
           <div className="absolute -top-1 -left-1 w-10 h-10 border-t-[8px] border-l-[8px] border-amber-500" />
@@ -119,7 +148,7 @@ export default function WaitlistPage() {
 
           {/* TITLE SECTION */}
           <div className="flex items-center gap-4 mb-10 border-b-2 border-amber-500 pb-4">
-            <AlertCircle size={32} className="animate-pulse" />
+            <ShieldAlert size={32} className="animate-pulse" />
             <div>
               <h1 className="text-2xl font-black italic tracking-tighter uppercase leading-none">Status: Standby</h1>
               <p className="text-[10px] font-bold tracking-widest opacity-70">MAGI-01 BALTHAZAR DECISION: PENDING</p>
@@ -128,13 +157,13 @@ export default function WaitlistPage() {
 
           {/* QUEUE POSITION (HEXAGON STYLE) */}
           <div className="flex flex-col items-center justify-center mb-12">
-            <div className="relative">
-              <svg width="120" height="120" viewBox="0 0 100 100" className="animate-spin-slow">
+            <div className="relative group">
+              <svg width="120" height="120" viewBox="0 0 100 100" className="animate-spin-slow text-amber-500/30">
                 <polygon points="50,5 95,25 95,75 50,95 5,75 5,25" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="10 5" />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-sm font-black opacity-50 uppercase">Pos</span>
-                <span className="text-5xl font-black leading-none">{status.position}</span>
+                <span className="text-5xl font-black leading-none group-hover:scale-110 transition-transform">{status.position}</span>
               </div>
             </div>
             <p className="text-[11px] mt-6 font-black uppercase tracking-[0.4em] text-center">
@@ -143,8 +172,14 @@ export default function WaitlistPage() {
           </div>
 
           {/* CODENAME ASSIGNMENT */}
-          <div className="bg-amber-500/10 border border-amber-500 p-6 space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="bg-amber-500/10 border border-amber-500 p-6 space-y-4 relative overflow-hidden">
+             {/* Scanning Line Effect */}
+             <motion.div 
+               animate={{ top: ['0%', '100%', '0%'] }}
+               transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+               className="absolute left-0 w-full h-[1px] bg-amber-500/30 z-0"
+             />
+            <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2">
                 <Eye size={16} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Codename Assigned</span>
@@ -152,7 +187,7 @@ export default function WaitlistPage() {
               <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
             </div>
             
-            <div className="text-center py-2 px-4 bg-amber-500 text-black font-black text-2xl tracking-[0.2em] relative overflow-hidden group">
+            <div className="text-center py-2 px-4 bg-amber-500 text-black font-black text-2xl tracking-[0.2em] relative overflow-hidden group z-10">
               <motion.div 
                 animate={{ x: ['-100%', '200%'] }}
                 transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
@@ -161,15 +196,55 @@ export default function WaitlistPage() {
               {status.codename}
             </div>
             
-            <p className="text-[9px] text-center italic font-bold">
+            <p className="text-[9px] text-center italic font-bold relative z-10">
               * Memoriza tu nombre clave. Será tu único ID dentro del sistema.
             </p>
           </div>
 
-          {/* FOOTER METRICS */}
-          <div className="mt-10 grid grid-cols-2 gap-4">
-            <MetricBox icon={<Cpu size={14} />} label="System Load" value="CRITICAL" color="text-red-500" />
-            <MetricBox icon={<Zap size={14} />} label="Link Integrity" value="98.2%" color="text-amber-500" />
+          {/* FOOTER METRICS & DIAGNOSIS */}
+          <div className="mt-10 grid grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <MetricBox icon={<Cpu size={14} />} label="System Load" value="CRITICAL" color="text-red-500" />
+              <MetricBox icon={<Zap size={14} />} label="Est. Wait Time" value={`${status.position * 4}m 12s`} color="text-amber-500" />
+              <div className="border border-amber-500/30 p-3 flex flex-col gap-1">
+                <div className="flex items-center gap-2 opacity-60">
+                   <Zap size={14} />
+                   <span className="text-[8px] font-black uppercase tracking-widest">Neural Sync</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <div className="flex-1 h-1 bg-amber-500/10 rounded-full overflow-hidden">
+                      <motion.div 
+                        animate={{ width: ['40%', '98%', '85%', '99%'] }}
+                        transition={{ repeat: Infinity, duration: 10 }}
+                        className="h-full bg-amber-500 shadow-[0_0_8px_#f59e0b]"
+                      />
+                   </div>
+                   <span className="text-[9px] font-black text-amber-500 min-w-[30px]">98.2%</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Real-time Diagnosis Terminal */}
+            <div className="border border-amber-500/20 bg-amber-500/5 p-4 rounded-sm flex flex-col gap-2 min-h-[110px] relative overflow-hidden">
+              <span className="text-[8px] font-black uppercase tracking-widest text-amber-500/60 flex items-center gap-2">
+                <Loader2 size={10} className="animate-spin" /> System Diagnosis
+              </span>
+              <div className="flex flex-col gap-1 font-mono text-[9px] text-amber-500/80">
+                <AnimatePresence mode="popLayout">
+                  {diagnosis.map((log, idx) => (
+                    <motion.span 
+                      key={`${log}-${idx}`}
+                      initial={{ opacity: 0, x: -5 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="truncate border-l border-amber-500/30 pl-2"
+                    >
+                      {`> ${log}`}
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -179,7 +254,10 @@ export default function WaitlistPage() {
             {Array.from({ length: 8 }).map((_, i) => (
               <motion.div 
                 key={i}
-                animate={{ opacity: [0.2, 1, 0.2] }}
+                animate={{ 
+                  opacity: [0.2, 1, 0.2],
+                  scaleY: [1, 1.5, 1]
+                }}
                 transition={{ repeat: Infinity, duration: 1, delay: i * 0.1 }}
                 className="w-4 h-1 bg-amber-500" 
               />
@@ -197,7 +275,7 @@ export default function WaitlistPage() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 bg-red-950/90 backdrop-blur-md flex items-center justify-center p-10"
+            className="absolute inset-0 z-50 bg-red-950/90 backdrop-blur-md flex items-center justify-center p-10 font-mono"
           >
             <div className="max-w-sm border-2 border-red-500 p-6 text-red-500 flex flex-col items-center gap-4 text-center">
               <AlertCircle size={48} />

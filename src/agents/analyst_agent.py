@@ -69,10 +69,20 @@ class AnalystAgent:
             memoria_episodica=memoria_episodica if memoria_episodica else "No previous history in this session."
         )
         
-        # 3. Reasoning Loop (Simplified ReAct)
-        reasoning_chain = []
-        max_iterations = 2
-        current_prompt = prompt
+        import hashlib
+        
+        # 3. Phase 1: Strategic Thinking (Tool-free deliberation)
+        # We ask the LLM to create a plan before using tools
+        planning_prompt = f"Technical context: {contexto_rag}\nUser Action: {decision.accion} on {decision.target}\n\nTask: Develop a technical investigation plan (2 sentences) before using any tools."
+        strategy = await self.llm.generate(planning_prompt)
+        print(f"  [Analyst] Strategic Thinking: {strategy}")
+        
+        # 4. Phase 2: Reasoning Loop (ReAct)
+        reasoning_chain = [f"Initial Plan: {strategy}"]
+        mcp_results = []
+        action_history_hashes = set()
+        max_iterations = 3 # Increased slightly to allow more depth
+        current_prompt = prompt + f"\nInitial Strategy: {strategy}"
         
         print(f"  [Analyst] Starting reasoning chain (ReAct in English)...")
         
@@ -88,14 +98,41 @@ class AnalystAgent:
                 action_name = action_match.group(1).strip()
                 action_input = action_input_match.group(1).strip()
                 
+                # LOOP DETECTION (Phase 3 of Manual)
+                call_id = hashlib.md5(f"{action_name}:{action_input}".encode()).hexdigest()
+                if call_id in action_history_hashes:
+                    print(f"    → [Circuit Breaker] Loop detected: {action_name} with same input. Breaking.")
+                    current_prompt += f"\nObservation: [SYSTEM] Tool loop detected. You already tried this exact action. Please change your strategy or provide a Final Answer."
+                    continue
+                
+                action_history_hashes.add(call_id)
                 print(f"    → Action {i+1}: {action_name}('{action_input}')")
                 
                 # Execute tool
                 obs = "Tool not found"
                 for t in tools_list:
                     if t.name == action_name:
+                        # Si el input parece un JSON, lo parseamos a dict
+                        input_to_pass = action_input
+                        if action_input.startswith("{") and action_input.endswith("}"):
+                            try:
+                                input_to_pass = json.loads(action_input)
+                            except:
+                                pass
+                                
                         # Usar ainvoke para herramientas asíncronas
-                        obs = await t.ainvoke(action_input)
+                        obs = await t.ainvoke(input_to_pass)
+                        # Si la observación es un JSON, intentamos guardarla como dato técnico
+                        try:
+                            # Si obs no es string, lo convertimos para el log
+                            obs_str = str(obs) if not isinstance(obs, str) else obs
+                            parsed_obs = json.loads(obs_str)
+                            if isinstance(parsed_obs, list):
+                                mcp_results.extend(parsed_obs)
+                            else:
+                                mcp_results.append(parsed_obs)
+                        except:
+                            pass
                         break
                 
                 current_prompt += f"\nObservation: {obs}\nThought: "
@@ -123,18 +160,54 @@ class AnalystAgent:
         # Extraer hashes REALES del contexto RAG
         real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
 
-        return EvaluacionTecnica(
-            analysis=result_json.get("analysis", "Technical analysis completed"),
-            explanation=result_json.get("explanation", "No detailed explanation provided"),
-            strengths=result_json.get("strengths", []),
-            weaknesses=result_json.get("weaknesses", []),
-            best_practice=result_json.get("best_practice", "Consult standard manuals"),
-            sources=result_json.get("sources", []),
-            technical_score=result_json.get("technical_score", 70),
-            resilience_score=result_json.get("resilience_score", result_json.get("technical_score", 70)),
-            forensic_notes=result_json.get("forensic_notes"),
-            source_integrity_hashes=real_hashes
-        )
+        # Sanitize outputs
+        def ensure_string(val: Any) -> str:
+            if isinstance(val, (dict, list)):
+                return str(val)
+            return str(val) if val is not None else ""
+        # Sanitize artifacts to avoid Pydantic validation errors from LLM noise
+        raw_artifacts = result_json.get("verified_artifacts", [])
+        clean_artifacts = []
+        if isinstance(raw_artifacts, list):
+            for art in raw_artifacts:
+                if isinstance(art, dict) and "fact" in art:
+                    # Ensure all required fields exist with defaults if missing
+                    clean_artifacts.append({
+                        "fact": ensure_string(art.get("fact", "Dato técnico")),
+                        "certainty": int(art.get("certainty", 100)) if str(art.get("certainty", "")).isdigit() else 100,
+                        "source": art.get("source", "inference") if art.get("source") in ["tool", "rag", "inference"] else "inference"
+                    })
+
+        try:
+            return EvaluacionTecnica(
+                analysis=ensure_string(result_json.get("analysis", "Technical analysis completed")),
+                explanation=ensure_string(result_json.get("explanation", "No detailed explanation provided")),
+                strengths=result_json.get("strengths", []),
+                weaknesses=result_json.get("weaknesses", []),
+                best_practice=ensure_string(result_json.get("best_practice", "Consult standard manuals")),
+                sources=result_json.get("sources", []),
+                technical_score=int(result_json.get("technical_score", 70)) if str(result_json.get("technical_score", "")).isdigit() else 70,
+                resilience_score=int(result_json.get("resilience_score", 70)) if str(result_json.get("resilience_score", "")).isdigit() else 70,
+                forensic_notes=ensure_string(result_json.get("forensic_notes")),
+                source_integrity_hashes=real_hashes,
+                technical_data=mcp_results,
+                verified_artifacts=clean_artifacts
+            )
+        except Exception as e:
+            print(f" [AnalystAgent] Error creating EvaluacionTecnica: {e}")
+            print(f" [AnalystAgent] JSON was: {result_json}")
+            # Fallback
+            return EvaluacionTecnica(
+                analysis="Error processing evaluation.",
+                explanation=f"Internal error: {str(e)}",
+                strengths=[], weaknesses=[],
+                best_practice="Check system logs.",
+                sources=[], technical_score=0, resilience_score=0,
+                verified_artifacts=[]
+            )
+
+
+
 
     async def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str, memoria_episodica: str = "") -> EvaluacionTecnica:
         """Simple fallback without tools, using English prompts."""
@@ -147,8 +220,17 @@ class AnalystAgent:
         )
         result = await self.llm.generate_json(prompt)
         
-        # Extraer hashes REALES del contexto RAG
-        real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
+        # Sanitize artifacts to avoid Pydantic validation errors from LLM noise
+        raw_artifacts = result.get("verified_artifacts", [])
+        clean_artifacts = []
+        if isinstance(raw_artifacts, list):
+            for art in raw_artifacts:
+                if isinstance(art, dict) and "fact" in art:
+                    clean_artifacts.append({
+                        "fact": str(art.get("fact", "Dato técnico")),
+                        "certainty": int(art.get("certainty", 100)) if str(art.get("certainty", "")).isdigit() else 100,
+                        "source": art.get("source", "inference") if art.get("source") in ["tool", "rag", "inference"] else "inference"
+                    })
 
         return EvaluacionTecnica(
             analysis=result.get("analysis", "Direct analysis"),
@@ -157,8 +239,9 @@ class AnalystAgent:
             weaknesses=result.get("weaknesses", []),
             best_practice=result.get("best_practice", "Consult NIST 800-61"),
             sources=result.get("sources", []),
-            technical_score=result.get("technical_score", 50),
-            resilience_score=result.get("resilience_score", 50),
+            technical_score=int(result.get("technical_score", 50)) if str(result.get("technical_score", "")).isdigit() else 50,
+            resilience_score=int(result.get("resilience_score", 50)) if str(result.get("resilience_score", "")).isdigit() else 50,
             forensic_notes=result.get("forensic_notes"),
-            source_integrity_hashes=real_hashes
+            source_integrity_hashes=real_hashes,
+            verified_artifacts=clean_artifacts
         )

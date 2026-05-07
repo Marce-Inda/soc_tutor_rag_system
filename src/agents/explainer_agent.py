@@ -34,6 +34,7 @@ class ExplainerAgent:
         evaluacion_gobernanza: EvaluacionGobernanza,
         player_profile: PlayerProfile,
         contexto_rag: str = "",
+        memoria_episodica: str = "",
         prev_inconsistencies: list = None
     ) -> FeedbackPedagogico:
         """Generates the pedagogical feedback."""
@@ -44,6 +45,7 @@ class ExplainerAgent:
             evaluacion_gobernanza,
             player_profile,
             contexto_rag,
+            memoria_episodica,
             prev_inconsistencies
         )
         
@@ -57,11 +59,16 @@ class ExplainerAgent:
             print(f"  [Explainer] Error: {e}")
             return self._fallback_feedback(evaluacion_analista, player_profile.language)
         
-        # 3. Parse response
+        # 3. Parse and sanitize response
+        def ensure_string(val: Any) -> str:
+            if isinstance(val, (dict, list)):
+                return str(val)
+            return str(val) if val is not None else ""
+
         return FeedbackPedagogico(
-            analysis=result.get("analysis", "Evaluation not available"),
-            explanation=result.get("explanation", "No explanation provided"),
-            best_practice=result.get("best_practice", "Consult manual"),
+            analysis=ensure_string(result.get("analysis", "Evaluation not available")),
+            explanation=ensure_string(result.get("explanation", "No explanation provided")),
+            best_practice=ensure_string(result.get("best_practice", "Consult manual")),
             cited_sources=result.get("cited_sources", [])
         )
 
@@ -72,6 +79,7 @@ class ExplainerAgent:
         evaluacion_gobernanza: EvaluacionGobernanza,
         profile: PlayerProfile,
         contexto_rag: str,
+        memoria_episodica: str = "",
         prev_inconsistencies: list = None
     ) -> str:
         """Builds the prompt using the central prompt infrastructure."""
@@ -83,6 +91,7 @@ class ExplainerAgent:
             player_level=profile.level,
             target_language=profile.language,
             contexto_rag=contexto_rag,
+            memoria_episodica=memoria_episodica,
             prev_inconsistencies=prev_inconsistencies
         )
     

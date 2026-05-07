@@ -1,45 +1,77 @@
 import json
 import os
+import sys
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 # Inicializar FastMCP Server
 mcp = FastMCP("telemetry_server")
 
-def get_logs_data():
-    """Helper function to load the local synthetic dataset."""
-    file_path = Path("data/sample_scenarios/es-tourism-gdpr-email-breach/evidence/siem_dump.json")
-    if not file_path.exists():
-        # Fallback si se corre desde otro lado o no está el archivo
-        return [{"log_id": "L-ERR", "message": "Log file not found at " + str(file_path)}]
+# Configuración: Permitir inyectar el banco de evidencias desde el exterior
+DEFAULT_BANK = "data/sample_scenarios/evidence_bank_001.json"
+SCENARIO_BANK_PATH = os.getenv("SCENARIO_BANK_PATH", DEFAULT_BANK)
+
+def get_evidence_bank():
+    """Helper function to load the centralized evidence bank."""
+    file_path = Path(SCENARIO_BANK_PATH)
     
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if not file_path.exists():
+        # Fallback al default si el inyectado no existe
+        file_path = Path(DEFAULT_BANK)
+        if not file_path.exists():
+            return {"scenario_id": "error", "evidence": [], "error": f"Bank not found at {SCENARIO_BANK_PATH} or {DEFAULT_BANK}"}
+    
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        return {"scenario_id": "error", "evidence": [], "error": str(e)}
 
-# Recurso MCP para la herramienta interactiva de frontend 
-@mcp.resource("siem://incident-001/smtp-logs")
-def get_smtp_logs() -> str:
-    """Gets the entire raw SIEM log dataset for the current GDPR incident as a JSON string for the UI."""
-    data = get_logs_data()
-    return json.dumps(data, indent=2)
+@mcp.resource("siem://current-scenario/logs")
+def get_siem_logs() -> str:
+    """Gets all logs available for the Log Analyzer tool in the current active scenario."""
+    bank = get_evidence_bank()
+    if "error" in bank:
+        return json.dumps(bank, indent=2)
+        
+    logs = [e for e in bank["evidence"] if e["tool"] == "LOG_ANALYZER"]
+    return json.dumps(logs, indent=2)
 
-# Nueva Herramienta MCP para que el IA evalúe un log específico elegido por el jugador
 @mcp.tool()
-def get_specific_log(log_id: str) -> str:
-    """Retrieves a specific log entry by its log_id. Useful when the user selects a specific log to evaluate."""
-    data = get_logs_data()
-    for log in data:
-        if log.get("log_id") == log_id:
-            return json.dumps(log, indent=2)
-    return f"Log with ID {log_id} not found."
+def get_specific_evidence(evidence_id: str) -> str:
+    """Retrieves a specific evidence entry by its ID from the current scenario."""
+    bank = get_evidence_bank()
+    if "error" in bank:
+        return json.dumps(bank, indent=2)
+        
+    for entry in bank["evidence"]:
+        if entry["id"] == evidence_id:
+            return json.dumps(entry, indent=2)
+    return f"Evidence with ID {evidence_id} not found in scenario {bank.get('scenario_id')}."
 
-# Herramienta MCP para "NetScan"
 @mcp.tool()
 def execute_ndr_scan(target_ip: str) -> str:
-    """Executes a simulated Network Detection and Response (NDR) scan on a target IP or hostname. Use this to verify active connections in an incident."""
-    if target_ip in ["SRV-SWIFT-01", "SMTP-Relay-Main", "localhost"]:
-         return '{"active_connections": [{"remote_ip": "1.2.3.4", "state": "ESTABLISHED", "risk": "High", "process": "powershell.exe"}, {"remote_ip": "10.0.0.5", "state": "LISTEN", "risk": "Low", "process": "sshd"}]}'
-    return '{"active_connections": []}'
+    """Executes a simulated Network Detection and Response (NDR) scan. Returns data from the active scenario's bank."""
+    bank = get_evidence_bank()
+    if "error" in bank:
+        return json.dumps(bank, indent=2)
+        
+    scan_data = [e for e in bank["evidence"] if e["tool"] == "NETSCAN"]
+    # En el futuro, podríamos filtrar por target_ip si el banco lo soporta
+    if scan_data:
+        return json.dumps(scan_data[0], indent=2)
+    return '{"active_connections": [], "status": "no_threats_detected"}'
+
+@mcp.resource("scenario://active/metadata")
+def get_scenario_metadata() -> str:
+    """Returns metadata about the currently active scenario."""
+    bank = get_evidence_bank()
+    metadata = {
+        "scenario_id": bank.get("scenario_id"),
+        "evidence_count": len(bank.get("evidence", [])),
+        "disclaimer": bank.get("disclaimer")
+    }
+    return json.dumps(metadata, indent=2)
 
 if __name__ == "__main__":
     mcp.run()

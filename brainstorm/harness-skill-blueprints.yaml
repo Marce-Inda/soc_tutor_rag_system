@@ -1,0 +1,26 @@
+# Blueprint: Universal Agent Harness (UAH)
+version: 1.0.0
+
+skills:
+  - name: loop-detector
+    mission: "Detect redundant actions and break infinite loops using MD5 fingerprinting."
+    logic: "hash(tool_name, args) -> set() check"
+    
+  - name: artifact-index
+    mission: "Maintain a persistent source of truth for findings in the session."
+    storage: "JSON-based episodic memory"
+    reinjection: "System Reminder injection"
+
+  - name: strategic-deliberator
+    mission: "Force a tool-free planning phase before action execution."
+    prompt: "Think before you tool. Output a 2-sentence plan."
+
+  - name: context-compactor
+    mission: "Reduce context inflation by summarizing older history turns."
+    trigger: "> 5 turns or > 80% window usage"
+
+agents_supported:
+  - Analyst (SOC, Data, Finance)
+  - Coder (Software Engineering)
+  - Researcher (Market, Technical)
+  - Manager (Project, Ops)

@@ -26,7 +26,8 @@ class GovernanceAgent:
         self, 
         decision: Decision, 
         contexto: ContextoEscenario,
-        contexto_rag: str = ""
+        contexto_rag: str = "",
+        memoria_episodica: str = ""
     ) -> EvaluacionGobernanza:
         """
         Performs the governance evaluation based on the decision and RAG context.
@@ -40,7 +41,7 @@ class GovernanceAgent:
             contexto_rag = "\n".join([d['text'] for d in rag_res])
         
         # 2. Construir prompt
-        prompt = build_prompt_gobernanza(decision, contexto, contexto_rag)
+        prompt = build_prompt_gobernanza(decision, contexto, contexto_rag, memoria_episodica=memoria_episodica)
         
         # 3. Llamar al LLM
         response = await self.llm.generate_json(prompt)

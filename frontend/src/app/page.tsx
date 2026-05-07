@@ -22,6 +22,7 @@ import { getFeedback, getQueueStatus, sendHeartbeat } from '@/utils/api';
 import { audioSystem } from '@/utils/audio';
 import { musicManager } from '@/utils/ambientAudio';
 import IncidentNodeMap from '@/components/IncidentNodeMap';
+import SiemTable from '@/components/SiemTable';
 import { useRouter } from 'next/navigation';
 
 export default function WorkstationPage() {
@@ -29,6 +30,8 @@ export default function WorkstationPage() {
   const [userId, setUserId] = React.useState<string | null>(null);
   const [codename, setCodename] = React.useState<string>('UNKNOWN-ANALYST');
   const [lastActionTime, setLastActionTime] = React.useState<number>(Date.now());
+  const [siemResults, setSiemResults] = React.useState<any[]>([]);
+  const [activeQuery, setActiveQuery] = React.useState<string>('');
   const lastActionRef = React.useRef<number>(0);
 
   const { 
@@ -45,14 +48,17 @@ export default function WorkstationPage() {
     completeIncident,
     showTechnicalReport,
     toggleTechnicalReport,
-    resetIncident
+    resetIncident,
+    thinkingSteps,
+    addThinkingStep,
+    clearThinkingSteps
   } = useIncidentStore();
 
   // 1. GESTOR DE IDENTIDAD Y ACCESO (GATEKEEPER)
   useEffect(() => {
     let savedId = localStorage.getItem('soc_tutor_user_id');
     if (!savedId) {
-      router.push('/waitlist');
+      router.push('/gate');
       return;
     }
     setUserId(savedId);
@@ -83,7 +89,15 @@ export default function WorkstationPage() {
     };
   }, [router]);
 
-  // 2. TEMPORIZADOR DE INACTIVIDAD (MÚSICA)
+  // 2. AUTO-SCROLL LOGS
+  useEffect(() => {
+    const anchor = document.getElementById('scroll-anchor');
+    if (anchor) {
+      anchor.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
+  // 3. TEMPORIZADOR DE INACTIVIDAD (MÚSICA)
   useEffect(() => {
     const checkIdle = setInterval(() => {
       const idleTime = Date.now() - lastActionTime;
@@ -128,7 +142,14 @@ export default function WorkstationPage() {
   const handleAction = async (toolName: string, action: string, risk: string) => {
     if (isAnalyzing) return;
 
-    // Asegurar que la música arranca (bypass autoplay)
+    // Mapeo de reacciones pedagógicas inmediatas (Sistema 1)
+    const toolReactions: Record<string, string> = {
+      'NetScan': "Ejecutando escaneo de red (NDR). Vital para determinar el alcance del incidente y detectar posibles movimientos laterales.",
+      'Log Analyzer': "Accediendo al SIEM. La verificación de evidencias es el primer paso crítico de todo analista profesional.",
+      'Isolate Host': "Aislamiento de host activado. Una medida drástica; asegúrate de que el impacto en el negocio esté justificado por la evidencia previa.",
+      'Block IP': "Iniciando bloqueo perimetral. Una medida táctica necesaria, pero ¿has confirmado la IP en los logs antes de cerrar la puerta?"
+    };
+
     musicManager.start();
     musicManager.escalate();
     setLastActionTime(Date.now());
@@ -136,9 +157,30 @@ export default function WorkstationPage() {
     audioSystem.playClick();
     addLog(`INICIANDO ACCIÓN: ${toolName}...`, 'info');
     setAnalyzing(true);
+    clearThinkingSteps();
 
+    // Reacción inmediata del "Tutor"
+    addThinkingStep(toolReactions[toolName] || `Analizando impacto de ${toolName} en el escenario...`);
+    
     const actionStartTime = Date.now();
     lastActionRef.current = actionStartTime;
+
+    const thinkingSequence = [
+      "Consultando base de conocimientos NIST SP 800-61...",
+      "Correlacionando TTPs con MITRE ATT&CK...",
+      "Evaluando cumplimiento de principios GDPR...",
+      "Verificando integridad criptográfica de la evidencia..."
+    ];
+
+    let stepIdx = 0;
+    const stepInterval = setInterval(() => {
+      if (stepIdx < thinkingSequence.length && isAnalyzing) {
+        addThinkingStep(thinkingSequence[stepIdx]);
+        stepIdx++;
+      } else {
+        clearInterval(stepInterval);
+      }
+    }, 1500);
 
     try {
       const decision = {
@@ -163,28 +205,39 @@ export default function WorkstationPage() {
 
       const feedback = await getFeedback(decision, contexto, profile, userId || 'guest');
       
-      // Validar si es el resultado más reciente antes de actualizar
       if (lastActionRef.current === actionStartTime) {
+        clearInterval(stepInterval);
         setFeedback(feedback);
         audioSystem.playSync();
-        addLog(`RESPUESTA RECIBIDA [${feedback.persona_role}]`, 'success');
         
-        // Actualizar score basado en la evaluación (ejemplo: proporcional a score_tecnico)
-        const points = feedback.score_tecnico > 70 ? 500 : -300;
+        // Determinar la marca según la acción para el log de auditoría
+        const brand = action.includes('analyze') ? 'SENTINEL' : action.includes('scan') ? 'FALCON' : action.includes('block') ? 'PALOALTO' : 'FALCON_EDR';
+        addLog(`[+] SUCCESS: Audit event logged | Source: ${brand} | Action: ${action.toUpperCase()} | Status: ACK`, 'success');
+        
+        // Extraer resultados técnicos si existen (del banco de evidencias)
+        if (feedback.evaluacion_tecnica?.technical_data?.length > 0) {
+           setSiemResults(feedback.evaluacion_tecnica.technical_data);
+           // Si el primer resultado tiene una query KQL, la mostramos
+           if (feedback.evaluacion_tecnica.technical_data[0].query_kql) {
+              setActiveQuery(feedback.evaluacion_tecnica.technical_data[0].query_kql);
+           }
+        } else {
+           setSiemResults([]);
+        }
+
+        const points = feedback.technical_score > 70 ? 500 : -300;
         updateScore(points);
+        setAnalyzing(false);
       }
 
     } catch (error) {
-      // User requirement: suppress technical errors to maintain immersion.
-      // We log a neutral message instead of a red "AI Connection Error".
+      clearInterval(stepInterval);
       addLog('ACCIÓN FINALIZADA: SIN ANOMALÍAS ADICIONALES DETECTADAS', 'info');
       setAnalyzing(false);
-      musicManager.deescalate(); // Bajar tensión en error
+      musicManager.deescalate();
 
       // Background Retry Loop (Resilience Protocol)
-      // Se ejecuta en segundo plano para intentar recuperar el análisis sin que el jugador lo note.
       const runBackgroundRetry = async () => {
-        await new Promise(resolve => setTimeout(resolve, 8000)); // Esperar 8 segundos antes de reintentar
         
         // Si el jugador ya inició OTRA acción, cancelar este reintento
         if (lastActionRef.current !== actionStartTime) return;
@@ -203,7 +256,7 @@ export default function WorkstationPage() {
             audioSystem.playSync();
             addLog(`SISTEMA MENTOR: CORRELACIÓN TÁCTICA ACTUALIZADA`, 'success');
             
-            const points = retryFeedback.score_tecnico > 70 ? 500 : -300;
+            const points = retryFeedback.technical_score > 70 ? 500 : -300;
             updateScore(points);
           }
         } catch (retryError) {
@@ -342,9 +395,10 @@ export default function WorkstationPage() {
             <span className="text-muted text-[9px] font-bold uppercase tracking-widest">Score Táctico</span>
             <motion.span 
               key={score}
-              initial={{ scale: 1.2, color: '#fbbf24' }}
-              animate={{ scale: 1, color: '#22d3ee' }}
-              className="text-primary font-bold text-xs"
+              initial={{ scale: 1.5, color: '#fbbf24', filter: 'brightness(2)' }}
+              animate={{ scale: 1, color: '#22d3ee', filter: 'brightness(1)' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+              className="text-primary font-bold text-xs glow-primary"
             >
               {score.toLocaleString()} / 10,000
             </motion.span>
@@ -362,14 +416,16 @@ export default function WorkstationPage() {
             <div className="grid grid-cols-1 gap-3">
               <ToolButton 
                 icon={<Search size={16}/>} 
-                label="NetScan" 
+                label="NetScan (Falcon)" 
+                category="NDR / CrowdStrike Falcon"
                 risk="Bajo" 
                 onClick={() => handleAction('NetScan', 'network_scan', 'Bajo')}
                 disabled={isAnalyzing || isCompleted}
               />
               <ToolButton 
                 icon={<Database size={16}/>} 
-                label="Log Analyzer" 
+                label="Log Analyzer (Sentinel)" 
+                category="SIEM / Microsoft Sentinel"
                 risk="Bajo" 
                 onClick={() => handleAction('Log Analyzer', 'analyze_logs', 'Bajo')}
                 disabled={isAnalyzing || isCompleted}
@@ -382,14 +438,16 @@ export default function WorkstationPage() {
             <div className="grid grid-cols-1 gap-3">
               <ToolButton 
                 icon={<Lock size={16}/>} 
-                label="Isolate Host" 
+                label="Isolate Host (Falcon)" 
+                category="EDR / CrowdStrike Insight"
                 risk="Alto" 
                 onClick={() => handleAction('Isolate Host', 'isolate_host', 'Alto')}
                 disabled={isAnalyzing || isCompleted}
               />
               <ToolButton 
                 icon={<AlertTriangle size={16}/>} 
-                label="Block IP" 
+                label="Block IP (Palo Alto)" 
+                category="NGFW / Palo Alto Networks"
                 risk="Medio" 
                 onClick={() => handleAction('Block IP', 'block_ip', 'Medio')}
                 disabled={isAnalyzing || isCompleted}
@@ -485,8 +543,14 @@ export default function WorkstationPage() {
                     </span>
                   </div>
                 ))}
-                <div id="scroll-anchor" />
-             </div>
+                
+                {/* SIEM/NDR Structured Results */}
+                {siemResults.length > 0 && (
+                   <SiemTable results={siemResults} query={activeQuery} />
+                )}
+
+                 <div id="scroll-anchor" />
+              </div>
           </div>
         </section>
 
@@ -520,14 +584,14 @@ export default function WorkstationPage() {
                        <motion.div 
                          initial={{ width: 0 }}
                          animate={{ 
-                           width: `${currentFeedback?.score_tecnico || 0}%`,
-                           backgroundColor: (currentFeedback?.score_tecnico || 0) > 70 ? '#22d3ee' : (currentFeedback?.score_tecnico || 0) > 40 ? '#fbbf24' : '#ef4444'
+                           width: `${currentFeedback?.technical_score || 0}%`,
+                           backgroundColor: (currentFeedback?.technical_score || 0) > 70 ? '#22d3ee' : (currentFeedback?.technical_score || 0) > 40 ? '#fbbf24' : '#ef4444'
                          }}
                          className="h-2 rounded-sm shadow-[0_0_10px_currentColor]"
                        />
                     </div>
                     <span className="text-[10px] font-black text-foreground">
-                       {currentFeedback ? `${currentFeedback.score_tecnico}%` : '--%'}
+                       {currentFeedback ? `${currentFeedback.technical_score}%` : '--%'}
                     </span>
                  </div>
               </div>
@@ -538,7 +602,68 @@ export default function WorkstationPage() {
               {/* 1. TUTOR PANEL (60%) */}
               <div className="basis-[60%] overflow-y-auto custom-scrollbar pr-4 pb-4">
                 <AnimatePresence mode="wait">
-                  {currentFeedback ? (
+                   {isAnalyzing ? (
+                     <motion.div 
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="space-y-6 h-full flex flex-col"
+                     >
+                        <div className="flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar pr-2 max-h-[160px]">
+                           <div className="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md py-2 z-10 border-b border-secondary/20 mb-3">
+                              <h5 className="text-[10px] text-secondary font-black uppercase tracking-[0.3em] flex items-center gap-2">
+                                 <motion.div 
+                                   animate={{ opacity: [0.3, 1, 0.3] }}
+                                   transition={{ repeat: Infinity, duration: 1.5 }}
+                                   className="h-2 w-2 rounded-full bg-secondary shadow-[0_0_8px_#f59e0b]"
+                                 />
+                                 Razonamiento en Curso
+                              </h5>
+                              <span className="text-[8px] font-mono text-secondary/40 animate-pulse uppercase">Engine: ReAct 2.0</span>
+                           </div>
+                           <AnimatePresence mode="popLayout">
+                             {thinkingSteps.map((step, idx) => (
+                               <motion.div 
+                                 key={`${step}-${idx}`}
+                                 initial={{ opacity: 0, x: -10, filter: 'blur(4px)' }}
+                                 animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                                 exit={{ opacity: 0, x: 10, filter: 'blur(4px)' }}
+                                 transition={{ duration: 0.3, ease: "easeOut" }}
+                                 className="flex items-start gap-3 text-[11px] font-medium text-foreground/70 leading-tight mb-3 group"
+                               >
+                                  <div className="mt-1 h-1.5 w-1.5 rounded-full bg-secondary/40 group-hover:bg-secondary transition-colors flex-shrink-0" />
+                                  <div className="flex flex-col gap-0.5">
+                                     <span>{step}</span>
+                                     <span className="text-[7px] text-secondary/30 uppercase font-black tracking-tighter">Status: Processing...</span>
+                                  </div>
+                               </motion.div>
+                             ))}
+                           </AnimatePresence>
+                        </div>
+                        <div className="p-5 rounded-xl border border-secondary/30 bg-secondary/5 flex flex-col items-center justify-center gap-4 mt-auto relative overflow-hidden shadow-inner">
+                           {/* Background Pulse */}
+                           <motion.div 
+                             animate={{ opacity: [0.05, 0.15, 0.05] }}
+                             transition={{ repeat: Infinity, duration: 3 }}
+                             className="absolute inset-0 bg-secondary"
+                           />
+                           <div className="w-full h-1 bg-secondary/10 rounded-full overflow-hidden relative z-10">
+                              <motion.div 
+                                animate={{ 
+                                  left: ['-100%', '100%'],
+                                  width: ['10%', '40%', '10%']
+                                }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                                className="absolute h-full bg-secondary shadow-[0_0_15px_#f59e0b]"
+                              />
+                           </div>
+                           <div className="flex flex-col items-center gap-1 relative z-10">
+                              <span className="text-[9px] font-black text-secondary animate-pulse uppercase tracking-[0.4em]">Sincronizando Mallas de Conocimiento</span>
+                              <span className="text-[7px] text-muted-foreground uppercase font-bold tracking-[0.3em] opacity-50">Triage: Critical Priority | Level: High Impact</span>
+                           </div>
+                        </div>
+                     </motion.div>
+                   ) : currentFeedback ? (
                     <motion.div 
                       key={currentFeedback.explicacion}
                       initial={{ opacity: 0, x: 20 }}
@@ -550,9 +675,9 @@ export default function WorkstationPage() {
                              <Activity className="text-secondary" size={18} />
                              <h5 className="text-[11px] text-secondary font-black uppercase tracking-widest">Evaluación de la Acción</h5>
                           </div>
-                          <p className="text-sm leading-relaxed text-foreground/90 font-medium bg-secondary/5 p-5 rounded-lg border-l-4 border-secondary shadow-lg">
-                            {currentFeedback.evaluacion}
-                          </p>
+                          <div className="text-sm leading-relaxed text-foreground/90 font-medium bg-secondary/5 p-5 rounded-lg border-l-4 border-secondary shadow-lg">
+                            <TypingText text={currentFeedback.evaluacion} />
+                          </div>
                        </div>
 
                        <div>
@@ -560,9 +685,9 @@ export default function WorkstationPage() {
                              <Info className="text-primary" size={18} />
                              <h5 className="text-[11px] text-primary font-black uppercase tracking-widest">Por qué es importante?</h5>
                           </div>
-                          <p className="text-sm leading-relaxed text-muted-foreground italic pl-4 border-l border-primary/20">
-                            {currentFeedback.explicacion}
-                          </p>
+                          <div className="text-sm leading-relaxed text-muted-foreground italic pl-4 border-l border-primary/20">
+                            <TypingText text={currentFeedback.explicacion} />
+                          </div>
                        </div>
 
                        <div className="p-5 rounded-xl border border-primary/30 bg-primary/5 space-y-3 shadow-inner">
@@ -570,9 +695,9 @@ export default function WorkstationPage() {
                              <Shield size={18} className="text-primary" />
                              <h5 className="text-[11px] text-primary font-black uppercase tracking-widest">Mejor Práctica Recomendada</h5>
                           </div>
-                          <p className="text-sm font-bold text-foreground/90">
-                             {currentFeedback.mejor_practica}
-                          </p>
+                          <div className="text-sm font-bold text-foreground/90">
+                             <TypingText text={currentFeedback.mejor_practica} />
+                          </div>
                        </div>
 
                        {currentFeedback.fuentes_citadas.length > 0 && (
@@ -624,67 +749,120 @@ export default function WorkstationPage() {
 
               {/* 2. CISO STRATEGIC MEMOS PANEL (40%) */}
               <div className="basis-[40%] shrink-0 border-t border-card-border pt-6 mt-2 overflow-y-auto custom-scrollbar pr-4">
-                 <div className="flex items-center gap-2 mb-4">
-                     <Briefcase size={16} className="text-warning" />
-                     <h5 className="text-[10px] text-warning font-black uppercase tracking-[0.2em]">CISO Strategic Directives</h5>
-                 </div>
-                 
-                 <AnimatePresence mode="wait">
-                   {currentFeedback?.evaluacion_gobernanza ? (
-                     <motion.div 
-                       initial={{ opacity: 0, y: 10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       className="p-5 rounded-xl border border-warning/30 bg-warning/5 space-y-4"
-                     >
-                        <div className="flex justify-between items-center border-b border-warning/20 pb-3 mb-3">
-                          <span className="text-[10px] font-black uppercase text-warning/70">Compliance Status</span>
-                          <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${currentFeedback.evaluacion_gobernanza.compliant ? 'bg-success/20 text-success border border-success/30' : 'bg-danger/20 text-danger border border-danger/30'}`}>
-                            {currentFeedback.evaluacion_gobernanza.compliant ? 'ACCEPTABLE' : 'CRITICAL RISK'}
-                          </span>
-                        </div>
+                  <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                         <Briefcase size={16} className="text-warning" />
+                         <h5 className="text-[10px] text-warning font-black uppercase tracking-[0.2em]">CISO Strategic Directives</h5>
+                      </div>
+                      <div className="px-2 py-0.5 rounded border border-warning/30 bg-warning/5 text-[8px] font-black text-warning uppercase tracking-widest animate-pulse">
+                         Direct Feed Active
+                      </div>
+                  </div>
+                  
+                  <AnimatePresence mode="wait">
+                    {currentFeedback?.evaluacion_gobernanza ? (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="p-6 rounded-xl border-2 border-warning/20 bg-warning/5 space-y-6 relative overflow-hidden"
+                      >
+                         {/* Watermark "CLASSIFIED" */}
+                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[40px] font-black text-warning/[0.03] rotate-12 pointer-events-none uppercase tracking-[0.5em] select-none">
+                            Classified
+                         </div>
+
+                         <div className="flex justify-between items-start border-b border-warning/20 pb-4 mb-4 relative z-10">
+                           <div className="flex flex-col gap-1">
+                             <span className="text-[11px] font-black uppercase text-warning leading-none">Security Directive</span>
+                             <span className="text-[8px] text-warning/50 font-mono tracking-wider">REF: GRC-DOC-{Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
+                           </div>
+                           <div className="flex flex-col items-end">
+                              <span className={`px-3 py-1 rounded-sm text-[9px] font-black uppercase shadow-sm border ${currentFeedback.evaluacion_gobernanza.compliant ? 'bg-success/20 text-success border-success/40' : 'bg-danger/20 text-danger border-danger/40 animate-pulse'}`}>
+                                {currentFeedback.evaluacion_gobernanza.compliant ? 'VALIDATED' : 'CRITICAL BREACH'}
+                              </span>
+                           </div>
+                         </div>
                         
                         {currentFeedback.evaluacion_gobernanza.risks.length > 0 && (
-                          <div className="space-y-1.5">
-                            <span className="text-[9px] text-danger uppercase font-black tracking-widest flex items-center gap-1">
-                               <AlertTriangle size={10} /> Riesgos Identificados:
+                          <div className="space-y-3 relative z-10">
+                            <span className="text-[10px] text-danger uppercase font-black tracking-widest flex items-center gap-2">
+                               <AlertTriangle size={12} /> Riesgos Identificados:
                             </span>
-                            <ul className="list-disc pl-4 text-[11px] text-muted-foreground flex flex-col gap-1">
-                              {currentFeedback.evaluacion_gobernanza.risks.slice(0, 2).map((risk, idx) => (
-                                <li key={idx}>{risk}</li>
-                              ))}
-                            </ul>
+                            <div className="space-y-2">
+                               {currentFeedback.evaluacion_gobernanza.risks.slice(0, 3).map((risk, idx) => (
+                                 <motion.div 
+                                   initial={{ opacity: 0, x: -10 }}
+                                   animate={{ opacity: 1, x: 0 }}
+                                   transition={{ delay: idx * 0.2 }}
+                                   key={idx} 
+                                   className="text-[11px] text-foreground/80 leading-snug flex gap-2 items-start"
+                                 >
+                                    <span className="text-danger font-black mt-0.5">!</span>
+                                    {risk}
+                                 </motion.div>
+                               ))}
+                            </div>
                           </div>
                         )}
                         
                         {currentFeedback.evaluacion_gobernanza.frameworks.length > 0 && (
-                          <div className="pt-3 flex flex-wrap gap-2">
+                          <div className="pt-4 flex flex-wrap gap-2 border-t border-warning/10 relative z-10">
                             {currentFeedback.evaluacion_gobernanza.frameworks.map((fw, idx) => (
-                              <span key={idx} className="px-2 py-1 bg-background text-[9px] text-warning rounded border border-warning/30 font-bold uppercase tracking-wider">{fw}</span>
+                              <span key={idx} className="px-2 py-1 bg-black/40 text-[9px] text-warning rounded border border-warning/30 font-bold uppercase tracking-wider hover:bg-warning/10 transition-colors cursor-help">{fw}</span>
                             ))}
                           </div>
                         )}
-                     </motion.div>
-                   ) : (
-                     <motion.div 
-                       initial={{ opacity: 0 }}
-                       animate={{ opacity: 1 }}
-                       className="p-6 rounded-xl border border-card-border bg-card/20 flex flex-col items-center justify-center text-center gap-3 h-32"
-                     >
-                        <Briefcase size={24} className="text-muted opacity-30" />
-                        <span className="text-[10px] text-muted font-bold uppercase tracking-widest opacity-50">Esperando escalamiento o directivas...</span>
-                     </motion.div>
-                   )}
-                 </AnimatePresence>
-              </div>
+
+                        {/* Simulated Signature */}
+                        <div className="pt-4 flex justify-end opacity-40 grayscale relative z-10">
+                           <div className="text-right">
+                              <div className="text-[8px] font-black uppercase tracking-tighter mb-1">Signed By:</div>
+                              <div className="font-mono text-[10px] italic underline decoration-warning/30">CISO_EXEC_OFFICE</div>
+                           </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-8 rounded-xl border border-card-border bg-card/20 flex flex-col items-center justify-center text-center gap-4 h-48 relative overflow-hidden"
+                      >
+                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.05)_0%,transparent_70%)]" />
+                         <Briefcase size={32} className="text-muted opacity-20" />
+                         <div className="space-y-1 relative z-10">
+                            <span className="text-[11px] text-muted font-black uppercase tracking-widest block">Operational Standby</span>
+                            <span className="text-[9px] text-muted/50 font-bold uppercase tracking-wider block">Waiting for strategic escalation...</span>
+                         </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+               </div>
            </div>
         </aside>
 
       </main>
+
+      {/* TACTICAL FOOTER: SYSTEM COMPLIANCE & META DATA */}
+      <footer className="h-6 border-t border-card-border/30 bg-card/10 flex items-center justify-between px-6 z-50">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-success opacity-50" />
+            <span className="text-[7px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">Entorno de Simulación Protegido</span>
+          </div>
+          <span className="text-[7px] font-black text-muted-foreground/20 uppercase">|</span>
+          <span className="text-[7px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">Datos 100% Sintéticos (RFC 2606/5737)</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[7px] font-black text-primary/40 uppercase tracking-[0.2em]">SOC Tutor v2.0 Compliance</span>
+          <span className="text-[7px] font-black text-muted-foreground/20 uppercase">//</span>
+          <span className="text-[7px] font-black text-secondary/40 uppercase tracking-[0.2em]">Neural Link: MAGI-CONNECTED</span>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function ToolButton({ icon, label, risk, onClick, disabled }: { icon: React.ReactNode, label: string, risk: string, onClick: () => void, disabled?: boolean }) {
+function ToolButton({ icon, label, category, risk, onClick, disabled }: { icon: React.ReactNode, label: string, category: string, risk: string, onClick: () => void, disabled?: boolean }) {
   const riskColor = risk === 'Alto' ? 'text-danger' : risk === 'Medio' ? 'text-secondary' : 'text-success';
   const riskGlow = risk === 'Alto' ? 'hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]' : risk === 'Medio' ? 'hover:shadow-[0_0_15px_rgba(251,191,36,0.2)]' : 'hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]';
 
@@ -707,6 +885,7 @@ function ToolButton({ icon, label, risk, onClick, disabled }: { icon: React.Reac
       </div>
       <div className="flex-1">
         <div className="text-[11px] font-black uppercase tracking-widest mb-0.5">{label}</div>
+        <div className="text-[7px] text-muted-foreground uppercase font-bold tracking-wider mb-1 opacity-60">{category}</div>
         <div className={`text-[8px] uppercase font-black ${riskColor}`}>Factor de Riesgo: {risk}</div>
       </div>
       
@@ -716,4 +895,24 @@ function ToolButton({ icon, label, risk, onClick, disabled }: { icon: React.Reac
       </div>
     </button>
   );
+}
+
+function TypingText({ text }: { text: string }) {
+  const [displayedText, setDisplayedText] = React.useState('');
+  
+  React.useEffect(() => {
+    let i = 0;
+    setDisplayedText('');
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        setDisplayedText((prev) => prev + text.charAt(i));
+        i++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 15);
+    return () => clearInterval(timer);
+  }, [text]);
+
+  return <span>{displayedText}</span>;
 }

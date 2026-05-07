@@ -43,13 +43,17 @@ class Translator:
         """
         Translates final English reasoning back to the user's preferred language.
         """
-        if not text or not target_language or target_language == "en":
+        if not text or not text.strip() or not target_language or target_language == "en":
             return text
             
         system_prompt = (
-            f"You are an expert cybersecurity translator. "
-            f"Translate the following feedback to {target_language} maintaining a professional "
-            f"and pedagogical tone. Keep technical IDs (IPs, Hashes) and entity names (NIST, GDPR) intact."
+            f"You are a professional technical translator specializing in cybersecurity. "
+            f"Translate the following text into {target_language}. "
+            f"RULES: "
+            f"1. Maintain a professional, pedagogical, and technical tone. "
+            f"2. Keep technical IDs, IP addresses, hashes, and entity names (NIST, MITRE, GDPR) exactly as they are. "
+            f"3. Return ONLY the translated text. DO NOT add any comments like 'Here is the translation' or 'The text is already in...'. "
+            f"4. If the text is already in {target_language}, return the input text verbatim."
         )
         
         try:

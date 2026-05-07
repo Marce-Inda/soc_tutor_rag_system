@@ -1,4 +1,5 @@
-# SOC Tutor (Cybersecurity RAG Multiagent System)
+# SOC Tutor (Cybersecurity RAG Multiagent System) [HARDENED]
+
 
 🇺🇸 [English Version](README.md) | 📜 [Guía de Arquitectura](CONTRIBUTING.md)
 
@@ -20,10 +21,17 @@ Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de pr
 
 ## 🌟 Últimas Actualizaciones (Sesiones Recientes)
 
+- **Tutoría Dinámica e Interactiva**: Transformación de la consola del mentor para ofrecer **reacciones tácticas inmediatas**, una consola de razonamiento en tiempo real (NIST/MITRE) y efecto de escritura, eliminando la sensación de sistema estático.
+- **Deep Translation Gateway (Recursivo)**: Implementación de localización profunda para reportes técnicos y de gobernanza, asegurando que todos los campos (riesgos, fortalezas, recomendaciones) estén disponibles en el idioma del usuario.
 - **Integración de MCP (Model Context Protocol)**: Se integraron herramientas de contención EDR y análisis de logs SIEM utilizando servidores MCP, desacoplando la interacción táctica del sistema RAG principal para un realismo superior.
 - **RAG Cognitivo y Fast Path**: Implementación de Silos de Memoria Semántica/Procedural y un Enrutador Metacognitivo (PMS 2.0) para consultas conceptuales, reduciendo costos de API en un 93% y latencia en un 85%.
 - **Auditorías Adversariales (Red Hat / Blue Hat)**: Arquitectura fortificada con *Session Isolation* (previniendo Memory Leaks y Wallet-Exhaustion DoS), validación *Fail-Closed* para seguridad y corrección exhaustiva de "Shadow Logic" en el entorno de producción (Docker).
-- **Lista de Espera y Gestión de Colas**: Se implementó un *Queue Manager* en el backend (con Anti-Camping/Zombie expulsion) y una *Waitlist* en el frontend para evitar sobrecargas de API durante demos con concurrencia.
+- **Agent Harness Avanzado**: Implementación de principios de resiliencia determinista: *Loop Detection* (vía hashing MD5), *Artifact Index / Ground Truth Manager* (memoria de hechos compartida), *Strategic Thinking* y *Context Compaction* (ACC) para manejar sesiones largas con eficiencia.
+- **Gobernanza e IA Responsable**: Nuevo sistema de **Etiquetado de Certeza** para hallazgos técnicos. Cada hecho en el *Ground Truth* incluye su nivel de confianza (0-100%) y fuente, mejorando la transparencia pedagógica.
+- **Escudo Inmersivo (Narrative Rate Limiting)**: Sistema de protección de cuota de API que utiliza la narrativa del juego para gestionar la velocidad de interacción del usuario.
+- **Integridad de Contenido (Red Hat v2)**: Implementación de una capa de sanitización que filtra inyecciones de prompt indirectas y protege contra el "envenenamiento" de datos técnicos o del RAG.
+- **Gestión de Concurrencia**: Sistema de cola optimizado para **3 usuarios simultáneos**, garantizando la estabilidad durante la demo final.
+- **Suite de Evaluación de 5 Niveles (Pro-Grade)**: Implementación de un pipeline de testing profesional que va más allá de la validación estructural, midiendo cobertura semántica (Keyword Match), consistencia de herramientas (Tool Match) y análisis de regresión automática contra líneas base (Baselines) para prevenir degradación silenciosa del modelo.
 
 ## 🛠️ Tecnologías Core
 

@@ -1,4 +1,5 @@
-# SOC Tutor (Cybersecurity RAG Multiagent System)
+# SOC Tutor (Cybersecurity RAG Multiagent System) [HARDENED]
+
 
 📖 [Versión en Español](README_ES.md) | 📜 [Architectural Guidelines](CONTRIBUTING.md)
 
@@ -21,7 +22,12 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 - **MCP Integration (Model Context Protocol)**: Integrated EDR and SIEM log simulations using MCP servers, decoupling interactive tools from the core RAG system for a more realistic immersive experience.
 - **Cognitive RAG & Fast Path**: Implementation of Semantic/Procedural Memory Silos and a Metacognitive Router (PMS 2.0) for conceptual queries, reducing API costs by 93% and latency by 85%.
 - **Adversarial Audits (Red/Blue Hat)**: Architecture fortified with *Session Isolation* (preventing Memory Leaks and Wallet-Exhaustion DoS), *Fail-Closed* validation for security, and exhaustive correction of "Shadow Logic" in the Docker production environment.
-- **Waitlist & Queue Management**: Deployed a robust Queue Manager on the backend (with Anti-Camping/Zombie expulsion) and a Waitlist on the frontend to prevent API overloads during concurrent demonstrations.
+- **Advanced Agent Harness**: Implementation of deterministic resilience principles: *Loop Detection* (via MD5 hashing), *Artifact Index / Ground Truth Manager* (shared fact memory), *Strategic Thinking*, and *Context Compaction* (ACC) to manage long-horizon sessions.
+- **Governance & Responsible AI**: New **Certainty Labeling** system for technical findings. Each fact in the *Ground Truth* includes its confidence level (0-100%) and source, enhancing pedagogical transparency.
+- **Immersive Shielding (Narrative Rate Limiting)**: API quota protection system that uses game narrative to manage user interaction speed.
+- **Content Integrity (Red Hat v2)**: Implementation of a sanitization layer that filters indirect prompt injections and protects against "poisoning" of technical data or RAG knowledge.
+- **Concurrency Management**: Queue system optimized for **3 simultaneous users**, ensuring stability during final demonstrations.
+- **5-Level Professional Evaluation Suite**: Implementation of a pro-grade testing pipeline that moves beyond structural validation, measuring semantic coverage (Keyword Match), tool consistency (Tool Match), and automatic regression analysis against baselines to prevent silent model degradation.
 
 ## 🛠️ Core Technologies
 

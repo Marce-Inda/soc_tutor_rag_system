@@ -1,60 +1,118 @@
 {
   "provider": "gemini",
   "model": null,
-  "num_cases": 1,
+  "num_cases": 2,
   "num_profiles": 2,
   "pipeline": {
-    "success_rate": 0.0,
-    "total_runs": 2,
-    "successful_runs": 0,
-    "avg_latency_sec": 118.47,
+    "success_rate": 1.0,
+    "total_runs": 4,
+    "successful_runs": 4,
+    "avg_latency_sec": 74.66,
     "results": [
       {
         "case_id": "eval-001",
         "profile": "Lvl1-analyst",
-        "success": false,
-        "latency_sec": 129.71,
-        "error": "name 'session_id' is not defined"
+        "success": true,
+        "latency_sec": 84.7,
+        "decision_quality": "buena",
+        "min_score": 70,
+        "expected_concepts": [
+          "contención",
+          "firewall",
+          "IOC",
+          "bloqueo"
+        ]
       },
       {
         "case_id": "eval-001",
         "profile": "Lvl5-ciso",
-        "success": false,
-        "latency_sec": 107.22,
-        "error": "name 'session_id' is not defined"
+        "success": true,
+        "latency_sec": 74.02,
+        "decision_quality": "buena",
+        "min_score": 70,
+        "expected_concepts": [
+          "contención",
+          "firewall",
+          "IOC",
+          "bloqueo"
+        ]
+      },
+      {
+        "case_id": "eval-002",
+        "profile": "Lvl1-analyst",
+        "success": true,
+        "latency_sec": 71.95,
+        "decision_quality": "mala",
+        "min_score": 30,
+        "expected_concepts": [
+          "aislar",
+          "impacto",
+          "crítico",
+          "ransomware"
+        ]
+      },
+      {
+        "case_id": "eval-002",
+        "profile": "Lvl5-ciso",
+        "success": true,
+        "latency_sec": 67.98,
+        "decision_quality": "mala",
+        "min_score": 30,
+        "expected_concepts": [
+          "aislar",
+          "impacto",
+          "crítico",
+          "ransomware"
+        ]
       }
     ]
   },
   "structure": {
-    "evaluacion_tecnica_valid": 0,
-    "feedback_pedagogico_valid": 0,
-    "validacion_calidad_valid": 0,
-    "feedback_final_valid": 0,
-    "total_checked": 0
+    "evaluacion_tecnica_valid": 1.0,
+    "feedback_pedagogico_valid": 1.0,
+    "validacion_calidad_valid": 1.0,
+    "feedback_final_valid": 1.0,
+    "total_checked": 4
+  },
+  "semantic": {
+    "avg_semantic_coverage": 0.0,
+    "total_keywords_found": 0,
+    "total_keywords_expected": 16
+  },
+  "tools": {
+    "avg_tool_match": 0,
+    "total_tools_matched": 0,
+    "total_tools_expected": 0
   },
   "discrimination": {
-    "avg_good_score": 0,
-    "avg_bad_score": 0,
+    "avg_good_score": 0.0,
+    "avg_bad_score": 0.0,
     "discriminates": false,
-    "score_gap": 0,
-    "good_scores": [],
-    "bad_scores": []
+    "score_gap": 0.0,
+    "good_scores": [
+      0,
+      0
+    ],
+    "bad_scores": [
+      0,
+      0
+    ]
   },
   "faithfulness": {
-    "faithfulness_rate": 0,
-    "avg_sources_per_response": 0,
-    "total_checked": 0
+    "faithfulness_rate": 1.0,
+    "avg_sources_per_response": 1.0,
+    "total_checked": 4
   },
   "adaptation": {
-    "adaptation_rate": 0,
+    "adaptation_rate": 0.0,
     "adapted_cases": 0,
-    "total_comparable_cases": 0
+    "total_comparable_cases": 2
   },
   "validator": {
-    "approval_rate": 0,
+    "approval_rate": 0.0,
     "approved": 0,
-    "rejected": 0,
-    "with_inconsistencies": 0,
-    "total": 0
+    "rejected": 4,
+    "with_inconsistencies": 4,
+    "total": 4
   }
 }

@@ -43,8 +43,8 @@ class AmbientMusicManager {
     
     const steps = 20;
     const intervalTime = durationMs / steps;
-    const targetAmbientVol = target === 'ambient' ? 0.15 : 0;
-    const targetActionVol = target === 'action' ? 0.25 : 0;
+    const targetAmbientVol = target === 'ambient' ? 0.10 : 0;
+    const targetActionVol = target === 'action' ? 0.16 : 0;
 
     this.fadeInterval = setInterval(() => {
       if (!this.ambient || !this.action) return;

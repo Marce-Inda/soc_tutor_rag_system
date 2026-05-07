@@ -524,6 +524,9 @@ Esta topología permite que el sistema cumpla simultáneamente con requisitos co
 | **Seguridad (Input)** | Guard L0→L3 + Pydantic Constraints | Defensa en profundidad contra prompt injection. |
 | **Seguridad (Infra)** | Non-root + Read-Only FS + no-new-privileges | Minimizar blast radius ante compromiso. |
 | **Seguridad (Datos)** | Volume `:ro` + tmpfs aislado | Prevenir envenenamiento del RAG. |
+| **UX Dinámica** | Sistema 1 (Reacción Táctica) | Respuesta inmediata al clic para eliminar la sensación de sistema estático. |
+| **Transparencia** | Consola de Razonamiento (Live Thinking) | Visualización en tiempo real de los pasos de análisis (NIST/MITRE). |
+| **Pedagogía** | Feedback Directo (Veredicto) | Mentoría evaluativa explícita (Bien/Mal) desde el primer contacto. |
 
 ## 15. Capa de Razonamiento English-First (AI Engineering Optimization)
 
@@ -543,6 +546,166 @@ Esta topología permite que el sistema cumpla simultáneamente con requisitos co
 - **Tokens por Feedback**: Reducción adicional del **~15-20%** en el pipeline completo.
 - **Precisión Técnica**: Mejora en la consistencia de las referencias a MITRE IDs y nomenclaturas NIST al evitar "ruido" por traducción en los prompts intermedios.
 - **Mantenibilidad**: Se centraliza la lógica bilingüe en un solo punto (`translator.py`), desacoplando la lógica de los agentes de la localización del usuario.
+| **Sincronización** | Unified Technical Score Field | Estandarización de nombres de campos entre Frontend (Zustand) y Backend (Pydantic). |
+
+## 16. Arquitectura de Tutoría Dinámica (Interactive Mentorship)
+
+### 16.1 — Problema: El "Estatismo" en Sistemas Multiagente
+- **Observación**: En arquitecturas de agentes pesados (Sistema 2), el tiempo de inferencia acumulado (8-12s) genera una percepción de sistema estático o lento. El usuario pulsa un botón y "nada ocurre" hasta que llega el reporte final, rompiendo el flujo pedagógico.
+- **Solución**: Implementación de un **Sistema de Reacción Táctica (Sistema 1)** en el Frontend acoplado a la lógica de negocio.
+
+### 16.2 — Implementación de Dos Velocidades
+1. **Fase 1 (Reacción Inmediata)**: Al momento del clic, el sistema inyecta una respuesta pedagógica pre-calculada basada en la herramienta (ej. "Analizando el impacto de este bloqueo según NIST..."). Esto establece una presencia inmediata del mentor.
+2. **Fase 2 (Transparencia Cognitiva)**: Durante la espera del LLM, se activa una **Consola de Razonamiento** que muestra secuencialmente los pasos que el tutor está siguiendo ("Consultando MITRE ATT&CK...", "Evaluando GDPR..."). Esto transforma el tiempo de espera en una oportunidad de refuerzo pedagógico pasivo.
+3. **Fase 3 (Feedback Profundo con Typing Effect)**: La entrega del reporte final se realiza mediante un efecto de escritura, evitando la sobrecarga cognitiva de un bloque de texto instantáneo y reforzando la sensación de comunicación con un mentor humano.
+
+### 16.3 — Refuerzo del Veredicto Pedagógico
+- Se refactorizó el Agente Explicador para abandonar el tono de "Reporte de Misión" en favor de un tono de **"Mentoría Directa"**.
+- **Estructura obligatoria**: Veredicto Directo (Correcto/Incorrecto) → Vínculo con Framework → Por qué (Técnico/Legal) → Dilema Socrático.
+- Esto garantiza que el estudiante sepa de inmediato si su intuición táctica fue acertada, antes de entrar en los detalles técnicos profundos.
+
+### 16.4 — Aislamiento de Planos (Technical vs. Pedagogical Planes)
+- **Decisión**: La consola central (logs) se reserva exclusivamente para **Ground Truth Técnico**. No se permite la mención del mentor, evaluaciones o sistemas de IA en este plano.
+- **Implementación**: Los logs utilizan sintaxis de auditoría real (ej. `[+] SUCCESS: Audit event logged`).
+- **Rationale**: Mantener la inmersión de una "Workstation" real. El tutor existe como un sistema de apoyo externo (Panel Derecho), no como parte del software de seguridad simulado. Esta separación evita la fatiga narrativa y mantiene el rigor profesional de la simulación.
+
+## 17. Pilar Pedagógico: El Embudo de Investigación SOC
+
+### 17.1 — Definición del Método
+Para evitar el "cliqueo reactivo" y fomentar el pensamiento crítico, el sistema impone una jerarquía lógica de operaciones basada en la práctica profesional:
+1.  **Fase 1: Verificación (Log Analyzer)**: Confirmar la alerta mediante evidencia forense.
+2.  **Fase 2: Análisis de Alcance (NetScan)**: Determinar la extensión del compromiso y movimientos laterales.
+3.  **Fase 3: Contención Táctica (Block IP)**: Medida perimetral de bajo impacto.
+4.  **Fase 4: Contención Agresiva (Isolate Host)**: Medida de alto impacto, solo justificada tras las fases anteriores.
+
+### 18. Ecosistema Multi-Vendor Realista
+
+### 18.1 — Selección de Marcas de Referencia
+Para maximizar la transferencia de conocimiento, se han integrado marcas líderes de la industria en la interfaz y lógica del sistema:
+- **SIEM**: Microsoft Sentinel (Lógica KQL).
+- **EDR/NDR**: CrowdStrike Falcon (Telemetría de procesos y red).
+- **Firewall**: Palo Alto Networks (Políticas de bloqueo perimetral).
+
+### 18.2 — Justificación Pedagógica
+El uso de marcas reales ayuda al alumno a familiarizarse con el ecosistema corporativo estándar, reduciendo la curva de aprendizaje al enfrentarse a herramientas de producción.
+
+## 19. Repositorio de Evidencias (Evidence Bank)
+
+### 19.1 — Inmutabilidad y Coherencia
+Se ha implementado un banco de evidencias centralizado (`evidence_bank.json`) por escenario.
+- **Beneficio**: Garantiza que las IPs, usuarios y marcas de tiempo sean consistentes entre todas las herramientas (SIEM, NDR, EDR).
+- **Compliance**: Todos los datos son sintéticos, utilizando dominios reservados (.test) e IPs de documentación (RFC 5737), asegurando el cumplimiento de la ética de datos.
+
+## Section 20: Advanced Harness Engineering
+
+Following the principles of the "Manual de Arquitectura: Ingeniería de Arneses Avanzados", the system has been hardened to move from a simple agent execution to a robust **Agent Harness**.
+
+### 20.1 Loop Detection (MD5 Fingerprinting)
+The `AnalystAgent` now implements an MD5-based circuit breaker for tool calls.
+- **Mechanism**: Every tool call (name + arguments) is hashed using MD5.
+- **Policy**: If an identical tool call is detected within the same reasoning cycle, the system injects a system observation warning the agent of the redundancy and forcing a strategy change. This prevents infinite loops and token waste.
+
+### 20.2 Artifact Index (Ground Truth Manager)
+A centralized **Artifact Index** has been fully integrated as the system's "Source of Truth".
+- **Purpose**: To fight "instruction fade-out" and session-based hallucinations by providing a shared, verified state across turns and agents.
+- **Full Implementation**: 
+    1. **Fact Emission**: The Analyst Agent explicitly identifies and emits confirmed technical findings through a new `verified_facts` field in its output.
+    2. **Evidence Collection**: The Orchestrator collects both Evidence IDs and verified textual facts, consolidating them in the persistent `SessionMemory`.
+    3. **Multi-Agent Sincronicity**: The consolidated Ground Truth is injected into the prompts of **ALL** agents (Governance, Explainer, Analyst).
+
+### 20.3 Strategic Thinking (Tool-Free Deliberation)
+The `AnalystAgent` now follows a two-phase execution:
+- **Phase 1 (Deliberation)**: Before any tool call, the agent must generate a 2-sentence technical investigation plan.
+- **Phase 2 (Execution)**: The agent proceeds with the ReAct loop, using the plan as a guiding constraint. This ensures the "Investigative Funnel" methodology is respected.
+
+### 20.4 Context Compaction (ACC - Adaptive Context Compaction)
+The **ACC** module is now fully operational, ensuring long-term session stability.
+- **Trigger Mechanism**: Once a session reaches 5 turns, the system triggers a background compaction cycle.
+- **LLM-Driven Summarization**: The Orchestrator uses a high-density summarization prompt to condense the entire history (decisions + tool findings) into a single technical paragraph.
+- **State Reset**: Individual steps are cleared from the active session JSON after being consolidated into the `history_summary` field.
+- **Impact**: Reduces context window usage by up to 80% for long sessions, maintaining performance without losing state.
+
+### 20.5 Certainty Labeling & AI Transparency (Governance)
+To comply with Responsible AI principles, the system now implements a structured artifact reporting system.
+- **VerifiedArtifact Model**: Technical findings are no longer simple strings. They include a `certainty` score (0-100) and a `source` (tool, inference, RAG).
+- **Transparency**: The Governance Agent uses these scores to weight the severity of the student's errors. A high-certainty fact (100% Tool) carries more weight than a lower-certainty inference.
+
+### 20.6 Resilient RAG Fallback (Modo Offline)
+A "Fail-Safe" mechanism has been added to the knowledge retrieval layer.
+- **Local Playbooks**: The system includes a hardcoded `EMERGENCY_PLAYBOOKS` set for common incident categories (Malware, Phishing, DoS, Unauthorized Access).
+- **Automatic Fallback**: If ChromaDB or the embedding model fails, the `RAGClient` catches the exception and returns the most relevant local playbook.
+- **Reliability**: This ensures the pedagogical loop is never broken, even if the primary vector database is unavailable.
+
+### 20.7 Immersive Shielding (Narrative Rate Limiting)
+To mitigate "Wallet-Exhaustion" and "API Rate Limit" risks identified in Red Hat audits, the system implements a narrative-first rate limiter.
+- **Mechanism**: The Orchestrator calculates the delta time between the current request and the last saved step in `SessionMemory`.
+- **Policy**: If Delta < 10 seconds, the system returns a pre-generated "Congestion" message from the Mentor agent, bypassing all LLM and RAG calls.
+- **Pedagogical Impact**: Instead of a technical error, the user is told that the "SOC Console is synchronizing heavy telemetry", maintaining the game's immersion while ensuring backend stability.
+
+### 20.8 Content Integrity & Sanitization (Red Hat v2)
+To mitigate "Indirect Prompt Injection" and "Knowledge Poisoning" identified in Red Hat v2 audits, the system implements a content sanitization layer.
+- **Sanitization Engine**: A dedicated utility (`security.py`) filters technical inputs and RAG outputs for control keywords (e.g., `SYSTEM_OVERRIDE`, `IGNORE INSTRUCTIONS`).
+- **Context Bombing Protection**: The Orchestrator truncates massive log datasets to the 50 most relevant events, preventing OOM errors and excessive token costs.
+- **Resilient Reasoning**: By sanitizing the "Ground Truth" and "History" on every turn, the system ensures that malicious data injected into logs cannot "hijack" the mentor's pedagogical logic.
 
 ---
-**Firmado**: *Ingeniería de IA - Proyecto SOC Tutor*
+## 21. Hardening Final y Refinamiento (Fase de Producción)
+
+Para finalizar el sistema y asegurar su estabilidad durante la defensa del proyecto, se implementó una fase de endurecimiento (*hardening*) enfocada en la resiliencia de largo plazo y el control de recursos.
+
+### 2.1 — Refinamiento del ACC (Adaptive Context Compaction)
+- **Problema**: El sistema de compactación original era reactivo solo al número de turnos y borraba todo el historial, lo que causaba una pérdida súbita de contexto inmediato para el agente.
+- **Solución**: 
+    - **Trigger Híbrido**: El ACC ahora se dispara por número de turnos (>= 5) **o** por densidad de tokens (>= 3000 tokens), utilizando el `TokenCounter` del sistema.
+    - **Compactación Incremental**: En lugar de borrar todos los pasos, el sistema ahora mantiene los **últimos 3 turnos intactos** y compacta solo lo anterior. Esto permite que el agente mantenga la "memoria de trabajo" de las acciones más recientes mientras libera espacio de contexto.
+- **Rationale**: Esta decisión equilibra la eficiencia de tokens con la coherencia narrativa, evitando que el tutor "olvide" lo que acaba de pasar justo después de una compactación.
+
+### 2.2 — Índice de Artefactos Estructurado (Deterministic Ground Truth)
+- **Problema**: Los hallazgos técnicos se guardaban como strings planos, lo que dificultaba la evaluación ponderada y la trazabilidad pedagógica. Además, existía una inconsistencia en los nombres de los campos entre agentes.
+- **Solución**: 
+    - Estandarización del modelo `VerifiedArtifact` con campos obligatorios de **Certeza (0-100)** y **Atribución de Fuente** (`tool`, `rag`, `inference`).
+    - Actualización del prompt de ReAct para forzar al Analista a asignar niveles de confianza: 100% para datos confirmados por herramientas, 70-90% para RAG, y <60% para inferencias lógicas.
+- **Rationale**: Esto mejora la transparencia de la IA. El estudiante puede ver no solo qué descubrió el analista, sino qué tan seguro está y de dónde salió la información.
+
+### 2.3 — Gestión de Concurrencia (Waitlist Strategy)
+- **Problema**: Durante una demostración pública, múltiples usuarios simultáneos podrían agotar el presupuesto de la API o degradar la latencia del servidor al competir por recursos de CPU/RAM para los embeddings locales.
+- **Solución**: 
+    - **Límite de 3 usuarios concurrentes**: Implementado mediante un contador activo en el orquestador con limpieza automática de sesiones inactivas (> 5 min).
+    - **Immersive Waitlist**: Los usuarios excedentes reciben un mensaje narrativo bloqueante: *"[CONSOLA SOC] El sistema de análisis está operando a máxima capacidad... Por favor, mantente a la espera"*.
+- **Rationale**: Es preferible una lista de espera controlada y temática que un colapso del sistema o errores de 429 (Rate Limit) de los proveedores de LLM.
+
+### 2.4 — Fortificación Blue Hat (Compliance & Security)
+- **Seguridad de Salida**: El `GuardAgent` fue reforzado con una capa L3 que verifica que la respuesta final no contenga rastros de las instrucciones del sistema ni enlaces maliciosos inyectados, cerrando el ciclo de defensa en profundidad.
+- **Gobernanza**: Se vincularon los prompts de cumplimiento legal a leyes específicas según el contexto del escenario (GDPR en España, Ley 25.326 en Argentina), asegurando que el tutor no generalice normativas de forma incorrecta.
+
+### 2.5 — Resiliencia Determinista y Manejo de Errores (Fail-Safe)
+- **Problema**: Los agentes multi-agente suelen fallar de forma ruidosa (excepciones de validación) cuando la IA devuelve formatos inconsistentes o cuando las APIs fallan totalmente.
+- **Solución**: 
+    - **Fallback de Esquema**: El `LLMClient` ahora inyecta un objeto "Emergency JSON" que contiene todos los campos obligatorios para los 4 agentes (`analysis`, `technical_score`, `verified_artifacts`, etc.), asegurando que el orquestador nunca reciba un `None` que rompa el flujo.
+    - **Sanitización de Artefactos**: Se implementó una capa de "limpieza de tipos" en el Analista que convierte cualquier ruido del LLM (strings en lugar de ints, etc.) a tipos válidos de Pydantic antes de la instanciación.
+- **Rationale**: En un entorno educativo, la disponibilidad es crítica. Estas medidas garantizan que el sistema permanezca funcional y "degrade elegantemente" en lugar de colapsar ante problemas de infraestructura.
+
+---
+*Última actualización: 2026-05-06 (Professional Evaluation & Quality Assurance Phase)*
+
+## AD-011: Estrategia de Evaluación Profesional (5 Niveles)
+
+**Estado:** Aceptado
+**Fecha:** 2026-05-06
+
+### Contexto
+Los sistemas multiagente son inherentemente no deterministas. Pequeños cambios en los prompts o actualizaciones de los modelos pueden causar "regresiones silenciosas" donde la calidad técnica disminuye sin lanzar errores de software tradicionales.
+
+### Decisión
+Implementar un sistema de evaluación de 5 niveles que actúe como "ancla de calidad":
+1.  **Contratos**: Validación estricta con Pydantic.
+2.  **Sustancia**: Cobertura semántica mediante Keyword Match.
+3.  **Comportamiento**: Consistencia en el uso de herramientas (Tool Match).
+4.  **Orquestación**: Medición de Faithfulness y efectividad del Validador.
+5.  **Regresión**: Comparación automática contra Baselines para detectar caídas de performance.
+
+### Consecuencias
+*   **Positivas**: Garantía de repetibilidad, detección temprana de alucinaciones, facilidad para migrar entre proveedores de LLM con seguridad.
+*   **Negativas**: Mayor costo de tokens durante la fase de testing (mitigado mediante el uso de datasets curados).
+
+

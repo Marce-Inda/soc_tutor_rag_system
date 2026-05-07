@@ -34,6 +34,7 @@ app = FastAPI(
 # CORS - Security: Orígenes restringidos (Principio de Mínimos Permisos)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",           # Frontend dev local
+    "http://localhost:3001",           # Frontend dev alternativo (recording)
     "http://soc-tutor-frontend:3000",  # Frontend Docker interno
 ]
 
@@ -74,7 +75,7 @@ class HealthResponse(BaseModel):
 _llm_client = None
 _rag_client = None
 _orchestrator = None
-queue_manager = QueueManager(max_concurrent=3)
+queue_manager = QueueManager(max_concurrent=2)
 
 
 def get_orchestrator():
