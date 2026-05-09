@@ -31,7 +31,8 @@ This system has evolved from a basic Multi-Agent System (MAS) to a production-gr
 
 ## 🛠️ Core Technologies
 
--   **Models**: Google `gemini-2.5-flash` (primary), Groq `llama-3.3-70b` (fallback), DeepSeek V4 `deepseek-chat` (emergency) — via a unified LLMClient with 3-layer resilience cascade.
+-   **Models**: Google `gemini-2.5-flash` (primary), Groq `llama-3.3-70b` (fallback), NVIDIA NIM `deepseek-v4-pro` (emergency/high-performance) — via a unified LLMClient with 3-layer resilience cascade.
+-   **Resilience (Circuit Breakers)**: Strict asynchronous timeouts (15s for MCP, 45s heartbeat) to prevent Hang-Forever scenarios and protect the frontend experience.
 -   **Vector DB**: ChromaDB (local and embedded).
 -   **Embeddings**: `all-MiniLM-L6-v2` (100% local execution).
 -   **Orchestration**: Deterministic sequential flow (ReAct Analyst -> Explainer -> Validator).

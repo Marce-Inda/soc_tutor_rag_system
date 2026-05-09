@@ -12,10 +12,11 @@ from pathlib import Path
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_groq import ChatGroq
+    from langchain_openai import ChatOpenAI
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
-    print("LangChain no instalado: pip install langchain-google-genai langchain-groq")
+    print("LangChain no instalado: pip install langchain-google-genai langchain-groq langchain-openai")
 
 from .llm_config import (
     get_active_config, 
@@ -74,6 +75,20 @@ class LLMClient:
                 timeout=30.0,
                 max_retries=0,
                 groq_api_key=api_key
+            )
+        
+        elif self._provider == "nvidia":
+            api_key = os.getenv("NVIDIA_API_KEY")
+            if not api_key:
+                raise ValueError("NVIDIA_API_KEY no configurada")
+            
+            self._client = ChatOpenAI(
+                model=config.model,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+                openai_api_key=api_key,
+                base_url="https://integrate.api.nvidia.com/v1",
+                timeout=config.timeout if hasattr(config, 'timeout') else 60.0
             )
     
     def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:

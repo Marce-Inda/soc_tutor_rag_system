@@ -708,4 +708,37 @@ Implementar un sistema de evaluación de 5 niveles que actúe como "ancla de cal
 *   **Positivas**: Garantía de repetibilidad, detección temprana de alucinaciones, facilidad para migrar entre proveedores de LLM con seguridad.
 *   **Negativas**: Mayor costo de tokens durante la fase de testing (mitigado mediante el uso de datasets curados).
 
+## AD-012: Integración de NVIDIA API Catalog y Gestión de Cuota
 
+**Estado:** Aceptado
+**Fecha:** 2026-05-08
+
+### Contexto
+Para mejorar la calidad de las evaluaciones técnicas (especialmente en razonamiento complejo), se identificó la necesidad de integrar modelos de alto rendimiento como **DeepSeek R1**. El catálogo de NVIDIA API (NIM) ofrece acceso gratuito a estos modelos, pero bajo una cuota de créditos finitos (1,000 iniciales, hasta 5,000 totales) que **no se renuevan mensualmente**.
+
+### Decisión
+1.  **Proveedor Híbrido**: Configurar NVIDIA como un proveedor de **emergencia/respaldo (Layer 3)** en la cascada de resiliencia, manteniendo a Gemini y Groq como proveedores primarios para el desarrollo y pruebas diarias.
+2.  **Identidad Unificada**: Renombrar las credenciales a `NVIDIA_API_KEY` para reflejar que la llave permite el acceso a múltiples modelos del catálogo NIM, no solo a DeepSeek.
+3.  **Abstracción mediante ChatOpenAI**: Utilizar la compatibilidad de NVIDIA NIM con el protocolo de OpenAI para facilitar la integración sin añadir dependencias pesadas.
+4.  **Preservación de Cuota**: Mantener el sistema configurado para que NVIDIA solo se active en caso de fallos masivos de los otros proveedores o durante la validación final ante evaluadores, evitando el agotamiento de créditos durante la fase de desarrollo.
+
+### Consecuencias
+*   **Positivas**: Acceso a modelos SOTA (State-Of-The-Art) de razonamiento sin costo adicional inmediato. Alta resiliencia ante caídas de proveedores principales.
+*   **Negativas**: Riesgo de agotamiento de la cuota si se activa accidentalmente como proveedor primario en fases de testing intensivo. Requiere monitoreo manual de créditos en el dashboard de NVIDIA.
+
+## AD-013: Implementación de Circuit Breakers Estrictos para Herramientas MCP
+
+**Estado:** Aceptado
+**Fecha:** 2026-05-08
+
+### Contexto
+Durante una auditoría estratégica (Red Hat Strategy) de los tiempos de espera (timeouts) del sistema, se identificó un fallo crítico de "Fail-Open" o "Hang-Forever" en la integración de servidores MCP (`src/agents/tools.py`). El código original capturaba la excepción `asyncio.TimeoutError` pero no imponía un límite de tiempo real a la ejecución del cliente MCP. Dado que el frontend (Vercel/Axios) corta la conexión automáticamente a los 45 segundos, un cuelgue indefinido del servidor MCP rompía silenciosamente el juego.
+
+### Decisión
+1.  **Envoltura de Ejecución (`asyncio.wait_for`)**: Se modificó `consultar_telemetria_mcp` y `ejecutar_accion_edr_mcp` para encapsular la inicialización y la llamada al MCP dentro de un `asyncio.wait_for(...)`.
+2.  **Límite Estricto (15 segundos)**: Se estableció un timeout duro de 15 segundos para cualquier interacción con los servidores MCP locales simulados.
+3.  **Degradación Elegante (Graceful Degradation)**: Al activarse el timeout, la herramienta ahora retorna un string de error predecible (`"Error: Tiempo de espera agotado al conectar con el Servidor..."`) en lugar de dejar colgado el hilo principal. El agente analista interpreta esto como una falla del sistema y puede reportarlo inmersivamente al jugador sin romper el flujo de la aplicación web.
+
+### Consecuencias
+*   **Positivas**: Evita bloqueos asíncronos indefinidos, protegiendo al frontend de timeouts inesperados (evitando pantallas blancas o desconexiones forzosas). Mantiene al orquestador a salvo de fugas de recursos por subprocesos colgados.
+*   **Negativas**: Los escaneos NDR simulados o la lectura de logs muy extensos deben completarse estrictamente en menos de 15 segundos, lo cual puede requerir optimizaciones de lectura de archivos en los scripts MCP en escenarios futuros.

@@ -90,29 +90,30 @@ class SOCtools:
         # Conexión local tipo stdio al servidor simulado usando el binario actual
         server_params = StdioServerParameters(command=sys.executable, args=["src/mcp_servers/telemetry_server.py"])
         
-        try:
+        async def _run_telemetry():
             async with stdio_client(server_params) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     
                     if action_type == "analyze_logs" or action_type == "read_logs":
-                        # Usar 'Resources' de MCP para leer el archivo de log entero (Scenario Evidence Bank)
                         resource_uri = "siem://current-scenario/logs"
                         res = await session.read_resource(resource_uri)
                         return f"[MCP SIEM LOGS] {res.contents[0].text}"
                         
                     elif action_type == "evaluate_selected_log" or action_type == "get_evidence":
-                        # Leer solo la evidencia específica por ID
                         res = await session.call_tool("get_specific_evidence", arguments={"evidence_id": target})
                         return f"[MCP SELECTED EVIDENCE] {res.content[0].text}"
                         
                     elif action_type == "network_scan" or "scan" in action_type.lower():
-                        # Usar 'Tools' de MCP para ejecutar una acción activa
                         target_ip = target if target else "localhost"
                         res = await session.call_tool("execute_ndr_scan", arguments={"target_ip": target_ip})
                         return f"[MCP NDR SCAN RESULTS] {res.content[0].text}"
                         
                     return "Acción MCP no reconocida. Intentar con analyze_logs, evaluate_selected_log o network_scan."
+
+        try:
+            # Envolvemos toda la operación en un timeout estricto de 15s para evitar cuelgues (Hang-Forever)
+            return await asyncio.wait_for(_run_telemetry(), timeout=15.0)
         except asyncio.TimeoutError:
             return "Error: Tiempo de espera agotado al conectar con el Servidor MCP de Telemetría."
         except Exception as e:
@@ -131,7 +132,7 @@ class SOCtools:
 
         server_params = StdioServerParameters(command=sys.executable, args=["src/mcp_servers/edr_server.py"])
         
-        try:
+        async def _run_edr():
             async with stdio_client(server_params) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
@@ -145,6 +146,10 @@ class SOCtools:
                         return f"[MCP FIREWALL ACTION] {res.content[0].text}"
                         
                     return "Acción de EDR no reconocida. Intentar con isolate_host o block_ip."
+
+        try:
+            # Envolvemos toda la operación en un timeout estricto de 15s para evitar cuelgues (Hang-Forever)
+            return await asyncio.wait_for(_run_edr(), timeout=15.0)
         except asyncio.TimeoutError:
             return "Error: Tiempo de espera agotado al conectar con el Servidor EDR."
         except Exception as e:
