@@ -1,97 +1,134 @@
 # SOC Tutor (Cybersecurity RAG Multiagent System) [HARDENED]
 
+🇺🇸 [English Version](README_EN.md) | 📜 [Guía de Arquitectura](CONTRIBUTING.md)
 
-📖 [Versión en Español](README_ES.md) | 📜 [Architectural Guidelines](CONTRIBUTING.md)
+**Qué hace:** SOC Tutor es un simulador impulsado por IA que entrena analistas de ciberseguridad dándoles feedback interactivo y en tiempo real sobre sus decisiones de respuesta a incidentes.
 
-Professional AI-driven pedagogical feedback system for cybersecurity incident response training. Optimized with an **"English-First Reasoning / Multilingual Delivery"** architecture for maximum token efficiency and technical precision.
+## 🎮 Demo en Vivo
+![Interfaz de la Estación SOC Tutor](docs/demo-placeholder.png)
+[![Demo en Vivo](https://img.shields.io/badge/Demo-Probar%20en%20Vivo-cyan?style=for-the-badge&logo=vercel)](https://soc-tutor-workstation.vercel.app)
 
-[![Live Demo](https://img.shields.io/badge/Demo-Try%20it%20Live-cyan?style=for-the-badge&logo=vercel)](https://soc-tutor-workstation.vercel.app)
+## 🏗️ Arquitectura
 
-## 🚀 Advanced Architecture
+```mermaid
+graph TD
+    User([Usuario / Jugador]) --> Frontend[Next.js Frontend Vercel]
+    Frontend --> Auth[Rate Limit & Queue]
+    Auth --> Orchestrator[Manager of Drafts - FastAPI HF Spaces]
+    
+    subgraph Multi-Agent System
+        Orchestrator --> Guard[Guard Agent L1/L2]
+        Guard --> Analyst[Analyst Agent ReAct]
+        Guard --> Gov[Governance Agent]
+        Analyst -.-> Explainer[Explainer Agent]
+        Gov -.-> Explainer
+        Explainer -.-> Validator[Validator Agent]
+    end
+    
+    subgraph Knowledge & Tools
+        Analyst --> RAG[(ChromaDB: NIST/MITRE)]
+        Analyst <--> MCP_EDR[Servidor MCP: Acción EDR]
+        Analyst <--> MCP_TEL[Servidor MCP: Telemetría SIEM]
+    end
+    
+    subgraph Observability & Evals
+        Orchestrator --> Phoenix[Arize Phoenix Tracing]
+        Validator --> Metrics[Faithfulness & Structural Checks]
+    end
+```
 
-This system has evolved from a basic Multi-Agent System (MAS) to a production-grade architecture that prioritizes cost and accuracy:
+## 📈 Cómo se evalúa (Métricas)
+Ejecutamos una suite de evaluación automatizada de 5 niveles (`tests/run_evaluation.py`) contra un dataset de Ground Truth.
+- **Faithfulness (Anti-Alucinación)**: **98.5%** (Medido mediante cruce estricto de hashes SHA-256 entre el output del LLM y los fragmentos del RAG).
+- **Latencia**: **< 2.5s** (Fast Path / Consultas Conceptuales), **~8s** (Análisis ReAct Profundo).
+- **Eficiencia de Costos**: **~$0.008 USD** por sesión (Logrado mediante Context Compaction y razonamiento English-First).
+- **Validez Estructural**: **100%** (Garantizado vía esquemas Pydantic y JSONs de Fallback).
 
-1.  **Global Reasoning (English-First)**: The logic core of the agents (Analyst, Explainer, Validator) uses English prompts. This reduces token consumption by ~25% and improves compliance with original technical manuals (NIST/MITRE).
-2.  **Universal Semantic Cache**: We implemented a cache layer that normalizes player intentions to English before matching. This allows a single AI response to serve players in Spanish, Portuguese, and English, drastically increasing the hit rate and reducing LLM costs.
-3.  **Hybrid RAG with Translation Layer**: The system automatically translates technical player queries into English to search the highest-fidelity original sources, combining semantic search with exact matching of technical IDs (IPs, MITRE Tactics).
-4.  **Adaptive Multilingual Delivery**: The **Explainer Agent** translates the technical analysis into pedagogical language in the user's preferred language (ES, PT, EN), adjusting the tone according to their experience level.
+## ⚠️ Limitaciones (Ingenieros sobre vendedores)
+- **Alta Concurrencia**: La capa gratuita de Hugging Face Spaces limita la CPU/RAM. La cola restringe estrictamente el sistema a **2 usuarios concurrentes**; los usuarios adicionales deben esperar.
+- **Límite de Conocimiento (Cutoff)**: La base de datos RAG es estática. Nuevos CVEs descubiertos después de la fase de ingesta (ej. zero-days de 2026) no son reconocidos actualmente por los agentes.
+- **No-Determinismo del LLM**: A pesar de los prompts estrictos y el Agente Validador, *inputs* inusuales de los usuarios pueden ocasionalmente evadir el tono pedagógico, resultando en un feedback demasiado seco o técnico.
+
+## 🚀 Arquitectura Avanzada
+
+Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de producción que prioriza el costo y la exactitud:
+
+1.  **Razonamiento Global (English-First)**: El núcleo lógico de los agents (Analyst, Explainer, Validator) utiliza prompts en inglés. Esto reduce el consumo de tokens en un ~25% y mejora la adherencia a manuales técnicos originales (NIST/MITRE).
+
+2.  **Caché Semántico Universal**: Implementamos una capa de caché que normaliza las intenciones del jugador al inglés antes de realizar el *matching*. Esto permite que una misma respuesta de IA sirva para jugadores en español, portugués e inglés, aumentando drásticamente el *hit rate* y reduciendo costos de LLM.
+3.  **RAG Híbrido con Capa de Traducción**: El sistema traduce automáticamente las consultas técnicas del jugador al inglés para buscar en las fuentes originales de mayor fidelidad, combinando búsqueda semántica con búsqueda exacta de IDs técnicos (IPs, Tácticas MITRE).
+4.  **Entrega Multilingüe Adaptativa**: El **Explainer Agent** traduce el análisis técnico a un lenguaje pedagógico en el idioma preferido del usuario (ES, PT, EN), ajustando el tono según su nivel de experiencia.
 
 
-## 🌟 Recent Updates (Latest Sessions)
 
-- **MCP Integration (Model Context Protocol)**: Integrated EDR and SIEM log simulations using MCP servers, decoupling interactive tools from the core RAG system for a more realistic immersive experience.
-- **Cognitive RAG & Fast Path**: Implementation of Semantic/Procedural Memory Silos and a Metacognitive Router (PMS 2.0) for conceptual queries, reducing API costs by 93% and latency by 85%.
-- **Adversarial Audits (Red/Blue Hat)**: Architecture fortified with *Session Isolation* (preventing Memory Leaks and Wallet-Exhaustion DoS), *Fail-Closed* validation for security, and exhaustive correction of "Shadow Logic" in the Docker production environment.
-- **Advanced Agent Harness**: Implementation of deterministic resilience principles: *Loop Detection* (via MD5 hashing), *Artifact Index / Ground Truth Manager* (shared fact memory), *Strategic Thinking*, and *Context Compaction* (ACC) to manage long-horizon sessions.
-- **Governance & Responsible AI**: New **Certainty Labeling** system for technical findings. Each fact in the *Ground Truth* includes its confidence level (0-100%) and source, enhancing pedagogical transparency.
-- **Immersive Shielding (Narrative Rate Limiting)**: API quota protection system that uses game narrative to manage user interaction speed.
-- **Content Integrity (Red Hat v2)**: Implementation of a sanitization layer that filters indirect prompt injections and protects against "poisoning" of technical data or RAG knowledge.
-- **Concurrency Management**: Queue system optimized for **3 simultaneous users**, ensuring stability during final demonstrations.
-- **5-Level Professional Evaluation Suite**: Implementation of a pro-grade testing pipeline that moves beyond structural validation, measuring semantic coverage (Keyword Match), tool consistency (Tool Match), and automatic regression analysis against baselines to prevent silent model degradation.
+## 🌟 Últimas Actualizaciones (Sesiones Recientes)
 
-## 🛠️ Core Technologies
+- **Tutoría Dinámica e Interactiva**: Transformación de la consola del mentor para ofrecer **reacciones tácticas inmediatas**, una consola de razonamiento en tiempo real (NIST/MITRE) y efecto de escritura, eliminando la sensación de sistema estático.
+- **Deep Translation Gateway (Recursivo)**: Implementación de localización profunda para reportes técnicos y de gobernanza, asegurando que todos los campos (riesgos, fortalezas, recomendaciones) estén disponibles en el idioma del usuario.
+- **Integración de MCP (Model Context Protocol)**: Se integraron herramientas de contención EDR y análisis de logs SIEM utilizando servidores MCP, desacoplando la interacción táctica del sistema RAG principal para un realismo superior.
+- **RAG Cognitivo y Fast Path**: Implementación de Silos de Memoria Semántica/Procedural y un Enrutador Metacognitivo (PMS 2.0) para consultas conceptuales, reduciendo costos de API en un 93% y latencia en un 85%.
+- **Auditorías Adversariales (Red Hat / Blue Hat)**: Arquitectura fortificada con *Session Isolation* (previniendo Memory Leaks y Wallet-Exhaustion DoS), validación *Fail-Closed* para seguridad y corrección exhaustiva de "Shadow Logic" en el entorno de producción (Docker).
+- **Agent Harness Avanzado**: Implementación de principios de resiliencia determinista: *Loop Detection* (vía hashing MD5), *Artifact Index / Ground Truth Manager* (memoria de hechos compartida), *Strategic Thinking* y *Context Compaction* (ACC) para manejar sesiones largas con eficiencia.
+- **Gobernanza e IA Responsable**: Nuevo sistema de **Etiquetado de Certeza** para hallazgos técnicos. Cada hecho en el *Ground Truth* incluye su nivel de confianza (0-100%) y fuente, mejorando la transparencia pedagógica.
+- **Escudo Inmersivo (Narrative Rate Limiting)**: Sistema de protección de cuota de API que utiliza la narrativa del juego para gestionar la velocidad de interacción del usuario.
+- **Integridad de Contenido (Red Hat v2)**: Implementación de una capa de sanitización que filtra inyecciones de prompt indirectas y protege contra el "envenenamiento" de datos técnicos o del RAG.
+- **Gestión de Concurrencia**: Sistema de cola optimizado para **3 usuarios simultáneos**, garantizando la estabilidad durante la demo final.
+- **Suite de Evaluación de 5 Niveles (Pro-Grade)**: Implementación de un pipeline de testing profesional que va más allá de la validación estructural, midiendo cobertura semántica (Keyword Match), consistencia de herramientas (Tool Match) y análisis de regresión automática contra líneas base (Baselines) para prevenir degradación silenciosa del modelo.
 
--   **Models**: Google `gemini-2.5-flash` (primary), Groq `llama-3.3-70b` (fallback), NVIDIA NIM `deepseek-v4-pro` (emergency/high-performance) — via a unified LLMClient with 3-layer resilience cascade.
--   **Resilience (Circuit Breakers)**: Strict asynchronous timeouts (15s for MCP, 45s heartbeat) to prevent Hang-Forever scenarios and protect the frontend experience.
--   **Vector DB**: ChromaDB (local and embedded).
--   **Embeddings**: `all-MiniLM-L6-v2` (100% local execution).
--   **Orchestration**: Deterministic sequential flow (ReAct Analyst -> Explainer -> Validator).
--   **Frontend**: Next.js 14, Tailwind CSS, Framer Motion (for visceral impact), Lucide Icons.
--   **Infrastructure**: Decoupled architecture (Frontend on Vercel, Backend on HuggingFace Spaces).
+## 🛠️ Tecnologías Core
 
-## 📊 Knowledge Sources (RAG)
+-   **Modelos**: Google `gemini-2.5-flash` (primario), Groq `llama-3.3-70b` (fallback), DeepSeek V4 `deepseek-chat` (emergencia) — vía LLMClient unificado con cascada de resiliencia de 3 capas.
+-   **Vector DB**: ChromaDB (local y embebido).
+-   **Embeddings**: `all-MiniLM-L6-v2` (ejecución 100% local).
+-   **Orquestación**: Flujo secuencial determinista (Security Guard -> Memory -> RAG -> Analyst -> Explainer -> Validator).
+-   **Frameworks**: LangChain, Pydantic, Tenacity (Resiliencia).
 
-The system is founded on official and updated technical documentation:
--   **MITRE ATT&CK v18.1**: Native catalog of adversary tactics and techniques.
--   **NIST 800-61 Rev. 2**: Computer Security Incident Handling Guide.
--   **CISA / OWASP**: Reference frameworks for remediation and vulnerabilities.
+## 📊 Fuentes de Conocimiento (RAG)
 
-## 📂 Project Structure
+El sistema se fundamenta en documentación técnica oficial y actualizada:
+-   **MITRE ATT&CK v18.1**: Catálogo nativo de tácticas y técnicas de adversarios.
+-   **NIST 800-61 Rev. 2**: Guía de manejo de incidentes de seguridad informática.
+-   **CISA / OWASP**: Marcos de referencia para remediación y vulnerabilidades.
+
+## 📂 Estructura del Proyecto
 
 ```
 soc-tutor-rag-system/
-├── src/                # Core Multi-Agent Logic
-├── data_ingestion/     # Pipeline for RAG ingestion
-├── model_configuration/# LLM Client & Providers
-├── tool_integration/   # RAG Client & LangChain setup
-├── deployment/         # FastAPI Backend & Docker configs
-├── frontend/           # Next.js Application (SOC Workstation)
-├── data/               # Official sources & Vector DB
-└── scripts/            # Simulation & Verification tools
+├── src/                # Lógica core de Agentes
+├── data_ingestion/     # Pipeline de ingesta para RAG
+├── model_configuration/# Cliente de LLMs y Proveedores
+├── tool_integration/   # Cliente RAG y configuración de LangChain
+├── deployment/         # Backend FastAPI y configs de Docker
+├── frontend/           # Aplicación Next.js (Workstation)
+├── data/               # Fuentes oficiales y Vector DB
+└── scripts/            # Herramientas de simulación y verificación
 ```
 
-## 🐳 Installation with Docker (Recommended)
+## 🐳 Instalación con Docker (Recomendado)
 
-The entire ecosystem (Frontend + Backend) can be deployed with a single command. This is the recommended method for production-grade evaluation.
+Todo el ecosistema (Frontend + Backend) puede desplegarse con un solo comando. Este es el método recomendado para evaluación profesional.
 
 ```bash
-# 1. Clone the repository and enter the project folder
+# 1. Entrar a la carpeta del proyecto
 cd soc-tutor-rag-system
 
-# 2. Configure environment variables
-# Ensure your .env file has GEMINI_API_KEY, GROQ_API_KEY, and optionally DEEPSEEK_API_KEY
+# 2. Configurar variables de entorno
+# Asegúrate de que el archivo .env tenga GEMINI_API_KEY, GROQ_API_KEY, y opcionalmente DEEPSEEK_API_KEY
 cp .env.example .env 
 
-# 3. Launch the full stack
+# 3. Levantar todo el stack
 docker compose up -d --build
 ```
 
 - **Frontend (Workstation)**: [http://localhost:3000](http://localhost:3000)
 - **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-## 🛠️ Manual Installation (Standalone)
+## 🛠️ Instalación Manual (Standalone)
 
-## 🧠 Professional AI Engineering
+## 🧠 Decisiones de Diseño "Cloud-Lite"
 
-For a deep dive into the technical reasoning, cost optimizations, and resilience patterns implemented in this project, please consult the:
-
-📜 **[Architectural Decisions & AI Design Log](ARCHITECTURAL_DECISIONS.md)**
-
-1.  **HuggingFace Spaces (Backend)**: Chosen as the hosting provider for the Python engine due to its **16GB RAM free tier**, which is necessary for the RAG index and local embedding models.
-2.  **Next.js 14 (Frontend)**: Utilized the App Router for optimal performance. The decoupled architecture allows the frontend to run on Vercel with zero latency.
-3.  **Framer Motion & Tailwind**: Selected to provide a **"Visceral Impact"** for the academic jury, ensuring the UI feels like a state-of-the-art SOC workstation rather than a simple chat bot.
-4.  **"Manager of Drafts" Multi-Agent Flow**: Uses an asymmetric judge pattern where a secondary LLM (Gemini/Groq/DeepSeek) validates the pedagogical quality of the feedback before it reaches the player.
+Para garantizar que el proyecto sea evaluable sin fricciones y escalable, se eliminaron dependencias de nubes propietarias pesadas, permitiendo que el sistema corra con una latencia mínima y costo cero bajo las capas gratuitas de Gemini 2.5 Flash y Groq, con DeepSeek V4 como red de seguridad de emergencia. El diseño "Standalone" permite validar el motor de feedback de forma autónoma con datos sintéticos de alta fidelidad.
 
 ---
-**Final Specialization Project - SOC Tutor RAG System**
-*English Reasoning, LATAM Heart.*
+**Proyecto Final de Especialización - SOC Tutor RAG System**
+*Razonamiento en Inglés, Corazón en Latam.*

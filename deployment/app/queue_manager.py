@@ -15,7 +15,7 @@ class QueueManager:
     Implementa un sistema de nombres clave estilo anime.
     """
     
-    def __init__(self, max_concurrent: int = 3, heartbeat_timeout: int = 45):
+    def __init__(self, max_concurrent: int = 2, heartbeat_timeout: int = 45):
         self.max_concurrent = max_concurrent
         self.heartbeat_timeout = heartbeat_timeout
         

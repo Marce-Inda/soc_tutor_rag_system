@@ -14,6 +14,7 @@ services:
       - CHROMA_HOST=chromadb
       - LOG_LEVEL=INFO
       - PYTHONHASHSEED=0
+      - PHOENIX_COLLECTOR_ENDPOINT=http://phoenix:4318/v1/traces
     volumes:
       - ./data:/app/data:ro
     # Security Hardening (Principio de Mínimos Permisos)
@@ -41,6 +42,17 @@ services:
       - "8001:8000"
     volumes:
       - ./data/indices:/data
+    restart: unless-stopped
+    networks:
+      - soc-tutor-net
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: soc-tutor-phoenix
+    ports:
+      - "6006:6006" # UI
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
     restart: unless-stopped
     networks:
       - soc-tutor-net

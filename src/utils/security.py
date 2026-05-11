@@ -33,6 +33,33 @@ def sanitize_content(text: Any) -> str:
     
     return sanitized
 
+def mask_pii(text: str) -> str:
+    """
+    Enmascara Información de Identificación Personal (PII) en el texto de salida.
+    (Cumplimiento de Data Leakage / Output Guardrails).
+    """
+    if not isinstance(text, str):
+        return text
+        
+    masked = text
+    # Tarjetas de crédito (16 dígitos)
+    masked = re.sub(r'\b(?:\d[ -]*?){13,16}\b', '[REDACTED_CREDIT_CARD]', masked)
+    
+    # RFC (México) genérico (Letras y números, 12-13 caracteres)
+    # Patrón básico: 3-4 letras, 6 números, 3 alfanuméricos
+    masked = re.sub(r'\b[A-Z&Ñ]{3,4}\d{6}[A-V1-9][A-Z1-9][0-9A-Z]\b', '[REDACTED_RFC]', masked)
+    
+    # Teléfonos genéricos (10 dígitos o más)
+    masked = re.sub(r'\b(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b', '[REDACTED_PHONE]', masked)
+    
+    # Emails - Nota: En un simulador SOC podríamos querer conservar correos de atacantes.
+    # Por seguridad, enmascaramos solo si no es un dominio de ejemplo o test.
+    # masked = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', '[REDACTED_EMAIL]', masked)
+    # Por ahora, dejamos los emails libres por contexto pedagógico (phishing),
+    # pero el control de PII financiero/identidad queda activo.
+    
+    return masked
+
 def truncate_log_data(data: Any, max_events: int = 50) -> Any:
     """
     Trunca listas de eventos o logs para evitar 'Context Bombing'.

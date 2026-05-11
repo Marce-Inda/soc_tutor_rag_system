@@ -1,0 +1,41 @@
+# Control de versiones
+.git/
+.gitignore
+
+# Entornos virtuales y dependencias locales
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Variables de entorno locales
+.env
+.env.*
+
+# Frontend (Se despliega por separado en Vercel)
+frontend/
+
+# Carpetas de desarrollo, pruebas y archivo
+.archive/
+tests/
+logs/
+brainstorm/
+docs/
+agent_harness_lib/
+
+# Scripts de evaluación y demos
+run_evaluation.py
+compare_results.py
+red_hat_attacks.py
+test_*.py
+
+# Cachés y temporales
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/

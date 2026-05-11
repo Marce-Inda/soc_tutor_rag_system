@@ -18,7 +18,7 @@ from ..agents.types import (
     EvaluacionGobernanza, FeedbackPedagogico, ValidacionCalidad, 
     Decision, ContextoEscenario, PlayerProfile
 )
-from ..utils.security import sanitize_content, truncate_log_data
+from ..utils.security import sanitize_content, truncate_log_data, mask_pii
 
 from ..agents.analyst_agent import AnalystAgent
 from ..agents.explainer_agent import ExplainerAgent
@@ -41,7 +41,7 @@ class UEFSOrchestrator:
     """
 
     _active_sessions = {} # session_id: last_activity_timestamp
-    MAX_CONCURRENT_SESSIONS = 3
+    MAX_CONCURRENT_SESSIONS = 2
 
 
     
@@ -299,6 +299,9 @@ class UEFSOrchestrator:
         # 6.5 OUTPUT SECURITY CHECK (L3)
         if not self.guard.validate_output(res.evaluacion):
              return self._get_safe_block_response("Integrity check failed for the generated response.")
+             
+        # 7. OUTPUT SANITIZATION (PII Masking)
+        res.evaluacion = mask_pii(res.evaluacion)
 
         # 8. English-First Delivery: Translate back to user language if necessary
         if player_profile.language != "en":

@@ -31,12 +31,41 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# --- OBSERVABILIDAD JERÁRQUICA (OpenTelemetry + Phoenix) ---
+# Cumpliendo con el estándar de observabilidad de IA: Trazas > Logs > Métricas
+try:
+    from phoenix.otel import register
+    from openinference.instrumentation.langchain import LangChainInstrumentor
+    
+    otel_endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:4318/v1/traces")
+    
+    tracer_provider = register(
+        project_name="soc-tutor-agent",
+        endpoint=otel_endpoint,
+    )
+    LangChainInstrumentor().instrument(
+        tracer_provider=tracer_provider
+    )
+    print(f"✅ Observabilidad OTel activada. Enviando trazas a: {otel_endpoint}")
+except ImportError:
+    print("⚠️ Módulos de Phoenix no instalados. Saltando instrumentación (requiere arize-phoenix).")
+except Exception as e:
+    print(f"⚠️ Error al inicializar OpenTelemetry: {e}")
+# -----------------------------------------------------------
+
 # CORS - Security: Orígenes restringidos (Principio de Mínimos Permisos)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",           # Frontend dev local
     "http://localhost:3001",           # Frontend dev alternativo (recording)
     "http://soc-tutor-frontend:3000",  # Frontend Docker interno
 ]
+
+# Agregar FRONTEND_URL dinámica desde entorno de producción
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    # Permitimos separar múltiples URLs por comas si es necesario
+    for url in frontend_url.split(","):
+        ALLOWED_ORIGINS.append(url.strip())
 
 app.add_middleware(
     CORSMiddleware,

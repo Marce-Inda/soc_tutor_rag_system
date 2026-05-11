@@ -10,25 +10,36 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (layer caching)
-COPY requirements-prod.txt .
+COPY deployment/requirements-prod.txt ./requirements-prod.txt
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
 # Copy application code
 COPY src/ ./src/
-COPY 03_configuracion_de_modelos/ ./03_configuracion_de_modelos/
-COPY 04_integracion_de_herramientas/ ./04_integracion_de_herramientas/
+COPY model_configuration/ ./model_configuration/
+COPY tool_integration/ ./tool_integration/
 COPY data/ ./data/
+COPY data_ingestion/ ./data_ingestion/
 COPY config/ ./config/
+COPY deployment/app/ ./app/
 
 # Create indices directory if not exists
 RUN mkdir -p /app/data/indices
 
-# Expose port
-EXPOSE 8000
+# Security: Crear usuario no-root (Principio de Mínimos Permisos)
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser && \
+    chown -R appuser:appgroup /app
+
+# Expose port (7860 is the default for Hugging Face Spaces)
+EXPOSE 7860
 
 # Environment variables
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV HOME=/tmp
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Security: Ejecutar como usuario no privilegiado
+USER appuser
+
+# Run the application (Binding to 7860 for HF Spaces compatibility)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

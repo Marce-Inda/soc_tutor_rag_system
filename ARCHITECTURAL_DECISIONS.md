@@ -380,6 +380,21 @@ El sistema implementa **4 capas de validación** antes de que cualquier input to
     - `security_opt: no-new-privileges` → impide que cualquier proceso dentro del contenedor escale privilegios.
 - **Rationale de IA**: En un sistema RAG, los vectores de ataque más peligrosos son aquellos que pueden **envenenar la base de conocimiento**. Si un atacante lograra comprometer el orquestador de IA mediante una inyección severa (RCE), se encontrará en un entorno sellado. No puede modificar los archivos base porque el disco es `read_only`, y la manipulación arbitraria de los índices de ChromaDB es imposible ya que la conexión es puramente HTTP a un microservicio aislado. Esto neutraliza el vector más crítico de "Data Poisoning".
 
+### 7.5 — Mitigación de "Las Tres Amenazas" en Agentes (Guardrails)
+En alineación con los estándares de seguridad para LLMs, la arquitectura aborda explícitamente las tres amenazas fundamentales:
+1. **Prompt Injection (Ignorar System Prompt & Acciones Destructivas)**:
+   - **El Cómo**: Implementación del `GuardAgent` (`src/agents/guard_agent.py`) con patrones de inyección (ej. `INJECTION_PATTERNS = [r"ignore previous instructions", r"disregard all prior"]`).
+   - **El Para Qué**: Prevenir que un input malicioso sobreescriba el rol del analista SOC o intente ejecutar comandos destructivos (`rm -rf`, `sudo`).
+   - **El Por Qué**: El principio de "Fallar rápido, fallar barato" dicta que una validación regex inicial de cero costo debe rechazar peticiones envenenadas antes de gastar tokens en el LLM principal. Las acciones verdaderamente destructivas se mitigan físicamente porque el LLM no tiene acceso a una terminal, sino a servidores MCP estrictos.
+2. **Data Leakage (Exfiltrar Contexto & Fugar PII)**:
+   - **El Cómo**: Validación L3 en la salida (`validate_output`) y sanitización de entrada (`sanitize_content`).
+   - **El Para Qué**: Impedir que el agente revele su *System Prompt* interno o filtre datos sensibles si es forzado a "volcar su memoria" (dump context).
+   - **El Por Qué**: Los LLMs son propensos a sufrir *Indirect Prompt Injection* donde repiten información interna. El guardrail de salida intercepta frases como `"System Prompt:"` antes de que lleguen al usuario.
+3. **Tool Abuse & Manipulación de Output**:
+   - **El Cómo**: Aislamiento de herramientas mediante MCP (Model Context Protocol) y sanitización de payloads Markdown (bloqueando `javascript:`).
+   - **El Para Qué**: Evitar que el agente abuse de una herramienta para atacar sistemas internos o devuelva un script XSS al frontend.
+   - **El Por Qué**: En lugar de darle Python genérico o bash al LLM, la arquitectura de Mínimos Permisos restringe el arsenal a comandos tipados (ej. `block_ip(target)`). Si el LLM alucina un abuso, el servidor MCP rechaza el tipo de dato.
+
 ## 8. Evolución a RAG Cognitivo Avanzado: Memoria Multi-sectorial y Enrutamiento Metacognitivo
 
 ### Decisión: Migración de RAG Plano a Arquitectura Inspirada en OpenMemory & PMS 2.0
