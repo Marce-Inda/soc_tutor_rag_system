@@ -122,8 +122,45 @@ docker compose up -d --build
 
 - **Frontend (Workstation)**: [http://localhost:3000](http://localhost:3000)
 - **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Dashboard de Observabilidad (Phoenix)**: [http://localhost:6006](http://localhost:6006)
 
 ## 🛠️ Instalación Manual (Standalone)
+Si prefieres no usar Docker o quieres desarrollar localmente:
+
+1. **Configurar el Backend (Python)**:
+   ```bash
+   # Crear entorno virtual e instalar dependencias
+   python -m venv .venv
+   source .venv/bin/activate  # En Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   
+   # Configurar variables de entorno (Copia .env.example a .env y llena tus APIs)
+   cp .env.example .env
+   
+   # Levantar el servidor FastAPI
+   uvicorn deployment.app.main:app --reload --port 8000
+   ```
+
+2. **Configurar el Frontend (Next.js)**:
+   ```bash
+   cd frontend
+   npm install
+   
+   # Configurar variables de entorno del frontend (asegúrate de que apunte al backend local)
+   cp .env.example .env.local
+   
+   # Levantar el servidor de desarrollo
+   npm run dev
+   ```
+
+## 🎮 Guía de Uso (Cómo jugar)
+Una vez que el sistema esté corriendo (vía Docker o Manual), sigue estos pasos para experimentar la simulación:
+
+1. **Ingreso al SOC**: Abre tu navegador en `http://localhost:3000`. Ingresarás automáticamente a la estación de trabajo (Workstation). Si el servidor está lleno (máximo 2 usuarios), verás una pantalla inmersiva de "Waitlist".
+2. **Revisión de Telemetría**: En el panel central, revisa la alerta inicial (Ej. *Alerta de Phishing* o *Actividad Anómala de Red*). Lee los logs y el contexto del incidente.
+3. **Toma de Decisiones (HITL)**: En el panel de acciones (derecha), selecciona la acción táctica que creas más conveniente (Ej. "Aislar Host", "Bloquear IP", "Analizar Logs").
+4. **Feedback del Tutor IA**: Al ejecutar la acción, la orden viajará al Backend. El Orquestador Multi-Agente analizará tu decisión cruzándola con la documentación oficial (NIST/MITRE) usando RAG.
+5. **Aprendizaje**: Recibirás un reporte detallado en pantalla indicándote si tu decisión fue acertada, qué riesgos implica, y cuál sería la *Best Practice* según los estándares de la industria. ¡Itera y aprende!
 
 ## 🧠 Decisiones de Diseño "Cloud-Lite"
 
