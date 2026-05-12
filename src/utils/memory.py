@@ -50,6 +50,30 @@ class SessionMemory:
         # Guardamos todo de vuelta en el disco duro físico para no perder datos ni por un apagón
         with open(path, 'w') as f:
             json.dump(data, f, default=str, indent=2)
+
+    def save_pending_evaluation(self, session_id: str, analista_data: Dict, gobernanza_data: Dict):
+        """Saves evaluation data for an action that was paused for HITL."""
+        path = self._get_path(session_id)
+        data = self.load_session(session_id)
+        data["pending_hitl"] = {
+            "analista": analista_data,
+            "gobernanza": gobernanza_data,
+            "timestamp": datetime.now().isoformat()
+        }
+        with open(path, 'w') as f:
+            json.dump(data, f, default=str, indent=2)
+
+    def load_pending_evaluation(self, session_id: str) -> Optional[Dict]:
+        """Loads and clears pending HITL data."""
+        path = self._get_path(session_id)
+        data = self.load_session(session_id)
+        pending = data.get("pending_hitl")
+        if pending:
+            # Clear it after loading to avoid re-processing the same confirm
+            del data["pending_hitl"]
+            with open(path, 'w') as f:
+                json.dump(data, f, default=str, indent=2)
+        return pending
             
     def load_session(self, session_id: str) -> Dict[str, Any]:
         """
@@ -88,6 +112,14 @@ class SessionMemory:
                     "last_updated": datetime.now().isoformat()
                 }
             
+    def get_audit_trail(self, session_id: str) -> List[Dict[str, Any]]:
+        """
+        Returns only the snapshots and technical actions for auditing.
+        This enables 'Why did the agent take this decision?' forensics.
+        """
+        data = self.load_session(session_id)
+        return [step for step in data.get("steps", []) if "snapshot" in step or step.get("action") == "JUSTIFICATION"]
+
     def update_artifact_index(self, session_id: str, new_artifacts: List[Any]):
         """Agrega nuevos hallazgos confirmados al índice de artefactos de la sesión."""
         path = self._get_path(session_id)

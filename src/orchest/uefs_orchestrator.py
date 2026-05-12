@@ -7,7 +7,7 @@ Agent coordinator using the Manager of Drafts pattern and bilingual reasoning.
 # Este es el cerebro central del sistema que coordina la comunicación entre los agents.
 
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import re
 import time
 import asyncio
@@ -174,14 +174,22 @@ class UEFSOrchestrator:
             print(f" [Orchest] ⚡ Rate Limit Triggered (Immersive). Speed: {current_time - last_step_time:.2f}s")
             return FeedbackFinal(
                 evaluacion=f"Analista, aguarda un momento. La consola del SOC está procesando una ráfaga de telemetría de {contexto.tipo_incidente}. Dame unos segundos para que los agentes de Gobernanza y Análisis sincronicen sus hallazgos antes de nuestra próxima acción.",
+                explicacion="Espera unos 10 segundos entre acciones para permitir que la IA procese los datos correctamente.",
+                mejor_practica="La velocidad de análisis del SOC está limitada para garantizar profundidad y calidad en cada evaluación.",
+                fuentes_citadas=[],
                 evaluacion_tecnica=EvaluacionTecnica(
-                    score=0, technical_score=0, technical_data=[], verified_artifacts=[]
+                    analysis="Rate limit active", explanation="Immersive cooldown triggered",
+                    best_practice="Wait 10 seconds between actions", sources=[], technical_score=0
                 ),
                 evaluacion_gobernanza=EvaluacionGobernanza(
-                    score=0, risk_level="LOW", compliance_notes="Sincronizando telemetría..."
+                    compliant=True, risks=[], recommendations=["Sincronizando telemetría..."],
+                    frameworks=[], strategic_score=0, ethical_score=0
                 ),
-                recomendaciones=["Espera unos 10 segundos entre acciones para permitir que la IA procese los datos correctamente."],
-                metadata={"immersive_cooldown": True}
+                validacion=ValidacionCalidad(
+                    approved=False, inconsistencies=["Rate limit cooldown"],
+                    quality_score="Cooldown Active", numeric_score=0
+                ),
+                costo_estimado=0.0
             )
 
         # 3. GUARD & MEMORY (Sanitization Layer)
@@ -221,11 +229,39 @@ class UEFSOrchestrator:
         try:
             evaluacion_analista, evaluacion_gobernanza = await asyncio.gather(analista_task, gobernanza_task)
         except Exception as e:
-            print(f" [Orchestrator] ⚠️ Error en agentes: {str(e)}. Usando respuestas de emergencia.")
+            import traceback
+            traceback.print_exc()
+            print(f" [Orchestrator] ⚠️ Error en agentes: {repr(e)}. Usando respuestas de emergencia.")
             evaluacion_analista = self._get_api_error_response().evaluacion_tecnica
             evaluacion_gobernanza = self._get_api_error_response().evaluacion_gobernanza
 
         self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
+        
+        # 4.5 HITL CHECK (Governance Pause)
+        if evaluacion_gobernanza.requires_confirmation:
+            print(f" [Orchestrator] 🚨 ACTION PAUSED BY GOVERNANCE: {evaluacion_gobernanza.confirmation_reason}")
+            
+            # Save state for resumption
+            self.memory.save_pending_evaluation(
+                session_id, 
+                evaluacion_analista.model_dump(), 
+                evaluacion_gobernanza.model_dump()
+            )
+            
+            return FeedbackFinal(
+                evaluacion="PAUSED",
+                explicacion=evaluacion_gobernanza.confirmation_reason,
+                mejor_practica="Please provide a technical or strategic justification for this high-risk action.",
+                fuentes_citadas=[],
+                evaluacion_tecnica=evaluacion_analista,
+                evaluacion_gobernanza=evaluacion_gobernanza,
+                status="paused",
+                requires_hitl=True,
+                hitl_message=evaluacion_gobernanza.confirmation_reason,
+                validacion=ValidacionCalidad(approved=True, quality_score="HITL_PAUSE", numeric_score=0),
+                costo_estimado=self.session_costs[session_id],
+                persona_role="Strategic Governance Monitor"
+            )
         
         # 5. GENERACIÓN Y VALIDACIÓN (Manager of Drafts Loop)
         max_retries = 1
@@ -265,8 +301,7 @@ class UEFSOrchestrator:
                 tracer.add_step(f"retry_draft_{current_retry}", {"inconsistencies": validacion.inconsistencies})
             else:
                 print(" [Orchestrator] Skipping validation as requested.")
-                from src.agents.types import ValidacionCalidad
-                validacion = ValidacionCalidad(approved=True, numeric_score=100)
+                validacion = ValidacionCalidad(approved=True, numeric_score=100, quality_score="Validation skipped")
                 break
 
         # 6. ENSAMBLAJE FINAL
@@ -334,7 +369,12 @@ class UEFSOrchestrator:
         self.memory.save_step(session_id, {
             "decision": decision.model_dump(),
             "timestamp": datetime.now().isoformat(),
-            "summary": res.evaluacion[:200] + "..."
+            "summary": res.evaluacion[:200] + "...",
+            "snapshot": {
+                "tecnico": res.evaluacion_tecnica.model_dump(),
+                "gobernanza": res.evaluacion_gobernanza.model_dump() if res.evaluacion_gobernanza else None,
+                "validacion": res.validacion.model_dump()
+            }
         })
         
         # 10. CONTEXT COMPACTION (ACC - Adaptive Context Compaction)
@@ -469,3 +509,81 @@ FINAL SUMMARY (English, max 200 words):
             k=2
         )
         return res
+
+    async def confirmar_accion(
+        self, 
+        session_id: str, 
+        justificacion: str, 
+        player_profile: Optional[PlayerProfile] = None
+    ) -> FeedbackFinal:
+        """
+        Resumes a paused evaluation after human justification.
+        """
+        print(f" [Orchestrator] Resuming action for session {session_id} with justification...")
+        
+        # 1. Load pending data
+        pending = self.memory.load_pending_evaluation(session_id)
+        if not pending:
+            raise ValueError(f"No pending action found for session {session_id}")
+            
+        eval_analista = EvaluacionTecnica(**pending["analista"])
+        eval_gobernanza = EvaluacionGobernanza(**pending["gobernanza"])
+        
+        # 2. Update context with justification for the Explainer
+        self.memory.save_step(session_id, {
+            "role": "player",
+            "action": "JUSTIFICATION",
+            "content": justificacion
+        })
+        
+        # 3. Retrieve context bundle for the explainer (needed for RAG sources)
+        history = self.memory.load_history(session_id)
+        contexto_full_str = "Resumed after justification: " + justificacion
+        
+        # 4. Generate Pedagogical Feedback (Resuming Draft logic)
+        feedback_explicador = await self.explainer_agent.generar(
+            evaluacion_analista=eval_analista,
+            evaluacion_gobernanza=eval_gobernanza,
+            player_profile=player_profile or PlayerProfile(),
+            contexto_rag=contexto_full_str,
+            memoria_episodica=history,
+            prev_inconsistencies=None
+        )
+        
+        # 5. Final validation and return
+        validacion = await self.validator_agent.validar(
+            evaluacion_analista=eval_analista,
+            feedback_explicador=feedback_explicador,
+            player_profile=player_profile or PlayerProfile(),
+            contexto_rag=contexto_full_str
+        )
+        
+        # Final formatting
+        return self._build_final_feedback(
+            feedback_explicador, 
+            eval_analista, 
+            eval_gobernanza, 
+            validacion, 
+            session_id
+        )
+
+    def _build_final_feedback(self, explainer, analyst, governance, validation, session_id) -> FeedbackFinal:
+        """Helper to create the final response object."""
+        return FeedbackFinal(
+            evaluacion=explainer.analysis,
+            explicacion=explainer.explanation,
+            mejor_practica=explainer.best_practice,
+            fuentes_citadas=explainer.sources,
+            evaluacion_tecnica=analyst,
+            evaluacion_gobernanza=governance,
+            status="success",
+            pedagogical_feedback=explainer,
+            validacion=validation,
+            evaluacion_6d=validation.evaluacion_6d,
+            costo_estimado=self.session_costs.get(session_id, 0.0),
+            persona_role=validation.persona_role or "Senior SOC Analyst"
+        )
+
+    def obtener_auditoria(self, session_id: str) -> List[Dict[str, Any]]:
+        """Recupera el historial de snapshots para auditoría forense."""
+        return self.memory.get_audit_trail(session_id)

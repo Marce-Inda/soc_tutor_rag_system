@@ -17,13 +17,10 @@ from ..agents.types import (
 
 
 class ExplainerAgent:
-
     """
     Explainer Agent: Translates technical evaluation into pedagogical feedback.
     """
 
-
-    
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
         self.rag = rag_client

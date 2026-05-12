@@ -20,14 +20,10 @@ from ..agents.types import (
 
 
 class ValidatorAgent:
-
-
     """
     Validator Agent: Verifies quality and consistency of the final feedback.
     """
 
-
-    
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
         self.rag = rag_client
@@ -99,10 +95,6 @@ class ValidatorAgent:
                 evaluacion_6d=Score6D(**result.get("evaluacion_6d", {})) if result.get("evaluacion_6d") else None,
                 persona_role=ensure_string(result.get("persona_role"))
             )
-
-
-
-            
         except Exception as e:
             print(f"  [Validator] Error: {e}")
             # Fallback: Fail-Closed policy

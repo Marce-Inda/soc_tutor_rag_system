@@ -7,10 +7,10 @@ Internal reasoning is performed in English to optimize token costs and consisten
 # Este agente utiliza el patrón ReAct (Razonamiento + Acción) para investigar incidencias.
 
 
-
 from typing import Dict, Any, List, Optional
 import json
 import re
+import hashlib
 
 from ..agents.types import (
     Decision, 
@@ -22,17 +22,15 @@ from ..utils.observability import tracer
 
 
 class AnalystAgent:
-
     """
     Analyst Agent: Tool-augmented agent for deep technical investigation.
     """
 
-
-    
     def __init__(self, llm_client, rag_client, tools=None):
         self.llm = llm_client
         self.rag = rag_client
-        self.tools = tools # SOCtools instance
+        self.tools = tools  # SOCtools instance
+
     async def evaluar(
         self, 
         decision: Decision, 
@@ -69,7 +67,7 @@ class AnalystAgent:
             memoria_episodica=memoria_episodica if memoria_episodica else "No previous history in this session."
         )
         
-        import hashlib
+        # Loop detection uses hashlib (imported at module level)
         
         # 3. Phase 1: Strategic Thinking (Tool-free deliberation)
         # We ask the LLM to create a plan before using tools
@@ -117,7 +115,7 @@ class AnalystAgent:
                         if action_input.startswith("{") and action_input.endswith("}"):
                             try:
                                 input_to_pass = json.loads(action_input)
-                            except:
+                            except (json.JSONDecodeError, ValueError):
                                 pass
                                 
                         # Usar ainvoke para herramientas asíncronas
@@ -131,7 +129,7 @@ class AnalystAgent:
                                 mcp_results.extend(parsed_obs)
                             else:
                                 mcp_results.append(parsed_obs)
-                        except:
+                        except (json.JSONDecodeError, ValueError, TypeError):
                             pass
                         break
                 
@@ -207,8 +205,6 @@ class AnalystAgent:
             )
 
 
-
-
     async def _simple_eval(self, decision: Decision, contexto: ContextoEscenario, contexto_rag: str, memoria_episodica: str = "") -> EvaluacionTecnica:
         """Simple fallback without tools, using English prompts."""
         contexto_dict = contexto.model_dump()
@@ -219,7 +215,10 @@ class AnalystAgent:
             contexto_rag=contexto_rag
         )
         result = await self.llm.generate_json(prompt)
-        
+
+        # Extract real hashes from RAG context for integrity verification
+        real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
+
         # Sanitize artifacts to avoid Pydantic validation errors from LLM noise
         raw_artifacts = result.get("verified_artifacts", [])
         clean_artifacts = []

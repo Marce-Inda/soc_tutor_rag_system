@@ -121,7 +121,7 @@ docker compose up -d --build
 ```
 
 - **Frontend (Workstation)**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Backend API**: [http://localhost:7860/docs](http://localhost:7860/docs)
 
 ## 🛠️ Manual Installation (Standalone)
 

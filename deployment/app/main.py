@@ -92,6 +92,14 @@ class FeedbackResponse(BaseModel):
     evaluacion_gobernanza: Optional[Dict[str, Any]] = None
     aprobado: bool
     costo_estimado: float
+    status: str = "success"
+    requires_hitl: bool = False
+    hitl_message: Optional[str] = None
+
+class ConfirmationRequest(BaseModel):
+    session_id: str
+    justificacion: str
+    player_profile: Optional[PlayerProfile] = None
 
 
 class HealthResponse(BaseModel):
@@ -201,8 +209,7 @@ async def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
         feedback = await orchestrator.generar_feedback(
             decision=request.decision,
             contexto=request.contexto,
-            player_profile=request.player_profile,
-            session_id=user_id
+            player_profile=request.player_profile
         )
         
         # Expulsión forzada de jugadores zombies
@@ -224,7 +231,10 @@ async def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
             persona_role=feedback.persona_role if hasattr(feedback, 'persona_role') and feedback.persona_role else "SISTEMA MENTOR",
             evaluacion_gobernanza=gov_eval,
             aprobado=feedback.validacion.approved if feedback.validacion else True,
-            costo_estimado=feedback.costo_estimado
+            costo_estimado=feedback.costo_estimado,
+            status=feedback.status,
+            requires_hitl=feedback.requires_hitl,
+            hitl_message=feedback.hitl_message
         )
         
     except RuntimeError as e:
@@ -233,6 +243,48 @@ async def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
         import traceback
         print(f"Error en feedback endpoint: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@app.post("/confirm", response_model=FeedbackResponse)
+async def confirmar_accion(request: ConfirmationRequest, user_id: str = "guest"):
+    """Reanuda una evaluación pausada por HITL tras la justificación del jugador."""
+    try:
+        orchestrator = get_orchestrator()
+        feedback = await orchestrator.confirmar_accion(
+            session_id=request.session_id,
+            justificacion=request.justificacion,
+            player_profile=request.player_profile
+        )
+        
+        gov_eval = feedback.evaluacion_gobernanza.model_dump() if feedback.evaluacion_gobernanza else None
+        
+        return FeedbackResponse(
+            evaluacion=feedback.evaluacion,
+            explicacion=feedback.explicacion,
+            mejor_practica=feedback.mejor_practica,
+            fuentes_citadas=feedback.fuentes_citadas,
+            score_tecnico=feedback.evaluacion_tecnica.technical_score if feedback.evaluacion_tecnica else 0,
+            persona_role=feedback.persona_role or "Gobernanza Confirmada",
+            evaluacion_gobernanza=gov_eval,
+            aprobado=True,
+            costo_estimado=feedback.costo_estimado,
+            status="success",
+            requires_hitl=False
+        )
+    except Exception as e:
+        print(f"Error en confirm endpoint: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/audit/{user_id}")
+async def audit_session(user_id: str):
+    """Devuelve el historial técnico completo de la sesión para auditoría forense."""
+    try:
+        orchestrator = get_orchestrator()
+        audit_trail = orchestrator.obtener_auditoria(user_id)
+        return {"session_id": user_id, "audit_trail": audit_trail}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Sesión no encontrada o error: {str(e)}")
 
 
 @app.get("/stats")
@@ -250,4 +302,4 @@ def stats():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "7860")))

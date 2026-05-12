@@ -10,6 +10,7 @@ import os
 import json
 from typing import Optional, Dict, Any
 from pathlib import Path
+from dotenv import load_dotenv
 from .token_counter import TokenCounter
 
 # Intentamos importar LangChain. LangChain es una librería externa súper útil que 
@@ -59,17 +60,27 @@ class LLMClient:
         if not LANGCHAIN_AVAILABLE:
             raise RuntimeError("LangChain no disponible. Requisito indispensable.")
         
+        # 1. CARGA DE ENTORNO (Prioridad Absoluta al archivo .env)
+        load_dotenv(override=True)
+        
         # Conexión con IA de Google (Gemini)
         if self.provider == "gemini":
+            # 2. LIMPIEZA DE CONFLICTOS
+            # Forzamos que LangChain no use variables de entorno del sistema que puedan estar corruptas
+            os.environ.pop("GOOGLE_API_KEY", None)
+            
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("La llave maestra (GEMINI_API_KEY) no fue encontrada. No podemos conectarnos a Google.")
+                api_key = os.getenv("GOOGLE_API_KEY")
+            
+            if not api_key:
+                raise ValueError("No se encontró GEMINI_API_KEY o GOOGLE_API_KEY en el .env")
             
             self._client = ChatGoogleGenerativeAI(
-                model=self.model or "gemini-1.5-flash",
+                model=self.model or "gemini-2.5-flash",
                 temperature=self.temperature,
                 google_api_key=api_key,
-                timeout=15.0 # Timeout global de seguridad
+                timeout=15.0 
             )
         
         # Conexión con IA súper rápida (Groq)

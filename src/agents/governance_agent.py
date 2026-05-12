@@ -11,13 +11,10 @@ from .types import EvaluacionGobernanza, Decision, ContextoEscenario
 from ..utils.observability import tracer
 
 class GovernanceAgent:
-
-
     """
     Agent that evaluates regulatory compliance (GDPR, local laws) and ethics.
     """
 
-    
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
         self.rag = rag_client

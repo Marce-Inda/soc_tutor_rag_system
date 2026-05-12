@@ -58,6 +58,10 @@ Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de pr
 2.  **Caché Semántico Universal**: Implementamos una capa de caché que normaliza las intenciones del jugador al inglés antes de realizar el *matching*. Esto permite que una misma respuesta de IA sirva para jugadores en español, portugués e inglés, aumentando drásticamente el *hit rate* y reduciendo costos de LLM.
 3.  **RAG Híbrido con Capa de Traducción**: El sistema traduce automáticamente las consultas técnicas del jugador al inglés para buscar en las fuentes originales de mayor fidelidad, combinando búsqueda semántica con búsqueda exacta de IDs técnicos (IPs, Tácticas MITRE).
 4.  **Entrega Multilingüe Adaptativa**: El **Explainer Agent** traduce el análisis técnico a un lenguaje pedagógico en el idioma preferido del usuario (ES, PT, EN), ajustando el tono según su nivel de experiencia.
+5.  **Universal Full-State Checkpointing**: Implementación de un sistema de persistencia que realiza un snapshot completo del estado mental del agente (técnico, legal y pedagógico) en cada paso. Esto garantiza la resiliencia ante caídas del servidor y permite auditorías post-incidente con fidelidad absoluta.
+6.  **Human-in-the-Loop (HITL) Estratégico**: Protocolo de pausa y justificación para decisiones de alto riesgo. El sistema detecta acciones irreversibles y requiere la confirmación explícita del usuario, integrando su justificación en el razonamiento final de la IA.
+7.  **Stateful Orchestration (Thread Management)**: Aunque el sistema es agnóstico a librerías de grafos pesadas, implementa de forma nativa el concepto de **Thread-based Persistence**. Cada `session_id` actúa como un `thread_id` único que recupera el contexto, snapshots de agentes y estados de pausa, permitiendo una experiencia de "partida guardada" (Checkpointing) idéntica a los estándares de LangGraph pero con el control total de una implementación a medida.
+8.  **Forensic Auditing & State Inspection**: El sistema expone una API de auditoría (`/audit/{session_id}`) que permite inspeccionar el historial completo de los estados internos de la IA. Esto cumple con los requisitos de **Explainable AI (XAI)** y cumplimiento (Compliance) para sectores críticos, permitiendo responder a la pregunta: *"¿Por qué el agente tomó esta decisión?"* mediante el análisis de snapshots técnicos y legales persistidos.
 
 
 
@@ -72,8 +76,10 @@ Este sistema ha evolucionado de un MAS básico a una arquitectura de grado de pr
 - **Gobernanza e IA Responsable**: Nuevo sistema de **Etiquetado de Certeza** para hallazgos técnicos. Cada hecho en el *Ground Truth* incluye su nivel de confianza (0-100%) y fuente, mejorando la transparencia pedagógica.
 - **Escudo Inmersivo (Narrative Rate Limiting)**: Sistema de protección de cuota de API que utiliza la narrativa del juego para gestionar la velocidad de interacción del usuario.
 - **Integridad de Contenido (Red Hat v2)**: Implementación de una capa de sanitización que filtra inyecciones de prompt indirectas y protege contra el "envenenamiento" de datos técnicos o del RAG.
-- **Gestión de Concurrencia**: Sistema de cola optimizado para **3 usuarios simultáneos**, garantizando la estabilidad durante la demo final.
+- **Gestión de Concurrencia**: Sistema de cola optimizado para **2 usuarios simultáneos**, garantizando la estabilidad durante la demo final.
 - **Suite de Evaluación de 5 Niveles (Pro-Grade)**: Implementación de un pipeline de testing profesional que va más allá de la validación estructural, midiendo cobertura semántica (Keyword Match), consistencia de herramientas (Tool Match) y análisis de regresión automática contra líneas base (Baselines) para prevenir degradación silenciosa del modelo.
+- **Protocolo HITL y Justificación Estratégica**: Implementación de un sistema de "Pausa de Gobernanza" para acciones de alto impacto, obligando al usuario a pensar estratégicamente antes de ejecutar comandos críticos.
+- **Resiliencia de Producción (KeyError & API Fixes)**: Corrección de bugs críticos de formateo en el Agente Analista y hardening del sistema de resolución de API Keys (Prioridad de .env sobre entorno de sistema) para garantizar el despliegue estable en Hugging Face Spaces.
 
 ## 🛠️ Tecnologías Core
 
@@ -121,7 +127,7 @@ docker compose up -d --build
 ```
 
 - **Frontend (Workstation)**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Backend API**: [http://localhost:7860/docs](http://localhost:7860/docs)
 - **Dashboard de Observabilidad (Phoenix)**: [http://localhost:6006](http://localhost:6006)
 
 ## 🛠️ Instalación Manual (Standalone)
@@ -138,7 +144,7 @@ Si prefieres no usar Docker o quieres desarrollar localmente:
    cp .env.example .env
    
    # Levantar el servidor FastAPI
-   uvicorn deployment.app.main:app --reload --port 8000
+   uvicorn deployment.app.main:app --reload --port 7860
    ```
 
 2. **Configurar el Frontend (Next.js)**:

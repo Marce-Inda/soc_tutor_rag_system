@@ -95,8 +95,10 @@ class EvaluacionGobernanza(BaseModel):
     risks: List[str] = Field(default_factory=list, description="Legal or ethical risks identified")
     recommendations: List[str] = Field(default_factory=list, description="Governance best practices")
     frameworks: List[str] = Field(default_factory=list, description="GDPR, Ley 25.326, etc.")
-    strategic_score: int = Field(0, description="Business impact (0-100)")
-    ethical_score: int = Field(0, description="Legal/Ethical risk (0-100)")
+    strategic_score: int = Field(default=100)
+    ethical_score: int = Field(default=100)
+    requires_confirmation: bool = Field(default=False, description="True if the action is too risky and needs human justification before execution")
+    confirmation_reason: Optional[str] = Field(default=None, description="The reason why this action was paused")
 
 
 class FeedbackPedagogico(BaseModel):
@@ -138,6 +140,10 @@ class FeedbackFinal(BaseModel):
     fuentes_citadas: List[str]
     evaluacion_tecnica: EvaluacionTecnica
     evaluacion_gobernanza: Optional[EvaluacionGobernanza] = None
+    status: str = Field(default="success", description="success, paused, or error")
+    requires_hitl: bool = Field(default=False)
+    hitl_message: Optional[str] = None
+    pedagogical_feedback: Optional[FeedbackPedagogico] = None
     evaluacion_6d: Optional[Score6D] = None
     validacion: ValidacionCalidad
     costo_estimado: float = Field(..., description="Estimated cost in USD")

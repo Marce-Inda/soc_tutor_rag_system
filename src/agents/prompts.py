@@ -55,11 +55,11 @@ REMEMBER: The final answer MUST be a valid JSON following this schema:
   "resilience_score": 0-100,
   "forensic_notes": "compliance with ISO 27037 if applicable",
   "verified_artifacts": [
-    {
+    {{
       "fact": "technical fact (e.g., 'IP 1.2.3.4 is malicous')",
       "certainty": 0-100,
       "source": "tool/inference/rag"
-    }
+    }}
   ]
 }}
 
@@ -159,6 +159,7 @@ INSTRUCTIONS:
 2. Evaluate the decision against privacy principles (Transparency, Purpose Limitation, Data Minimization).
 3. If an action involves ignoring regulatory notifications or containing the threat without forensic isolation, report it as a CRITICAL compliance/strategic risk.
 4. Issue a brief but firm CISO-style directive in the recommendations.
+5. **HITL TRIGGER**: Set "requires_confirmation" to true ONLY if the action has irreversible business impact (e.g., shutting down production databases, mass blocking of legitimate users, or wiping systems without backup). Provide the reason in "confirmation_reason".
 
 OUTPUT FORMAT:
 Return a JSON with:
@@ -168,7 +169,9 @@ Return a JSON with:
   "recommendations": ["best practices"],
   "frameworks": ["laws cited"],
   "strategic_score": 0-100,
-  "ethical_score": 0-100
+  "ethical_score": 0-100,
+  "requires_confirmation": boolean,
+  "confirmation_reason": "Technical/Strategic justification request if requires_confirmation is true"
 }}
 """ + SYSTEM_PROMPT_DEFENSE
 
