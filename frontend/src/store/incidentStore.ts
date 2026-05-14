@@ -40,6 +40,10 @@ export interface MentorFeedback {
   fuentes_citadas: string[];
   technical_score: number;
   persona_role: string;
+  costo_estimado?: number;
+  total_tokens?: number;
+  latencia_ms?: number;
+  rag_precision?: number;
   evaluacion_gobernanza?: EvaluacionGobernanza;
   evaluacion_6d?: Score6D;
   validacion?: ValidacionCalidad;

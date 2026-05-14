@@ -19,6 +19,7 @@ try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_groq import ChatGroq
     from langchain_ollama import ChatOllama
+    from langchain_nvidia_ai_endpoints import ChatNVIDIA
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
@@ -119,6 +120,19 @@ class LLMClient:
                 timeout=20.0  # DeepSeek puede tener mayor latencia desde Latinoamérica
             )
 
+        # Conexión con NVIDIA NIM (API Catalog)
+        elif self.provider == "nvidia":
+            api_key = os.getenv("NVIDIA_API_KEY")
+            if not api_key:
+                raise ValueError("La llave NVIDIA_API_KEY no fue encontrada en el .env")
+            
+            self._client = ChatNVIDIA(
+                model=self.model or "meta/llama-3.3-70b-instruct",
+                temperature=self.temperature,
+                nvidia_api_key=api_key,
+                timeout=30.0
+            )
+
         # Conexión con IA local que corre en nuestra computadora (Ollama)
         elif self.provider == "ollama":
             self._client = ChatOllama(
@@ -160,6 +174,13 @@ class LLMClient:
                 api_key=os.getenv("DEEPSEEK_API_KEY"),
                 base_url="https://api.deepseek.com/v1",
                 timeout=20.0
+            )
+        elif provider == "nvidia":
+            return ChatNVIDIA(
+                model=model,
+                temperature=self.temperature,
+                nvidia_api_key=os.getenv("NVIDIA_API_KEY"),
+                timeout=30.0
             )
         else:
             raise ValueError(f"No se puede crear fallback para provider desconocido: {provider}")

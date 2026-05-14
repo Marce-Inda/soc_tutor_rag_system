@@ -45,3 +45,7 @@ Thumbs.db
 # Documentation / Large binaries (optional, keeping as reminders)
 # *.pdf
 # *.docx
+
+# Multimedia / Recordings (Local Only)
+docs/eval_videos/
+

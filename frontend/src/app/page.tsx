@@ -97,17 +97,25 @@ export default function WorkstationPage() {
     }
   }, [logs]);
 
-  // 3. TEMPORIZADOR DE INACTIVIDAD (MÚSICA)
+  // 3. TEMPORIZADOR DE INACTIVIDAD (SISTEMA DE GUÍA Y AUTO-CIERRE)
   useEffect(() => {
     const checkIdle = setInterval(() => {
       const idleTime = Date.now() - lastActionTime;
+      
       if (idleTime > 60000) { // 60 Segundos
         musicManager.deescalate();
+      }
+
+      // AUTO-FINALIZACIÓN: Si el juez no interactúa en 2 min, cerramos con el reporte final
+      if (idleTime > 120000 && !isCompleted && !isAnalyzing) {
+        addLog("ALERTA: Detectada inactividad prolongada del analista.", "warning");
+        addLog("PROCEDIMIENTO: Generando reporte de estado actual y cerrando sesión...", "info");
+        completeIncident();
       }
     }, 5000);
 
     return () => clearInterval(checkIdle);
-  }, [lastActionTime]);
+  }, [lastActionTime, isCompleted, isAnalyzing, completeIncident, addLog]);
 
   // 3. GENERADOR DE RUIDO SIEM (BACKGROUND LOGS)
   useEffect(() => {
@@ -339,32 +347,36 @@ export default function WorkstationPage() {
                         Consultar Métricas de IA
                       </button>
                     )}
-                 </div>
+                  </div>
 
-                 {showTechnicalReport && (
-                   <motion.div 
-                     initial={{ opacity: 0, height: 0 }}
-                     animate={{ opacity: 1, height: 'auto' }}
-                     className="mt-4 p-6 rounded-2xl bg-black/40 border border-card-border font-mono text-[10px] space-y-4"
-                   >
-                      <div className="flex justify-between border-b border-card-border pb-2 opacity-50 uppercase font-black">
-                         <span>Métrica del Sistema</span>
-                         <span>Valor / Operación</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                         <span className="text-muted">Orquestación Multiagente</span>
-                         <span className="text-success">[OK] 4 Agentes en Paralelo</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                         <span className="text-muted">RAG Retrieval Precision (ChromaDB)</span>
-                         <span className="text-primary">853 Docs Indexados / 0.892 Cosine Sim</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                         <span className="text-muted">Latencia de Inferencia (Groq/Llama3)</span>
-                         <span className="text-secondary">avg 1.2s / total 45 tokens/sec</span>
-                      </div>
-                   </motion.div>
-                 )}
+                  {showTechnicalReport && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-8 p-8 mx-4 mb-6 rounded-2xl bg-black/60 border border-card-border font-mono text-sm space-y-6 shadow-2xl"
+                    >
+                       <div className="flex justify-between border-b border-card-border pb-3 opacity-50 uppercase font-black text-xs tracking-widest">
+                          <span>Métrica del Sistema</span>
+                          <span>Valor / Operación</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                           <span className="text-muted uppercase tracking-wider">Gasto de IA (Costo)</span>
+                           <span className="text-success font-bold">${currentFeedback?.costo_estimado?.toFixed(4) || "0.0000"} USD</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                           <span className="text-muted uppercase tracking-wider">Uso de Tokens (Sesión)</span>
+                           <span className="text-primary font-bold">{currentFeedback?.total_tokens || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                           <span className="text-muted uppercase tracking-wider">Precisión RAG</span>
+                           <span className="text-primary font-bold">{(currentFeedback?.rag_precision || 0).toFixed(3)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                           <span className="text-muted uppercase tracking-wider">Latencia IA</span>
+                           <span className="text-secondary font-bold">{currentFeedback?.latencia_ms ? `${(currentFeedback.latencia_ms / 1000).toFixed(2)}s` : "0.00s"}</span>
+                       </div>
+                    </motion.div>
+                  )}
               </div>
             </motion.div>
           </motion.div>
@@ -421,6 +433,7 @@ export default function WorkstationPage() {
                 risk="Bajo" 
                 onClick={() => handleAction('NetScan', 'network_scan', 'Bajo')}
                 disabled={isAnalyzing || isCompleted}
+                pulse={Date.now() - lastActionTime > 15000 && logs.length < 15}
               />
               <ToolButton 
                 icon={<Database size={16}/>} 
@@ -429,6 +442,7 @@ export default function WorkstationPage() {
                 risk="Bajo" 
                 onClick={() => handleAction('Log Analyzer', 'analyze_logs', 'Bajo')}
                 disabled={isAnalyzing || isCompleted}
+                pulse={Date.now() - lastActionTime > 15000 && logs.length < 15}
               />
             </div>
           </div>
@@ -862,14 +876,32 @@ export default function WorkstationPage() {
   );
 }
 
-function ToolButton({ icon, label, category, risk, onClick, disabled }: { icon: React.ReactNode, label: string, category: string, risk: string, onClick: () => void, disabled?: boolean }) {
+function ToolButton({ icon, label, category, risk, onClick, disabled, pulse }: { icon: React.ReactNode, label: string, category: string, risk: string, onClick: () => void, disabled?: boolean, pulse?: boolean }) {
   const riskColor = risk === 'Alto' ? 'text-danger' : risk === 'Medio' ? 'text-secondary' : 'text-success';
   const riskGlow = risk === 'Alto' ? 'hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]' : risk === 'Medio' ? 'hover:shadow-[0_0_15px_rgba(251,191,36,0.2)]' : 'hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]';
 
   return (
-    <button 
+    <motion.button 
       onClick={onClick}
       disabled={disabled}
+      animate={pulse && !disabled ? { 
+        boxShadow: [
+          "0 0 0px rgba(34,211,238,0)", 
+          "0 0 20px rgba(34,211,238,0.4)", 
+          "0 0 0px rgba(34,211,238,0)"
+        ],
+        borderColor: [
+          "rgba(255,255,255,0.1)",
+          "rgba(34,211,238,0.6)",
+          "rgba(255,255,255,0.1)"
+        ],
+        scale: [1, 1.02, 1]
+      } : {}}
+      transition={pulse ? { 
+        repeat: Infinity, 
+        duration: 2,
+        ease: "easeInOut"
+      } : {}}
       className={`
         flex items-center gap-4 px-4 py-3 rounded-lg border border-card-border bg-background/40
         hover:bg-primary/5 hover:border-primary/40 transition-all text-left group relative overflow-hidden
@@ -893,7 +925,7 @@ function ToolButton({ icon, label, category, risk, onClick, disabled }: { icon: 
       <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
          <span className="text-primary text-[8px] font-bold">EJECUTAR {'>'}</span>
       </div>
-    </button>
+    </motion.button>
   );
 }
 

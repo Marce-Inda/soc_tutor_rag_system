@@ -147,6 +147,9 @@ class FeedbackFinal(BaseModel):
     evaluacion_6d: Optional[Score6D] = None
     validacion: ValidacionCalidad
     costo_estimado: float = Field(..., description="Estimated cost in USD")
+    total_tokens: int = Field(default=0, description="Cumulative tokens used in session")
+    latencia_ms: float = Field(default=0.0, description="Inference latency of current turn in ms")
+    rag_precision: float = Field(default=0.0, description="Average similarity score of RAG retrieval")
     persona_role: str = Field(default="Senior Analyst", description="Character role narrating the feedback")
 
 

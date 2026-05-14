@@ -8,11 +8,12 @@ class QueueStatus(BaseModel):
     position: int
     codename: str
     is_ready: bool
+    queue_list: List[str] = [] # Codenames of everyone in the queue
 
 class QueueManager:
     """
     Gestiona la concurrencia de usuarios y la lista de espera.
-    Implementa un sistema de nombres clave estilo anime.
+    Implementa un sistema de nombres clave estilo anime y un modo DEMO para defensa.
     """
     
     def __init__(self, max_concurrent: int = 2, heartbeat_timeout: int = 45):
@@ -30,6 +31,13 @@ class QueueManager:
         # user_id -> codename
         self.codenames: Dict[str, str] = {}
         
+        # --- LÓGICA DE SIMULACIÓN (MODO DEFENSA) ---
+        self.demo_mode = True # Forzar modo demo para la evaluación
+        self.dummy_prefix = "phantom_"
+        self.dummy_last_progression = time.time()
+        self.progression_interval = 2.0 # Segundos entre cada salida de la cola
+        # -------------------------------------------
+
         self.max_session_duration = 30 * 60  # 30 minutos máximo por sesión
         
         self.anime_prefixes = [
@@ -50,15 +58,30 @@ class QueueManager:
         return self.codenames[user_id]
 
     def _cleanup_stale_users(self):
-        """Elimina usuarios que no han enviado heartbeat."""
+        """Elimina usuarios que no han enviado heartbeat y gestiona la progresión demo."""
         now = time.time()
         
-        # Limpiar usuarios activos (por inactividad O por tiempo máximo excedido)
-        stale_active = [uid for uid, last in self.active_users.items() if now - last > self.heartbeat_timeout]
+        # --- LÓGICA DE PROGRESIÓN DEMO ---
+        if self.demo_mode and now - self.dummy_last_progression > self.progression_interval:
+            # Si hay dummies activos, sacar uno para hacer espacio
+            dummies_activos = [uid for uid in self.active_users if uid.startswith(self.dummy_prefix)]
+            if dummies_activos:
+                target = dummies_activos[0]
+                del self.active_users[target]
+                if target in self.session_starts: del self.session_starts[target]
+                print(f"[Demo] Phantom Analyst {target} ha liberado el SOC.")
+            
+            # También limpiar dummies de la cola si no hay espacio pero queremos que se mueva
+            # El get_user_status se encargará de promocionarlos
+            self.dummy_last_progression = now
+        # ---------------------------------
+
+        # Limpiar usuarios reales activos (por inactividad O por tiempo máximo excedido)
+        stale_active = [uid for uid, last in self.active_users.items() if not uid.startswith(self.dummy_prefix) and now - last > self.heartbeat_timeout]
         expired_sessions = [uid for uid, start in self.session_starts.items() if uid in self.active_users and now - start > self.max_session_duration]
         
         for uid in set(stale_active + expired_sessions):
-            print(f"[Queue] Usuario expulsado (inactivo/expirado): {uid}")
+            print(f"[Queue] Usuario real expulsado (inactivo/expirado): {uid}")
             if uid in self.active_users:
                 del self.active_users[uid]
             if uid in self.session_starts:
@@ -66,10 +89,10 @@ class QueueManager:
             if uid in self.codenames:
                 del self.codenames[uid]
             
-        # Limpiar cola de espera
-        stale_waiting = [uid for uid, last in self.waiting_heartbeats.items() if now - last > self.heartbeat_timeout]
+        # Limpiar cola de espera (solo reales)
+        stale_waiting = [uid for uid, last in self.waiting_heartbeats.items() if not uid.startswith(self.dummy_prefix) and now - last > self.heartbeat_timeout]
         for uid in stale_waiting:
-            print(f"[Queue] Usuario en espera expirado: {uid}")
+            print(f"[Queue] Usuario en espera real expirado: {uid}")
             if uid in self.waiting_queue:
                 self.waiting_queue.remove(uid)
             if uid in self.waiting_heartbeats:
@@ -91,17 +114,34 @@ class QueueManager:
         now = time.time()
         codename = self._generate_codename(user_id)
 
+        # --- INYECCIÓN DE DUMMIES PARA MODO DEMO ---
+        if self.demo_mode and not self.active_users and not self.waiting_queue:
+            print("[Demo] Inicializando escenario de simulación para defensa...")
+            # Llenar el SOC con 2 dummies
+            for i in range(2):
+                d_id = f"{self.dummy_prefix}active_{i}"
+                self.active_users[d_id] = now
+                self.session_starts[d_id] = now
+                self._generate_codename(d_id)
+            # Llenar la cola con 2 dummies (el usuario será el 3ro en cola, 5to total)
+            for i in range(2):
+                d_id = f"{self.dummy_prefix}waiting_{i}"
+                self.waiting_queue.append(d_id)
+                self.waiting_heartbeats[d_id] = now
+                self._generate_codename(d_id)
+        # -------------------------------------------
+
         # 1. Ya es activo
         if user_id in self.active_users:
             self.active_users[user_id] = now
-            return QueueStatus(status="ACTIVE", position=0, codename=codename, is_ready=True)
+            return QueueStatus(status="ACTIVE", position=0, codename=codename, is_ready=True, queue_list=[])
 
         # 2. Hay espacio y no estaba activo
         if len(self.active_users) < self.max_concurrent and user_id not in self.waiting_queue:
             self.active_users[user_id] = now
             if user_id not in self.session_starts:
                 self.session_starts[user_id] = now
-            return QueueStatus(status="ACTIVE", position=0, codename=codename, is_ready=True)
+            return QueueStatus(status="ACTIVE", position=0, codename=codename, is_ready=True, queue_list=[])
 
         # 3. Debe ir a la cola o ya está en ella
         if user_id not in self.waiting_queue:
@@ -110,7 +150,10 @@ class QueueManager:
         self.waiting_heartbeats[user_id] = now
         pos = self.waiting_queue.index(user_id) + 1
         
-        return QueueStatus(status="WAITING", position=pos, codename=codename, is_ready=False)
+        # Obtener lista de codenames en la cola
+        q_list = [self.codenames.get(uid, "UNKNOWN") for uid in self.waiting_queue]
+        
+        return QueueStatus(status="WAITING", position=pos, codename=codename, is_ready=False, queue_list=q_list)
 
     def heartbeat(self, user_id: str):
         """Actualiza el tiempo de actividad del usuario."""

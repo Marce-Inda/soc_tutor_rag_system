@@ -7,6 +7,7 @@ Validator Agent - Quality verification and translation for SOC Tutor feedback.
 
 
 
+import re
 from typing import Dict, Any
 
 from ..agents.types import (
@@ -27,6 +28,13 @@ class ValidatorAgent:
     def __init__(self, llm_client, rag_client):
         self.llm = llm_client
         self.rag = rag_client
+
+    @staticmethod
+    def _ensure_string(val: Any) -> str:
+        """Converts any value to a safe string for Pydantic fields."""
+        if isinstance(val, (dict, list)):
+            return str(val)
+        return str(val) if val is not None else ""
     
     async def validar(
         self,
@@ -38,7 +46,6 @@ class ValidatorAgent:
         """Validates the generated feedback with integrity checks."""
         
         # 0. INTEGRITY CHECK: Cross-reference hashes (Strict Integrity Mode)
-        import re
         valid_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
         integrity_warnings = []
         mismatches = 0
@@ -80,20 +87,16 @@ class ValidatorAgent:
                 quality_score = f"{quality_score} [INTEGRITY PENALTY: -{mismatches} hash mismatches]"
                 print(f"  [Validator] 🔴 Integrity penalty applied: {mismatches}/{total_hashes} hashes unverified. Score -20.")
 
-            # Sanitize outputs
-            def ensure_string(val: Any) -> str:
-                if isinstance(val, (dict, list)):
-                    return str(val)
-                return str(val) if val is not None else ""
+
 
             return ValidacionCalidad(
                 approved=approved,
                 inconsistencies=inconsistencies,
-                correction=ensure_string(result.get("correction", result.get("correccion"))),
-                quality_score=ensure_string(quality_score),
+                correction=self._ensure_string(result.get("correction", result.get("correccion"))),
+                quality_score=self._ensure_string(quality_score),
                 numeric_score=numeric_score,
                 evaluacion_6d=Score6D(**result.get("evaluacion_6d", {})) if result.get("evaluacion_6d") else None,
-                persona_role=ensure_string(result.get("persona_role"))
+                persona_role=self._ensure_string(result.get("persona_role"))
             )
         except Exception as e:
             print(f"  [Validator] Error: {e}")

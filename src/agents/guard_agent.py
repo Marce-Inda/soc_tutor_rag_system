@@ -26,7 +26,12 @@ class GuardAgent:
             r"dan mode",
             r"forget everything",
             r"sudo ",
-            r"rm -rf"
+            r"rm -rf",
+            # Patrones ofuscados (Ej: P-r-o-m-p-t)
+            r"p[-. ]?r[-. ]?o[-. ]?m[-. ]?p[-. ]?t",
+            r"i[-. ]?g[-. ]?n[-. ]?o[-. ]?r[-. ]?e",
+            r"s[-. ]?y[-. ]?s[-. ]?t[-. ]?e[-. ]?m",
+            r"d[-. ]?u[-. ]?m[-. ]?p"
         ]
 
     async def validate_input(self, decision: Decision) -> Tuple[bool, str]:
@@ -74,7 +79,8 @@ Return ONLY a JSON following this schema:
                 return False, f"Security Alert (L2): {response.get('reason', 'Malicious intent detected')}"
         except Exception as e:
             # En caso de error de la API, FALLAMOS CERRADO (Fail-Closed)
-            # Retornamos un código específico para que el orquestador sepa que fue un error técnico y no un ataque.
+            # Logueamos el error real internamente para depuración, pero retornamos un código genérico al usuario.
+            print(f"  [Guard] ⚠️ L2 Semantic Validation failed (Fail-Closed): {type(e).__name__}: {e}")
             return False, "L2_API_ERROR"
             
         return True, ""

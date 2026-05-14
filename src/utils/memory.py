@@ -8,6 +8,7 @@ cada paso, decisión y acción del jugador durante la sesión actual (o partida 
 
 import os
 import json
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -21,7 +22,7 @@ class SessionMemory:
             base_dir = Path(__file__).parent.parent.parent
             storage_dir = str(base_dir / "data" / "sessions")
         
-        self.storage_dir = storage_dir
+        self.storage_dir = os.path.abspath(storage_dir)
         # Aseguramos que la carpeta digital exista en la computadora. Si no existe aún, ¡la crea sola!
         os.makedirs(self.storage_dir, exist_ok=True)
     
@@ -45,6 +46,14 @@ class SessionMemory:
             
         # Anexamos (append) este nuevo paso a la gran lista y actualizamos el récord general de modificación
         data["steps"].append(step_data)
+        
+        # PERSISTENCIA FORENSE: Si el paso contiene un snapshot o es una justificación, 
+        # lo guardamos también en la bitácora inmutable de auditoría.
+        if "snapshot" in step_data or step_data.get("action") == "JUSTIFICATION":
+            if "audit_log" not in data:
+                data["audit_log"] = []
+            data["audit_log"].append(step_data)
+
         data["last_updated"] = datetime.now().isoformat()
         
         # Guardamos todo de vuelta en el disco duro físico para no perder datos ni por un apagón
@@ -86,9 +95,10 @@ class SessionMemory:
             return {
                 "session_id": session_id,
                 "created_at": datetime.now().isoformat(),
-                "steps": [], # Vacío
+                "steps": [], # Memoria de corto plazo (compactable)
+                "audit_log": [], # Bitácora forense (inmutable)
                 "artifact_index": [],
-                "history_summary": "", # New: Summary of old turns
+                "history_summary": "", 
                 "last_updated": datetime.now().isoformat()
             }
             
@@ -98,10 +108,12 @@ class SessionMemory:
                 data = json.load(f)
                 if "artifact_index" not in data:
                     data["artifact_index"] = []
+                if "audit_log" not in data:
+                    data["audit_log"] = []
                 if "history_summary" not in data:
                     data["history_summary"] = ""
                 return data
-            except BaseException:
+            except (json.JSONDecodeError, ValueError, OSError):
                 # Medida defensiva: Si el archivo se corrompió de casualidad; proveemos una copia de relleno vacía por defecto
                 return {
                     "session_id": session_id,
@@ -116,8 +128,13 @@ class SessionMemory:
         """
         Returns only the snapshots and technical actions for auditing.
         This enables 'Why did the agent take this decision?' forensics.
+        Uses the immutable audit_log to survive context compaction.
         """
         data = self.load_session(session_id)
+        # Prioritize audit_log if available, fallback to steps for old sessions
+        if data.get("audit_log"):
+            return data["audit_log"]
+        
         return [step for step in data.get("steps", []) if "snapshot" in step or step.get("action") == "JUSTIFICATION"]
 
     def update_artifact_index(self, session_id: str, new_artifacts: List[Any]):
@@ -172,7 +189,7 @@ class SessionMemory:
         try:
             dt = datetime.fromisoformat(last_ts_str)
             return dt.timestamp()
-        except:
+        except (ValueError, TypeError, OSError):
             return None
 
     def get_artifact_summary(self, session_id: str) -> str:
@@ -239,5 +256,26 @@ class SessionMemory:
         from .token_counter import TokenCounter
         history = self.get_history_summary(session_id)
         return TokenCounter.count_tokens(history)
+
+    def cleanup_old_sessions(self, days: int = 30):
+        """
+        Elimina archivos de sesión que no han sido actualizados en N días.
+        Mantenimiento preventivo para ahorro de espacio y cumplimiento de GDPR.
+        """
+        now = time.time()
+        cutoff = now - (days * 86400)
+        deleted_count = 0
+        
+        for file in Path(self.storage_dir).glob("*.json"):
+            if file.stat().st_mtime < cutoff:
+                try:
+                    file.unlink()
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"  [Memory] Error eliminando {file.name}: {e}")
+        
+        if deleted_count > 0:
+            print(f"  [Memory] ♻️ Limpieza completada: {deleted_count} sesiones antiguas eliminadas.")
+        return deleted_count
 
 

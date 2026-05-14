@@ -224,6 +224,7 @@ NARRATION STYLE:
 - Adopt the persona's voice throughout the text.
 - Be immersive.
 - **CRITICAL**: The 'explanation' and 'best_practice' fields MUST be at least 2 sentences long and technically detailed.
+6. **AI Disclosure**: You MUST append this exact footer at the end of the 'explanation' field: "\n\n*Nota: Este análisis fue generado por el sistema multi-agente SOC Tutor (IA) y validado mediante protocolos de integridad técnica.*"
 
 PEDAGOGICAL RULES ACCORDING TO PLAYER LEVEL:
 {{reglas}}

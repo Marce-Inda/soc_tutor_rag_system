@@ -19,16 +19,18 @@ model_configuration/
 | **DeepSeek** | `deepseek-chat` (V4 Flash) | Rápido | $0.14 input / $0.28 output | **Emergencia** |
 | **Ollama** | `llama3` (local) | Variable | $0.00 | **Desarrollo** |
 
-## Cascada de Resiliencia (3 Capas)
+## Cascada de Resiliencia (Harden v2)
+
+El sistema implementa una cascada de resiliencia de 3 capas gestionada por `src/utils/llm_client.py`:
 
 ```
 Capa 1: Provider Primario (Gemini 2.5 Flash)
-    ↓ falla
-Capa 2: Fallback Bidireccional (Groq ↔ Gemini)
-    ↓ falla
+    \u2193 falla (API Error / Timeout)
+Capa 2: Fallback Asim\u00e9trico (Groq Llama 3.3)
+    \u2193 falla
 Capa 3: Red de Seguridad (DeepSeek V4 Flash)
-    ↓ falla
-Capa 4: Graceful Degradation (JSON determinista)
+    \u2193 falla
+Capa 4: Graceful Degradation (JSON Determinista de Emergencia)
 ```
 
 ## Parámetros Recomendados

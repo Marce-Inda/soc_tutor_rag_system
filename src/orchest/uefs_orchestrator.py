@@ -11,6 +11,7 @@ from typing import Optional, Dict, Any, List
 import re
 import time
 import asyncio
+import traceback
 from datetime import datetime
 
 from ..agents.types import (
@@ -62,6 +63,13 @@ class UEFSOrchestrator:
                 
         self.tools = SOCtools(rag_client)
         self.memory = SessionMemory()
+        
+        # Mantenimiento proactivo: Limpieza de sesiones antiguas (>30 días)
+        try:
+            self.memory.cleanup_old_sessions(days=30)
+        except Exception as e:
+            print(f" [Orchest] ⚠️ Error en mantenimiento de memoria: {e}")
+            
         self.guard = GuardAgent(llm_client)
         
         self.analyst_agent = AnalystAgent(llm_client, rag_client, tools=self.tools)
@@ -88,6 +96,8 @@ class UEFSOrchestrator:
         self.MAX_TURNS_PER_SESSION = 15
         self.MAX_COST_PER_SESSION = 0.05
         self.session_costs = {}
+        self.session_tokens = {}
+        self.session_latencies = {}
 
     def health_check(self) -> Dict[str, Any]:
         """Returns the health status of the orchestrator and its components."""
@@ -140,6 +150,10 @@ class UEFSOrchestrator:
         
         if session_id not in self.session_costs:
             self.session_costs[session_id] = 0.0
+        if session_id not in self.session_tokens:
+            self.session_tokens[session_id] = 0
+            
+        turn_start_time = time.perf_counter()
             
         # CHECK BUDGET (Wallet-Exhaustion Protection)
         if self.session_costs[session_id] >= MAX_COST_PER_SESSION:
@@ -167,13 +181,38 @@ class UEFSOrchestrator:
                  tracer.end_trace({"Proceso": "Caché"}, status="cache_hit")
                  return res
 
-        # 2. IMMERSIVE RATE LIMIT CHECK (Red Hat Mitigation)
+        # 2. SEGURIDAD L1/L2: GuardAgent (Defensa en Profundidad)
+        # Sanitizar inputs básicos
+        decision.accion = sanitize_content(decision.accion)
+        decision.target = sanitize_content(decision.target)
+        if decision.detalle:
+            decision.detalle = sanitize_content(decision.detalle)
+
+        is_safe, error_msg = await self.guard.validate_input(decision)
+        if not is_safe:
+            print(f" [Orchest] 🛑 Security Block: {error_msg}")
+            error_response = self._get_safe_block_response(f"Security Alert: {error_msg}")
+            # PERSISTENCIA FORENSE DE BLOQUEO
+            self.memory.save_step(session_id, {
+                "decision": decision.model_dump(),
+                "timestamp": datetime.now().isoformat(),
+                "summary": f"BLOQUEADO POR SEGURIDAD: {error_msg}",
+                "snapshot": {
+                    "tecnico": error_response.evaluacion_tecnica.model_dump(),
+                    "gobernanza": error_response.evaluacion_gobernanza.model_dump(),
+                    "validacion": error_response.validacion.model_dump()
+                }
+            })
+            tracer.end_trace({"error": error_msg}, status="blocked")
+            return error_response
+
+        # 3. DISPONIBILIDAD: Rate Limit Inmersivo (Anti-Spam)
         last_step_time = self.memory.get_last_step_timestamp(session_id)
         current_time = time.time()
         if last_step_time and (current_time - last_step_time) < 10:
-            print(f" [Orchest] ⚡ Rate Limit Triggered (Immersive). Speed: {current_time - last_step_time:.2f}s")
+            print(f" [Orchest] ⚡ Rate Limit triggered for {session_id}. Speed: {current_time - last_step_time:.2f}s")
             return FeedbackFinal(
-                evaluacion=f"Analista, aguarda un momento. La consola del SOC está procesando una ráfaga de telemetría de {contexto.tipo_incidente}. Dame unos segundos para que los agentes de Gobernanza y Análisis sincronicen sus hallazgos antes de nuestra próxima acción.",
+                evaluacion=f"Analista, aguarda un momento. La consola del SOC está procesando una ráfaga de telemetría. Dame unos segundos para que los agentes de campo sincronicen sus hallazgos.",
                 explicacion="Espera unos 10 segundos entre acciones para permitir que la IA procese los datos correctamente.",
                 mejor_practica="La velocidad de análisis del SOC está limitada para garantizar profundidad y calidad en cada evaluación.",
                 fuentes_citadas=[],
@@ -191,19 +230,6 @@ class UEFSOrchestrator:
                 ),
                 costo_estimado=0.0
             )
-
-        # 3. GUARD & MEMORY (Sanitization Layer)
-        # Sanitizar inputs del jugador para evitar inyección de prompt
-        decision.accion = sanitize_content(decision.accion)
-        decision.target = sanitize_content(decision.target)
-        if decision.detalle:
-            decision.detalle = sanitize_content(decision.detalle)
-
-
-        is_safe, error_msg = await self.guard.validate_input(decision)
-        if not is_safe:
-            tracer.end_trace({"error": error_msg}, status="blocked")
-            return self._get_safe_block_response(f"Action could not be processed: {error_msg}")
 
         # 4. RAG - Context Bundle
         print(f" [Orchestrator] Retrieving RAG context bundle...")
@@ -229,13 +255,13 @@ class UEFSOrchestrator:
         try:
             evaluacion_analista, evaluacion_gobernanza = await asyncio.gather(analista_task, gobernanza_task)
         except Exception as e:
-            import traceback
             traceback.print_exc()
-            print(f" [Orchestrator] ⚠️ Error en agentes: {repr(e)}. Usando respuestas de emergencia.")
+            print(f" [Orchestrator] \u26a0\ufe0f Error en agentes: {repr(e)}. Usando respuestas de emergencia.")
             evaluacion_analista = self._get_api_error_response().evaluacion_tecnica
             evaluacion_gobernanza = self._get_api_error_response().evaluacion_gobernanza
 
         self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
+        self.session_tokens[session_id] += (self.llm.last_usage.get("input_tokens", 0) + self.llm.last_usage.get("output_tokens", 0))
         
         # 4.5 HITL CHECK (Governance Pause)
         if evaluacion_gobernanza.requires_confirmation:
@@ -281,6 +307,7 @@ class UEFSOrchestrator:
                 prev_inconsistencies=prev_errs
             )
             self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
+            self.session_tokens[session_id] += (self.llm.last_usage.get("input_tokens", 0) + self.llm.last_usage.get("output_tokens", 0))
             
             if self.enable_validation:
                 print(f" [Orchestrator] Validating draft consistency...")
@@ -291,6 +318,7 @@ class UEFSOrchestrator:
                     contexto_rag=contexto_full_str
                 )
                 self.session_costs[session_id] += self.llm.last_usage.get("cost", 0.0)
+                self.session_tokens[session_id] += (self.llm.last_usage.get("input_tokens", 0) + self.llm.last_usage.get("output_tokens", 0))
 
                 if validacion.approved:
                     print(f" [Orchestrator] Draft approved.")
@@ -328,6 +356,9 @@ class UEFSOrchestrator:
             evaluacion_6d=validacion.evaluacion_6d,
             validacion=validacion,
             costo_estimado=self.session_costs[session_id],
+            total_tokens=self.session_tokens[session_id],
+            latencia_ms=(time.perf_counter() - turn_start_time) * 1000,
+            rag_precision=sum(contexto_bundle.get("scores", [0.0])) / len(contexto_bundle.get("scores", [1.0])),
             persona_role=validacion.persona_role or "Senior Analyst"
         )
 

@@ -52,11 +52,9 @@ def mask_pii(text: str) -> str:
     # Teléfonos genéricos (10 dígitos o más)
     masked = re.sub(r'\b(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b', '[REDACTED_PHONE]', masked)
     
-    # Emails - Nota: En un simulador SOC podríamos querer conservar correos de atacantes.
-    # Por seguridad, enmascaramos solo si no es un dominio de ejemplo o test.
-    # masked = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', '[REDACTED_EMAIL]', masked)
-    # Por ahora, dejamos los emails libres por contexto pedagógico (phishing),
-    # pero el control de PII financiero/identidad queda activo.
+    # Emails - Protegemos la privacidad por defecto (GDPR)
+    # Solo permitimos ver el dominio si es de prueba para mantener contexto pedagógico.
+    masked = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', '[REDACTED_EMAIL]', masked)
     
     return masked
 

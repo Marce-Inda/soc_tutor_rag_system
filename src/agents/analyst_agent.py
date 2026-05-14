@@ -31,6 +31,28 @@ class AnalystAgent:
         self.rag = rag_client
         self.tools = tools  # SOCtools instance
 
+    @staticmethod
+    def _ensure_string(val: Any) -> str:
+        """Converts any value to a safe string for Pydantic fields."""
+        if isinstance(val, (dict, list)):
+            return str(val)
+        return str(val) if val is not None else ""
+
+    @staticmethod
+    def _sanitize_artifacts(raw_artifacts: Any) -> list:
+        """Cleans LLM-generated artifact data to prevent Pydantic validation errors."""
+        clean = []
+        if not isinstance(raw_artifacts, list):
+            return clean
+        for art in raw_artifacts:
+            if isinstance(art, dict) and "fact" in art:
+                clean.append({
+                    "fact": str(art.get("fact", "Dato t\u00e9cnico")),
+                    "certainty": int(art.get("certainty", 100)) if str(art.get("certainty", "")).isdigit() else 100,
+                    "source": art.get("source", "inference") if art.get("source") in ["tool", "rag", "inference"] else "inference"
+                })
+        return clean
+
     async def evaluar(
         self, 
         decision: Decision, 
@@ -144,11 +166,11 @@ class AnalystAgent:
         if final_answer_match:
             try:
                 result_json = json.loads(final_answer_match.group(1).strip())
-            except:
+            except (json.JSONDecodeError, ValueError):
                 # Attempt to clean if JSON parsing failed
                 cleaned = final_answer_match.group(1).strip().strip("```json").strip("```")
                 try: result_json = json.loads(cleaned)
-                except: result_json = {}
+                except (json.JSONDecodeError, ValueError): result_json = {}
         else:
             # Fallback to direct generation if ReAct format failed
             result_json = await self.llm.generate_json(f"Based on this technical reasoning, generate the evaluation JSON: {reasoning_chain[-1]}")
@@ -158,35 +180,19 @@ class AnalystAgent:
         # Extraer hashes REALES del contexto RAG
         real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
 
-        # Sanitize outputs
-        def ensure_string(val: Any) -> str:
-            if isinstance(val, (dict, list)):
-                return str(val)
-            return str(val) if val is not None else ""
-        # Sanitize artifacts to avoid Pydantic validation errors from LLM noise
-        raw_artifacts = result_json.get("verified_artifacts", [])
-        clean_artifacts = []
-        if isinstance(raw_artifacts, list):
-            for art in raw_artifacts:
-                if isinstance(art, dict) and "fact" in art:
-                    # Ensure all required fields exist with defaults if missing
-                    clean_artifacts.append({
-                        "fact": ensure_string(art.get("fact", "Dato técnico")),
-                        "certainty": int(art.get("certainty", 100)) if str(art.get("certainty", "")).isdigit() else 100,
-                        "source": art.get("source", "inference") if art.get("source") in ["tool", "rag", "inference"] else "inference"
-                    })
+        clean_artifacts = self._sanitize_artifacts(result_json.get("verified_artifacts", []))
 
         try:
             return EvaluacionTecnica(
-                analysis=ensure_string(result_json.get("analysis", "Technical analysis completed")),
-                explanation=ensure_string(result_json.get("explanation", "No detailed explanation provided")),
+                analysis=self._ensure_string(result_json.get("analysis", "Technical analysis completed")),
+                explanation=self._ensure_string(result_json.get("explanation", "No detailed explanation provided")),
                 strengths=result_json.get("strengths", []),
                 weaknesses=result_json.get("weaknesses", []),
-                best_practice=ensure_string(result_json.get("best_practice", "Consult standard manuals")),
+                best_practice=self._ensure_string(result_json.get("best_practice", "Consult standard manuals")),
                 sources=result_json.get("sources", []),
                 technical_score=int(result_json.get("technical_score", 70)) if str(result_json.get("technical_score", "")).isdigit() else 70,
                 resilience_score=int(result_json.get("resilience_score", 70)) if str(result_json.get("resilience_score", "")).isdigit() else 70,
-                forensic_notes=ensure_string(result_json.get("forensic_notes")),
+                forensic_notes=self._ensure_string(result_json.get("forensic_notes")),
                 source_integrity_hashes=real_hashes,
                 technical_data=mcp_results,
                 verified_artifacts=clean_artifacts
@@ -220,16 +226,7 @@ class AnalystAgent:
         real_hashes = re.findall(r"Hash: ([a-f0-9]+)", contexto_rag)
 
         # Sanitize artifacts to avoid Pydantic validation errors from LLM noise
-        raw_artifacts = result.get("verified_artifacts", [])
-        clean_artifacts = []
-        if isinstance(raw_artifacts, list):
-            for art in raw_artifacts:
-                if isinstance(art, dict) and "fact" in art:
-                    clean_artifacts.append({
-                        "fact": str(art.get("fact", "Dato técnico")),
-                        "certainty": int(art.get("certainty", 100)) if str(art.get("certainty", "")).isdigit() else 100,
-                        "source": art.get("source", "inference") if art.get("source") in ["tool", "rag", "inference"] else "inference"
-                    })
+        clean_artifacts = self._sanitize_artifacts(result.get("verified_artifacts", []))
 
         return EvaluacionTecnica(
             analysis=result.get("analysis", "Direct analysis"),

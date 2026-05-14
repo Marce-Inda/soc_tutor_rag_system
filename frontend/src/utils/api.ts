@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7860';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -35,6 +35,7 @@ export interface QueueStatus {
   position: number;
   codename: string;
   is_ready: boolean;
+  queue_list: string[];
 }
 
 export async function getFeedback(decision: Decision, contexto: Contexto, playerProfile: PlayerProfile, userId: string = 'guest') {

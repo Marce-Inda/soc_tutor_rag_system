@@ -92,6 +92,9 @@ class FeedbackResponse(BaseModel):
     evaluacion_gobernanza: Optional[Dict[str, Any]] = None
     aprobado: bool
     costo_estimado: float
+    total_tokens: int
+    latencia_ms: float
+    rag_precision: float
     status: str = "success"
     requires_hitl: bool = False
     hitl_message: Optional[str] = None
@@ -126,17 +129,24 @@ def get_orchestrator():
         
         # Importar aquí para evitar errores si no están instalados
         try:
-            from model_configuration.llm_client import LLMClient
+            from src.utils.llm_client import LLMClient
             from src.rag.rag_client import RAGClient
             from src.orchest.uefs_orchestrator import UEFSOrchestrator
             
-            _llm_client = LLMClient()
+            _llm_client = LLMClient(provider="gemini")
             _rag_client = RAGClient()
             
-            # Inicializar el juez asimétrico con Groq (Llama 3) si la clave está presente
-            if os.getenv("GROQ_API_KEY"):
-                _validator_llm_client = LLMClient()
-                _validator_llm_client.switch_provider("groq")
+            # ASYMMETRIC SUPREME JUDGE: Priorizamos modelos de alta capacidad para validación.
+            # Orden de prioridad: NVIDIA NIM (405B) -> DeepSeek -> Groq
+            if os.getenv("NVIDIA_API_KEY"):
+                print(" [Main] 🛡️ NVIDIA NIM (Llama-3.3-70B) activado como Juez Supremo.")
+                _validator_llm_client = LLMClient(provider="nvidia", model="meta/llama-3.3-70b-instruct")
+            elif os.getenv("DEEPSEEK_API_KEY"):
+                print(" [Main] 🛡️ DeepSeek Supremo activado para validación de calidad.")
+                _validator_llm_client = LLMClient(provider="deepseek")
+            elif os.getenv("GROQ_API_KEY"):
+                print(" [Main] ⚖️ Groq activado como Juez Asimétrico.")
+                _validator_llm_client = LLMClient(provider="groq")
             else:
                 _validator_llm_client = None
             
@@ -232,6 +242,9 @@ async def generar_feedback(request: FeedbackRequest, user_id: str = "guest"):
             evaluacion_gobernanza=gov_eval,
             aprobado=feedback.validacion.approved if feedback.validacion else True,
             costo_estimado=feedback.costo_estimado,
+            total_tokens=feedback.total_tokens,
+            latencia_ms=feedback.latencia_ms,
+            rag_precision=feedback.rag_precision,
             status=feedback.status,
             requires_hitl=feedback.requires_hitl,
             hitl_message=feedback.hitl_message
@@ -268,6 +281,9 @@ async def confirmar_accion(request: ConfirmationRequest, user_id: str = "guest")
             evaluacion_gobernanza=gov_eval,
             aprobado=True,
             costo_estimado=feedback.costo_estimado,
+            total_tokens=feedback.total_tokens,
+            latencia_ms=feedback.latencia_ms,
+            rag_precision=feedback.rag_precision,
             status="success",
             requires_hitl=False
         )
