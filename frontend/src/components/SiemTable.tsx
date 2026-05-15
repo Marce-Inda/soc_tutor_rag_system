@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Database, Search, FileText, Copy, Check } from 'lucide-react';
 
 interface EvidenceEntry {
