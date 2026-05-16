@@ -123,7 +123,7 @@ El ecosistema completo ha sido diseñado siguiendo principios *read_only* e inmu
 ### 📋 Requisitos Previos
 - **Docker y Docker Compose** (Recomendado)
 - **Git**
-- Claves de API de proveedores LLM (Gemini obligatoria, Groq recomendada)
+- Claves de API de proveedores LLM (NVIDIA_API_KEY obligatoria como juez supremo, GEMINI_API_KEY y GROQ_API_KEY)
 - *Si optas por el despliegue manual:* Python 3.10+ y Node.js 18+
 
 ### 🚀 Pasos de Instalación
@@ -137,7 +137,7 @@ cd soc-tutor-rag-system
 **2. Configurar variables de entorno**
 ```bash
 cp .env.example .env
-# IMPORTANTE: Editar .env con tu configuración y llaves (GEMINI_API_KEY, GROQ_API_KEY)
+# IMPORTANTE: Editar .env con tu configuración y llaves (NVIDIA_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
 ```
 
 **3. Indexar documentos (Opcional - Inicializar RAG)**
