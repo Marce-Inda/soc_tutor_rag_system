@@ -120,40 +120,57 @@ soc-tutor-rag-system/
 
 El ecosistema completo ha sido diseñado siguiendo principios *read_only* e inmutables mediante Docker, ofreciendo un entorno replicable e idéntico a producción.
 
+### 📋 Requisitos Previos
+- **Docker y Docker Compose** (Recomendado)
+- **Git**
+- Claves de API de proveedores LLM (Gemini obligatoria, Groq recomendada)
+- *Si optas por el despliegue manual:* Python 3.10+ y Node.js 18+
+
+### 🚀 Pasos de Instalación
+
+**1. Clonar el repositorio**
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/tu-usuario/soc-tutor-rag-system.git
 cd soc-tutor-rag-system
-
-# 2. Configurar credenciales LLM
-cp .env.example .env 
-# IMPORTANTE: Definir las llaves necesarias en .env (GEMINI_API_KEY, GROQ_API_KEY)
-
-# 3. Lanzar Orquestación Multicontenedor
-docker compose up -d --build
 ```
 
+**2. Configurar variables de entorno**
+```bash
+cp .env.example .env
+# IMPORTANTE: Editar .env con tu configuración y llaves (GEMINI_API_KEY, GROQ_API_KEY)
+```
+
+**3. Indexar documentos (Opcional - Inicializar RAG)**
+```bash
+# Si la base de ChromaDB no está pre-construida o hay nuevos documentos
+python data_ingestion/ingest_docs.py
+```
+
+**4. Ejecutar**
+
+**Opción A - Despliegue Oficial (Docker Multicontenedor):**
+```bash
+docker compose up -d --build
+```
 - **Consola de Trabajo (Frontend)**: [http://localhost:3000](http://localhost:3000)
 - **API Swagger (Backend)**: [http://localhost:7860/docs](http://localhost:7860/docs)
 - **Trazabilidad Forense (Phoenix)**: [http://localhost:6006](http://localhost:6006)
 
-### Despliegue Manual (Entorno de Desarrollo)
-Alternativa sin Docker para depuración profunda:
+**Opción B - Despliegue Manual (Entorno de Desarrollo):**
 
-**Backend (FastAPI)**:
+*Backend (FastAPI):*
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
 uvicorn deployment.app.main:app --reload --port 7860
 ```
 
-**Frontend (Next.js)**:
+*Frontend (Next.js):*
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local
+cp ../.env.example .env.local
 npm run dev
 ```
 

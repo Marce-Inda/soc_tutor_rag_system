@@ -120,40 +120,57 @@ soc-tutor-rag-system/
 
 The complete ecosystem is designed following read-only and immutable principles using Docker, offering a replicable environment identical to production.
 
+### 📋 Prerequisites
+- **Docker and Docker Compose** (Recommended)
+- **Git**
+- LLM Provider API Keys (Gemini required, Groq recommended)
+- *If choosing manual deployment:* Python 3.10+ and Node.js 18+
+
+### 🚀 Installation Steps
+
+**1. Clone the repository**
 ```bash
-# 1. Clone the repository
 git clone https://github.com/tu-usuario/soc-tutor-rag-system.git
 cd soc-tutor-rag-system
-
-# 2. Configure LLM credentials
-cp .env.example .env 
-# IMPORTANT: Define the necessary keys in .env (GEMINI_API_KEY, GROQ_API_KEY)
-
-# 3. Launch Multi-Container Orchestration
-docker compose up -d --build
 ```
 
+**2. Configure environment variables**
+```bash
+cp .env.example .env
+# IMPORTANT: Edit .env with your configuration and keys (GEMINI_API_KEY, GROQ_API_KEY)
+```
+
+**3. Index documents (Optional - Initialize RAG)**
+```bash
+# If the ChromaDB database is not pre-built or there are new documents
+python data_ingestion/ingest_docs.py
+```
+
+**4. Execute**
+
+**Option A - Official Deployment (Multi-container Docker):**
+```bash
+docker compose up -d --build
+```
 - **Workstation Console (Frontend)**: [http://localhost:3000](http://localhost:3000)
 - **Swagger API (Backend)**: [http://localhost:7860/docs](http://localhost:7860/docs)
 - **Forensic Traceability (Phoenix)**: [http://localhost:6006](http://localhost:6006)
 
-### Manual Deployment (Development Environment)
-Alternative without Docker for deep debugging:
+**Option B - Manual Deployment (Development Environment):**
 
-**Backend (FastAPI)**:
+*Backend (FastAPI):*
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
 uvicorn deployment.app.main:app --reload --port 7860
 ```
 
-**Frontend (Next.js)**:
+*Frontend (Next.js):*
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local
+cp ../.env.example .env.local
 npm run dev
 ```
 
