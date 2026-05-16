@@ -8,8 +8,8 @@
 
 The system is deployed using a decoupled "Cloud-Lite" architecture to guarantee minimal latency and high availability.
 
-[![Try it Live](https://img.shields.io/badge/Demo-Try%20it%20Live-cyan?style=for-the-badge&logo=vercel)](https://soc-tutor-workstation.vercel.app)
-[![Backend Status](https://img.shields.io/badge/Backend-Hugging%20Face%20Spaces-yellow?style=for-the-badge&logo=huggingface)](#)
+[![Try it Live](https://img.shields.io/badge/Demo-Try%20it%20Live-cyan?style=for-the-badge&logo=vercel)](https://soc-tutor-rag-system-git-main-marcela-inda-s-projects.vercel.app/)
+[![Backend Status](https://img.shields.io/badge/Backend-Hugging%20Face%20Spaces-yellow?style=for-the-badge&logo=huggingface)](https://huggingface.co/spaces/Boudiccadaain/soc-tutor-backend)
 
 ---
 
