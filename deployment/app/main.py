@@ -360,9 +360,9 @@ async def llm_simple_query(request: LLMSimpleRequest):
         "### 2. Marco Normativo Aplicable y Leyes de la Jurisdicción\n"
         "Cita las leyes de ciberseguridad, datos sensibles y normativas específicas del país o región según tu conocimiento general (ej. LGPD, Ley Marco, INAI, BCU, GDPR, NIST SP 800-61).\n\n"
         "### 3. Plazos Críticos de Notificación y Sanciones\n"
-        "Detalla los plazos obligatorios para reportar el incidente (ej. 24h, 48h, 72h) y las consecuencias legales/financieras por incumplimiento.\n\n"
+        "Detalla obligatoriamente la cantidad EXACTA DE HORAS O DÍAS para reportar el incidente (ej. 24h, 48h, 72h o días hábiles) y especifica los tipos de multas o sanciones financieras/administrativas estimadas según tu conocimiento general.\n\n"
         "### 4. Recomendaciones Operativas para CISO y Asesor Legal\n"
-        "Proporciona acciones inmediatas de contención, preservación de evidencia y gobernanza.\n\n"
+        "Proporciona 3 acciones inmediatas prioritarias de contención, preservación de evidencia y gobernanza.\n\n"
         f"INCIDENTE A EVALUAR:\n{prompt}"
     )
     
