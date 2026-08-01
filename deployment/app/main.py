@@ -303,6 +303,7 @@ async def audit_session(user_id: str):
         raise HTTPException(status_code=404, detail=f"Sesión no encontrada o error: {str(e)}")
 
 
+
 @app.get("/stats")
 def stats():
     """Estadísticas del sistema."""
@@ -314,6 +315,138 @@ def stats():
         "documents_indexed": health["rag_documents"],
         "validation_enabled": health["validation_enabled"]
     }
+
+
+# --- ENDPOINT LIGERO PARA GRUPO B (LLM SIMPLE SIN RAG) ---
+# Este endpoint existe exclusivamente para el Escenario 2 del arnés experimental.
+# Hace UNA sola llamada directa a un LLM usando las claves del servidor,
+# SIN pasar por el pipeline multi-agente, RAG, gobernanza ni validación.
+# Latencia esperada: 2-8 segundos (vs ~40s del pipeline completo /feedback).
+
+class LLMSimpleRequest(BaseModel):
+    """Request para llamada LLM directa sin RAG (Grupo B)."""
+    prompt: str = Field(..., description="Prompt completo para enviar al LLM")
+    preferred_provider: Optional[str] = Field(None, description="Proveedor preferido: gemini, groq, openrouter")
+
+class LLMSimpleResponse(BaseModel):
+    """Response de llamada LLM directa (Grupo B)."""
+    response_text: str
+    model_used: str
+    provider: str
+    latency_ms: float
+    status: str = "success"
+
+
+@app.post("/llm-simple", response_model=LLMSimpleResponse)
+async def llm_simple_query(request: LLMSimpleRequest):
+    """
+    Llamada directa a un LLM sin RAG ni multi-agente.
+    Diseñado para el Grupo B (Escenario 2) del arnés experimental INFOTEC.
+    Usa las claves API del servidor en cascada: Gemini -> Groq -> OpenRouter.
+    """
+    import time
+    import httpx
+    
+    start_time = time.time()
+    prompt = request.prompt
+    
+    if not prompt or len(prompt.strip()) < 10:
+        raise HTTPException(status_code=400, detail="El prompt debe tener al menos 10 caracteres.")
+    
+    # Truncar prompt demasiado largo para evitar abuso
+    if len(prompt) > 8000:
+        prompt = prompt[:8000]
+    
+    errors = []
+    
+    # --- INTENTO 1: Gemini Direct API ---
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key:
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+                payload = {"contents": [{"parts": [{"text": prompt}]}]}
+                resp = await client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    if text:
+                        latency = (time.time() - start_time) * 1000
+                        return LLMSimpleResponse(
+                            response_text=text,
+                            model_used="gemini-2.0-flash",
+                            provider="Google Gemini Direct",
+                            latency_ms=round(latency, 1)
+                        )
+                errors.append(f"Gemini: HTTP {resp.status_code}")
+        except Exception as e:
+            errors.append(f"Gemini: {str(e)}")
+    
+    # --- INTENTO 2: Groq (Llama 3.3) ---
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                payload = {
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {groq_key}"
+                }
+                resp = await client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if text:
+                        latency = (time.time() - start_time) * 1000
+                        return LLMSimpleResponse(
+                            response_text=text,
+                            model_used="llama-3.3-70b-versatile",
+                            provider="Groq Direct",
+                            latency_ms=round(latency, 1)
+                        )
+                errors.append(f"Groq: HTTP {resp.status_code}")
+        except Exception as e:
+            errors.append(f"Groq: {str(e)}")
+    
+    # --- INTENTO 3: OpenRouter ---
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if openrouter_key:
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                url = "https://openrouter.ai/api/v1/chat/completions"
+                payload = {
+                    "model": "openai/gpt-5.6-luna",
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "HTTP-Referer": "https://the-responder-264f2.web.app",
+                    "X-Title": "INFOTEC Academic Study"
+                }
+                resp = await client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if text:
+                        latency = (time.time() - start_time) * 1000
+                        return LLMSimpleResponse(
+                            response_text=text,
+                            model_used="openai/gpt-5.6-luna",
+                            provider="OpenRouter",
+                            latency_ms=round(latency, 1)
+                        )
+                errors.append(f"OpenRouter: HTTP {resp.status_code}")
+        except Exception as e:
+            errors.append(f"OpenRouter: {str(e)}")
+    
+    # --- Todos fallaron ---
+    error_detail = "; ".join(errors) if errors else "Sin claves API configuradas en el servidor"
+    raise HTTPException(status_code=503, detail=f"Ningún proveedor LLM respondió: {error_detail}")
 
 
 if __name__ == "__main__":
