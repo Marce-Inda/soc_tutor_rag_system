@@ -350,14 +350,23 @@ async def llm_simple_query(request: LLMSimpleRequest):
     start_time = time.time()
     prompt = request.prompt
     
-    if not prompt or len(prompt.strip()) < 10:
-        raise HTTPException(status_code=400, detail="El prompt debe tener al menos 10 caracteres.")
+    # Enriquecer prompt para garantizar informe exhaustivo de auditoría y ciberseguridad
+    system_instruction = (
+        "Actúa como un Consultor Senior de Ciberseguridad y Auditoría Regulatoria de Nivel Doctoral. "
+        "Genera una evaluación profunda, estructurada y completa de la propuesta del operador. "
+        "Estructura tu respuesta en las siguientes secciones claras marcadas con ###:\n\n"
+        "### 1. Veredicto y Evaluación de Cumplimiento\n"
+        "Evalúa si la decisión es idónea o si incurre en infracciones normativas.\n\n"
+        "### 2. Marco Normativo Aplicable y Leyes de la Jurisdicción\n"
+        "Cita las leyes de ciberseguridad, datos sensibles y normativas específicas del país o región según tu conocimiento general (ej. LGPD, Ley Marco, INAI, BCU, GDPR, NIST SP 800-61).\n\n"
+        "### 3. Plazos Críticos de Notificación y Sanciones\n"
+        "Detalla los plazos obligatorios para reportar el incidente (ej. 24h, 48h, 72h) y las consecuencias legales/financieras por incumplimiento.\n\n"
+        "### 4. Recomendaciones Operativas para CISO y Asesor Legal\n"
+        "Proporciona acciones inmediatas de contención, preservación de evidencia y gobernanza.\n\n"
+        f"INCIDENTE A EVALUAR:\n{prompt}"
+    )
     
-    # Truncar prompt demasiado largo para evitar abuso
-    if len(prompt) > 8000:
-        prompt = prompt[:8000]
-    
-    errors = []
+    prompt = system_instruction
     
     # --- INTENTO 1: Gemini Direct API ---
     gemini_key = os.getenv("GEMINI_API_KEY")
